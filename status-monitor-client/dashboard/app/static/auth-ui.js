@@ -4,10 +4,10 @@
 // permission checkboxes, a forced first-login password reset for admin-created
 // accounts, and a viewer-mode lockdown that hides editing controls.
 //
-// All chrome reuses the dashboard's existing liquid-glass system: the button is
-// a `.window-glass-control` (already WebGL-refracted) and every floating panel
-// uses `.nav-menu-shell.floating-glass-menu` with `--ink`/glass tokens. No new
-// glass styling is invented here.
+// Every surface is liquid glass — clear dark glass + white text, refracted by
+// the WebGL shader (the gate/menu/modal are registered in OBJECT_SELECTOR), the
+// same material as the status detail popover. Darkness/lightness comes from the
+// background, not a light/dark theme.
 //
 // Auth state lives in the main process (window.auth bridge); after a sign-in,
 // sign-up or password reset the window reloads so the per-user layout store and
@@ -28,7 +28,7 @@
   const gate = document.createElement("div");
   gate.className = "auth-gate";
   gate.innerHTML = `
-    <form class="auth-card nav-menu-shell floating-glass-menu" autocomplete="off">
+    <form class="auth-card" autocomplete="off">
       <div class="auth-brand">Report Monitor</div>
       <div class="auth-sub"></div>
       <label class="auth-field auth-field-username"><span>Username</span>
@@ -99,7 +99,7 @@
   profile.className = "auth-profile-cluster";
   profile.innerHTML = `
     <button class="window-glass-control auth-profile-button" type="button" aria-label="Account" aria-haspopup="true"></button>
-    <div class="auth-profile-menu nav-menu-shell floating-glass-menu" role="menu">
+    <div class="auth-profile-menu" role="menu">
       <div class="auth-profile-head">
         <strong class="auth-profile-name"></strong>
         <span class="auth-role-badge"></span>
@@ -126,6 +126,7 @@
       if (gateMode === "setpw") gateMode = "signin";
       gate.style.display = "flex";
       profile.style.display = "none";
+      document.body.classList.add("auth-gated");
       document.body.classList.remove("dashboard-viewer");
       renderGateMode();
       return;
@@ -134,11 +135,13 @@
       gateMode = "setpw";
       gate.style.display = "flex";
       profile.style.display = "none";
+      document.body.classList.add("auth-gated");
       renderGateMode();
       return;
     }
     gate.style.display = "none";
     profile.style.display = "block";
+    document.body.classList.remove("auth-gated");
     nameEl.textContent = user.username;
     roleEl.textContent = roleOf(user);
     manageBtn.hidden = !(user.isAdmin || user.permissions.canManageUsers);
@@ -156,7 +159,7 @@
     manageEl = document.createElement("div");
     manageEl.className = "auth-modal-backdrop";
     manageEl.innerHTML = `
-      <div class="auth-modal nav-menu-shell floating-glass-menu">
+      <div class="auth-modal">
         <div class="auth-modal-head">
           <strong>Accounts</strong>
           <button class="auth-modal-close" type="button" aria-label="Close">✕</button>
@@ -223,106 +226,137 @@
     });
   }
 
-  // ─── Styles (tokens + existing glass classes only) ───────────────────────────
+  // ─── Styles: liquid glass (white text, clear dark glass) ─────────────────────
   function injectStyles() {
+    const USER_ICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
     const style = document.createElement("style");
     style.id = "auth-ui-styles";
     style.textContent = `
       .auth-gate {
         position: fixed; inset: 0; z-index: 100000;
         display: flex; align-items: center; justify-content: center;
-        background: rgba(10, 12, 16, 0.5);
-        -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+        background: rgba(8, 10, 14, 0.32);
       }
+      /* While the gate is up, status is withheld by hiding the status elements
+         themselves — not by burying the dashboard under an opaque sheet, so the
+         sign-in card stays true liquid glass over the workspace. */
+      body.auth-gated .status-indicator-cluster,
+      body.auth-gated .stat-band,
+      body.auth-gated .widget-card .stat-val { visibility: hidden; }
+
+      /* Shared liquid-glass material — a clear (translucent) tint over a heavy
+         blur so the workspace shows through it, white text. Lightness/darkness
+         comes from whatever is behind it. */
+      .auth-card,
+      .auth-profile-menu,
+      .auth-modal {
+        color: #ffffff;
+        background: rgba(17, 19, 25, 0.34);
+        -webkit-backdrop-filter: blur(34px) saturate(150%);
+        backdrop-filter: blur(34px) saturate(150%);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      }
+
+      /* The dashboard styles every <button> as a blue pill with a blue drop
+         shadow. Strip that from the account buttons (the glass profile button,
+         a .window-glass-control, styles itself and is excluded). Each button is
+         restyled explicitly below. */
+      :where(.auth-gate, .auth-profile-menu, .auth-modal) button {
+        min-height: 0; padding: 0; border: 0; border-radius: 0;
+        background: transparent; box-shadow: none;
+      }
+      :where(.auth-gate, .auth-profile-menu, .auth-modal) button:hover,
+      :where(.auth-gate, .auth-profile-menu, .auth-modal) button:active {
+        background: transparent; box-shadow: none; transform: none;
+      }
+
       .auth-card {
         width: 320px; max-width: calc(100vw - 36px);
         display: flex; flex-direction: column; gap: 12px;
-        padding: 24px 22px; color: var(--ink);
+        padding: 24px 22px; border-radius: 16px;
       }
-      .auth-brand { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
-      .auth-sub { font-size: 12.5px; color: color-mix(in srgb, var(--ink) 64%, transparent); margin-bottom: 6px; }
+      .auth-brand { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+      .auth-sub { font-size: 12.5px; color: rgba(255, 255, 255, 0.62); margin-bottom: 6px; }
       .auth-field { display: flex; flex-direction: column; gap: 5px; }
       .auth-field[hidden] { display: none; }
-      .auth-field > span { font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: color-mix(in srgb, var(--ink) 56%, transparent); }
+      .auth-field > span { font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
       .auth-input {
-        height: 38px; padding: 0 12px; border-radius: var(--radius-sm, 12px);
-        background: color-mix(in srgb, var(--ink) 5%, transparent);
-        border: 1px solid var(--glass-border); color: var(--ink);
-        font: inherit; font-size: 13px; outline: none;
+        height: 38px; padding: 0 12px; border-radius: 10px;
+        background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #ffffff; font: inherit; font-size: 13px; outline: none;
         transition: border-color 0.15s ease, background 0.15s ease;
       }
-      .auth-input::placeholder { color: color-mix(in srgb, var(--ink) 40%, transparent); }
-      .auth-input:focus { border-color: color-mix(in srgb, var(--ink) 42%, transparent); background: color-mix(in srgb, var(--ink) 8%, transparent); }
+      .auth-input::placeholder { color: rgba(255, 255, 255, 0.42); }
+      .auth-input:focus { border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.1); }
       .auth-submit {
-        height: 40px; margin-top: 4px; border: 0; border-radius: var(--radius-sm, 12px); cursor: pointer;
-        background: var(--ink); color: var(--glass-surface-strong, #fff);
+        height: 40px; margin-top: 4px; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 10px; cursor: pointer;
+        background: rgba(255, 255, 255, 0.16); color: #ffffff;
         font: inherit; font-size: 13.5px; font-weight: 600;
-        transition: opacity 0.15s ease, transform 0.1s ease;
+        transition: background 0.15s ease, transform 0.1s ease;
       }
-      .auth-submit:hover { opacity: 0.9; }
+      .auth-submit:hover { background: rgba(255, 255, 255, 0.26); }
       .auth-submit:active { transform: translateY(1px); }
       .auth-switch {
-        align-self: center; background: transparent; border: 0; cursor: pointer;
-        font: inherit; font-size: 12px; color: color-mix(in srgb, var(--ink) 64%, transparent);
+        align-self: center; padding: 4px 8px; background: transparent; border: 0; cursor: pointer;
+        font: inherit; font-size: 12px; color: rgba(255, 255, 255, 0.64);
       }
-      .auth-switch:hover { color: var(--ink); text-decoration: underline; }
-      .auth-error { font-size: 12px; color: #e5484d; }
+      .auth-switch:hover { color: #ffffff; text-decoration: underline; }
+      .auth-error { font-size: 12px; color: #ff9b9b; }
 
       .auth-profile-cluster {
-        position: fixed; inset: 12px 54px auto auto;
+        position: fixed; inset: 12px 67px auto auto;
         z-index: calc(var(--z-menu-overlay, 2600) + 21);
       }
       .auth-profile-button::before {
         content: ""; width: 17px; height: 17px; background: currentColor;
-        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") center / contain no-repeat;
-        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") center / contain no-repeat;
+        -webkit-mask: url("${USER_ICON}") center / contain no-repeat;
+        mask: url("${USER_ICON}") center / contain no-repeat;
       }
       .auth-profile-menu {
         position: absolute; top: calc(100% + 8px); right: 0; width: 220px;
-        display: none; flex-direction: column; gap: 2px; padding: 8px;
+        display: none; flex-direction: column; gap: 2px; padding: 8px; border-radius: 14px;
       }
       .auth-profile-cluster.open .auth-profile-menu { display: flex; }
       .auth-profile-head { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 10px; }
-      .auth-profile-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+      .auth-profile-name { font-size: 14px; font-weight: 600; color: #ffffff; }
       .auth-role-badge {
         align-self: flex-start; font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
-        text-transform: uppercase; padding: 1px 8px; border-radius: var(--radius-pill, 999px);
-        background: color-mix(in srgb, var(--ink) 10%, transparent);
-        color: color-mix(in srgb, var(--ink) 70%, transparent);
+        text-transform: uppercase; padding: 1px 8px; border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.74);
       }
       .auth-menu-item {
-        text-align: left; border: 0; border-radius: var(--radius-sm, 10px); padding: 9px 10px; cursor: pointer;
-        background: transparent; color: var(--ink); font: inherit; font-size: 13px;
+        text-align: left; border: 0; border-radius: 9px; padding: 9px 10px; cursor: pointer;
+        background: transparent; color: #ffffff; font: inherit; font-size: 13px;
         transition: background 0.12s ease;
       }
-      .auth-menu-item:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+      .auth-menu-item:hover { background: rgba(255, 255, 255, 0.1); }
 
       .auth-modal-backdrop {
         position: fixed; inset: 0; z-index: 100001;
         display: flex; align-items: center; justify-content: center;
-        background: rgba(10, 12, 16, 0.46);
-        -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+        background: rgba(8, 10, 14, 0.4);
       }
       .auth-modal {
         width: 440px; max-width: calc(100vw - 36px); max-height: calc(100vh - 60px); overflow: auto;
-        display: flex; flex-direction: column; gap: 12px; padding: 18px; color: var(--ink);
+        display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px;
       }
       .auth-modal-head { display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
-      .auth-modal-close { background: transparent; border: 0; color: color-mix(in srgb, var(--ink) 60%, transparent); font-size: 14px; cursor: pointer; }
-      .auth-modal-close:hover { color: var(--ink); }
-      .auth-modal-divider { height: 1px; background: var(--glass-border); }
-      .auth-modal-hint { font-size: 11.5px; color: color-mix(in srgb, var(--ink) 56%, transparent); }
+      .auth-modal-close { background: transparent; border: 0; color: rgba(255, 255, 255, 0.6); font-size: 14px; cursor: pointer; }
+      .auth-modal-close:hover { color: #ffffff; }
+      .auth-modal-divider { height: 1px; background: rgba(255, 255, 255, 0.14); }
+      .auth-modal-hint { font-size: 11.5px; color: rgba(255, 255, 255, 0.55); }
       .auth-user-list { display: flex; flex-direction: column; gap: 4px; }
       .auth-user-row { display: flex; align-items: center; gap: 10px; padding: 6px 2px; }
-      .auth-user-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ink); }
-      .auth-perm-inline { display: flex; align-items: center; gap: 4px; font-size: 11px; color: color-mix(in srgb, var(--ink) 72%, transparent); cursor: pointer; }
-      .auth-user-delete { background: transparent; border: 0; color: color-mix(in srgb, #e5484d 72%, transparent); cursor: pointer; font-size: 12px; }
-      .auth-user-delete:hover:not(:disabled) { color: #e5484d; }
+      .auth-user-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: #ffffff; }
+      .auth-perm-inline { display: flex; align-items: center; gap: 4px; font-size: 11px; color: rgba(255, 255, 255, 0.7); cursor: pointer; }
+      .auth-user-delete { background: transparent; border: 0; color: rgba(255, 140, 140, 0.75); cursor: pointer; font-size: 12px; }
+      .auth-user-delete:hover:not(:disabled) { color: #ff8f8f; }
       .auth-user-delete:disabled { opacity: 0.3; cursor: default; }
       .auth-new-user { display: flex; flex-direction: column; gap: 9px; }
       .auth-new-row { display: flex; gap: 8px; }
       .auth-new-row .auth-input { flex: 1; }
-      .auth-perm { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: color-mix(in srgb, var(--ink) 82%, transparent); cursor: pointer; }
+      .auth-perm { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: rgba(255, 255, 255, 0.82); cursor: pointer; }
 
       /* Viewer mode: hide editing affordances so the dashboard is read-only. */
       body.dashboard-viewer .control-bar-gear,
