@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en" data-dashboard-booting>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--
+    Content-Security-Policy. This window loads over file:// and exposes a
+    node:fs persistence bridge, so the hard rule is: no REMOTE script may run.
+    script-src lists only local schemes (self/file/blob) plus 'unsafe-inline'
+    for the boot script below and the runtime-injected <style> blocks — no
+    https host — so a compromised CDN can no longer inject executable code.
+    Visualization libraries are vendored under app/static/vendor/.
+    Remote DATA (cannot execute here) stays allowed where a widget needs it:
+    OpenStreetMap tiles via img-src https:, and YouTube/Vimeo embeds via
+    frame-src. blob: in worker-src is Monaco's stubbed (empty) worker.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: blob: 'unsafe-inline' 'unsafe-eval'; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: blob: https:; font-src 'self' file: data:; connect-src 'self' file: data:; worker-src 'self' file: blob:; media-src 'self' file: blob:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'">
+  <title>Status Monitor Dashboard</title>
+  <script>
+    (() => {
+      try {
+        const saved = localStorage.getItem("dashboard-background") || "tone-dark-grey";
+        const presets = {
+          "tone-light-grey": "#d1d5db",
+          "tone-grey": "#6b7280",
+          "tone-dark-grey": "#1f2937",
+          "tone-black": "#000000",
+        };
+        let background = saved;
+        let baseTone = "";
+        if (saved.startsWith("{")) {
+          background = "tone-dark-grey";
+          baseTone = presets[background];
+        } else if (!saved.startsWith("photo-") && saved !== "solar-system") {
+          background = presets[saved] ? saved : "tone-dark-grey";
+          baseTone = presets[background];
+        }
+        if (baseTone) {
+          document.documentElement.style.setProperty("--base-tone", baseTone);
+          document.documentElement.style.setProperty("--bg", baseTone);
+          document.documentElement.style.setProperty("--bg-end", baseTone);
+        }
+        document.documentElement.dataset.background = background;
+      } catch {}
+    })();
+  </script>
+  <style>
+    html[data-dashboard-booting] .page,
+    html[data-dashboard-booting] .toast-stack,
+    html[data-dashboard-booting] dialog {
+      visibility: hidden;
+    }
+  </style>
+  <link rel="stylesheet" href="./app/static/tokens.css">
+  <link rel="stylesheet" href="./app/static/base.css">
+  <link rel="stylesheet" href="./app/static/layout.css">
+  <link rel="stylesheet" href="./app/static/components.css">
+  <link rel="stylesheet" href="./app/static/dashboard-grid.css">
+  <link rel="stylesheet" href="./app/static/themes.css">
+  <link rel="stylesheet" href="./app/static/utilities.css">
+</head>
+<body>
+  <main class="page">
+    
+<div class="app-window-drag-region" aria-hidden="true"></div>
+<div class="window-control-cluster" aria-label="Window controls">
+  <button class="window-glass-control window-minimize-control" type="button" aria-label="Minimize app" title="Minimize app"></button>
+  <button class="window-glass-control window-close-control" type="button" aria-label="Close app" title="Close app"></button>
+  <button class="window-glass-control window-refresh-control" type="button" aria-label="Reload dashboard" title="Reload dashboard"></button>
+  <button class="window-glass-control control-bar-gear" type="button" aria-label="Toggle dashboard controls" aria-expanded="false" aria-controls="dashboard-control-bar" title="Dashboard controls"></button>
+</div>
+<header class="app-nav workspace-chrome floating-control-bar" id="dashboard-control-bar" data-floating-control-bar aria-hidden="true">
+  <div class="control-bar-drag-handle" aria-hidden="true"></div>
+  <div class="app-nav-status" aria-label="Dashboard controls">
+    <div class="workspace-command-island layout-command-island" aria-label="Layout and persistence">
+      <div class="layout-slot-controls" aria-label="Workspace persistence">
+        <button class="layout-slot-button layout-save-button" type="button" data-layout-target="builder">Save</button>
+        <button class="layout-slot-button layout-load-button" type="button" data-layout-target="builder">Load</button>
+      </div>
+    </div>
+    <div class="workspace-command-island composition-command-island" aria-label="Composition">
+      <button class="panel-undo-button composition-rocker-control composition-undo-button" type="button" data-layout-target="builder" aria-label="Undo last layout change" title="Undo last layout change"><span class="chrome-rocker-glyph" aria-hidden="true">-</span></button>
+      <div class="panel-add-picker" data-layout-target="builder">
+      <button class="panel-add-button composition-rocker-control composition-add-button" type="button" aria-label="Add dashboard object" aria-haspopup="true" aria-expanded="false" title="Add dashboard object"><span class="chrome-add-glyph" aria-hidden="true">+</span></button>
+      <div class="panel-add-menu nav-menu-shell floating-glass-menu">
+        <div class="object-add-browser glass-menu-scroll-region" role="menu" aria-label="Add object categories"></div>
+      </div>
+      </div>
+    </div>
+    <div class="workspace-command-island mode-command-island" aria-label="Interaction modes">
+      <button class="panel-reset-button restore-layout-button" type="button" data-layout-target="builder" aria-label="Reset to default layout" title="Reset to default layout">Reset</button>
+    </div>
+  </div>
+  <div class="app-nav-actions">
+    <div class="workspace-command-island appearance-command-island" aria-label="Appearance and environment">
+      <details class="background-tone-menu">
+      <summary class="background-tone-trigger" aria-label="Workspace background" title="Workspace background"><span class="background-tone-dot" aria-hidden="true"></span></summary>
+      <div class="background-tone-popover nav-menu-shell floating-glass-menu glass-menu-scroll-region">
+        <div class="background-tone-group background-tone-group-derived" aria-label="Color backgrounds">
+          <span class="background-tone-label">Color</span>
+          <button type="button" class="background-tone-option" data-background-tone="tone-light-grey" style="--base-tone: #d1d5db;">Light grey</button>
+          <button type="button" class="background-tone-option" data-background-tone="tone-grey" style="--base-tone: #6b7280;">Grey</button>
+          <button type="button" class="background-tone-option" data-background-tone="tone-dark-grey" style="--base-tone: #1f2937;">Dark grey</button>
+          <button type="button" class="background-tone-option" data-background-tone="tone-black" style="--base-tone: #000000;">Black</button>
+        </div>
+        <div class="background-photo-group" aria-label="Nature photo backgrounds">
+          <span class="background-tone-label">Nature</span>
+          <button type="button" class="background-photo-option" data-background-tone="photo-bark">Bark</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-cloud">Clouds</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-jungle">Jungle</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-moss">Moss</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-sand">Sand</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-shore">Shore</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-turf">Turf</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-water">Ocean</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-water2">Water</button>
+        </div>
+        <div class="background-photo-group" aria-label="Texture photo backgrounds">
+          <span class="background-tone-label">Textures</span>
+          <button type="button" class="background-photo-option" data-background-tone="photo-denim">Denim</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-marble">Marble</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-leather">Leather</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-texture">Stone</button>
+        </div>
+        <div class="background-photo-group" aria-label="Abstract and urban photo backgrounds">
+          <span class="background-tone-label">Abstract &amp; Urban</span>
+          <button type="button" class="background-photo-option" data-background-tone="photo-paint">Paint</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-paintspill">Spill</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-city">City</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-modern">Modern</button>
+        </div>
+        <div class="background-photo-group" aria-label="Space photo backgrounds">
+          <span class="background-tone-label">Space</span>
+          <button type="button" class="background-photo-option" data-background-tone="photo-mercury">Mercury</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-venus">Venus</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-earth">Earth</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-mars">Mars</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-jupiter">Jupiter</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-saturn">Saturn</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-uranus">Uranus</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-neptune">Neptune</button>
+          <button type="button" class="background-photo-option" data-background-tone="photo-pluto">Pluto</button>
+        </div>
+        <div class="background-photo-group" aria-label="Solar system sequence mode">
+          <span class="background-tone-label">Sequence</span>
+          <button type="button" class="background-photo-option" data-background-tone="solar-system">Solar system</button>
+        </div>
+      </div>
+      </details>
+    </div>
+  </div>
+</header>
+
+<nav class="workspace-tab-bar" aria-label="Workspace tabs" data-workspace-tabs></nav>
+
+<div class="workspace-menu-overlay-layer" aria-hidden="true"></div>
+<div class="dashboard-layout-grid" data-dashboard-layout-key="builder">
+  <div class="stat-band widget-layout" data-widget-layout-key="builder">
+    <a class="stat-card widget-card" data-widget-key="widget-checks" data-widget-type="tracker" data-default-span="1" data-default-grid-col="5" data-default-grid-row="1" data-grid-col="5" data-grid-row="1" data-default-title="Checks" href="#">
+      <span class="stat-val">0</span>
+      <span class="stat-lbl">Checks</span>
+    </a>
+
+
+
+    <a class="stat-card widget-card" data-widget-key="widget-ok" data-widget-type="tracker" data-default-span="1" data-default-grid-col="6" data-default-grid-row="1" data-grid-col="6" data-grid-row="1" data-default-title="Healthy" href="#">
+      <span class="stat-val">0</span>
+      <span class="stat-lbl">Healthy</span>
+    </a>
+
+
+
+    <a class="stat-card widget-card" data-widget-key="widget-warn" data-widget-type="tracker" data-default-span="1" data-default-grid-col="5" data-default-grid-row="2" data-grid-col="5" data-grid-row="2" data-default-title="Warnings" href="#">
+      <span class="stat-val">0</span>
+      <span class="stat-lbl">Warnings</span>
+    </a>
+
+
+
+    <a class="stat-card widget-card" data-widget-key="widget-error" data-widget-type="tracker" data-default-span="1" data-default-grid-col="6" data-default-grid-row="2" data-grid-col="6" data-grid-row="2" data-default-title="Errors" href="#">
+      <span class="stat-val">0</span>
+      <span class="stat-lbl">Errors</span>
+    </a>
+
+  </div>
+
+  <div class="panel-layout" data-layout-key="builder">
+    <section class="db-panel" data-panel-key="builder-content" data-default-span="4" data-default-grid-col="1" data-default-grid-row="3" data-grid-col="1" data-grid-row="3" data-default-title="Content">
+      <div class="db-panel-hd db-panel-hd-items">
+        <span class="db-panel-title">Content</span>
+        <span class="db-panel-count">0</span>
+        <div class="panel-tools">
+    <div class="panel-tool-drawer" aria-label="Panel tools">
+      <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#2563eb"><span class="color-icon" aria-hidden="true"></span></button>
+    </div>
+  </div>
+      </div>
+      <div class="db-panel-body">
+        <div class="empty-state panel-empty-state" data-panel-placeholder="empty">
+          <strong>Empty panel</strong>
+          <small>Drop widgets here</small>
+          <span class="panel-empty-action" aria-hidden="true">Add widgets</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="db-panel db-panel-collapsed" data-collapse-default="closed" data-panel-key="builder-menu" data-default-span="2" data-default-grid-col="5" data-default-grid-row="3" data-grid-col="5" data-grid-row="3" data-default-title="Menu">
+      <div class="db-panel-hd db-panel-hd-items">
+        <span class="db-panel-title">Menu</span>
+        <span class="db-panel-count">0</span>
+        <div class="panel-tools">
+    <div class="panel-tool-drawer" aria-label="Panel tools">
+      <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#16a34a"><span class="color-icon" aria-hidden="true"></span></button>
+    </div>
+  </div>
+      </div>
+      <div class="db-panel-body">
+        <div class="empty-state panel-empty-state" data-panel-placeholder="empty">
+          <strong>Empty panel</strong>
+          <small>Drop widgets here</small>
+          <span class="panel-empty-action" aria-hidden="true">Add widgets</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="db-panel" data-panel-key="builder-notes" data-default-span="2" data-default-grid-col="5" data-default-grid-row="4" data-grid-col="5" data-grid-row="4" data-default-title="Notes">
+      <div class="db-panel-hd db-panel-hd-items">
+        <span class="db-panel-title">Notes</span>
+        <span class="db-panel-count">0</span>
+        <div class="panel-tools">
+    <div class="panel-tool-drawer" aria-label="Panel tools">
+      <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
+      <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#9333ea"><span class="color-icon" aria-hidden="true"></span></button>
+    </div>
+  </div>
+      </div>
+      <div class="db-panel-body">
+        <div class="empty-state panel-empty-state" data-panel-placeholder="empty">
+          <strong>Empty panel</strong>
+          <small>Drop widgets here</small>
+          <span class="panel-empty-action" aria-hidden="true">Add widgets</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+  </main>
+  <dialog class="confirm-dialog" id="panel-delete-dialog" aria-labelledby="panel-delete-title">
+    <div class="confirm-dialog-head">
+      <span>Confirm action</span>
+      <button type="button" class="confirm-dialog-close" aria-label="Cancel deletion">x</button>
+    </div>
+    <strong id="panel-delete-title">Delete item?</strong>
+    <p id="panel-delete-message">Are you sure you want to delete this item?</p>
+    <div class="confirm-dialog-actions">
+      <button type="button" class="confirm-dialog-btn confirm-dialog-cancel">Cancel</button>
+      <button type="button" class="confirm-dialog-btn confirm-dialog-danger">Delete</button>
+    </div>
+  </dialog>
+  <div class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="./app/static/app.js"></script>
+  <script type="module" src="./app/static/status-feed.js"></script>
+</body>
+</html>

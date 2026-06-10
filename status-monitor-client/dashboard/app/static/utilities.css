@@ -1,0 +1,38 @@
+
+/*
+  Navbar submenu overflow fix.
+
+  Root cause in themes.css (.object-add-submenu.glass-submenu-panel):
+    max-height: min(72vh, 520px)  — forces every submenu into a constrained mini-pane
+    overflow-y: auto              — forces internal scroll even when content fits viewport
+    overflow-x: visible           — illegal with overflow-y:auto per CSS spec;
+                                    browsers promote it to auto → horizontal scrollbar
+
+  Fix: remove constraints when the parent menu is NOT in scroll mode (normal desktop).
+  In scroll mode (.menu-scroll), hidden submenus (display:grid but opacity:0) must keep
+  their constraints, otherwise the invisible layout boxes inflate the browser's scrollHeight
+  and cause a blank tail when the menu container is scrolled to the bottom.
+
+  When a submenu IS open in scroll mode (.submenu-active), themes.css already sets the
+  .object-add-browser to overflow:visible / max-height:none, so removing submenu
+  constraints there is safe — the inflated height cannot contribute to scroll region.
+*/
+.panel-add-menu:not(.menu-scroll) .object-add-submenu.glass-submenu-panel,
+.panel-add-menu.submenu-active .object-add-submenu.glass-submenu-panel {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+
+/*
+  When JS detects real viewport-bottom overflow in non-scroll mode and adds .submenu-pin-bottom
+  with a computed --glass-submenu-max-height, apply a precise constraint then.
+  Use overflow-x:hidden (not overflow-x:visible) to avoid the CSS spec mixed-axis promotion
+  that would re-introduce a horizontal scrollbar.
+*/
+.panel-add-menu:not(.menu-scroll) .object-add-submenu.glass-submenu-panel.submenu-pin-bottom {
+  max-height: var(--glass-submenu-max-height, min(60vh, 480px));
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}

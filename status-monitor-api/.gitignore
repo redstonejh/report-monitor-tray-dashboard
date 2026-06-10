@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+
+# generated topic IDs and local runtime data
+config/topics.json
+data/
+logs/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# installer staging/output
+installer/staging/
+installer/*.exe
+installer/*.zip

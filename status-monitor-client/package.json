@@ -1,0 +1,32 @@
+{
+  "name": "status-monitor-client",
+  "version": "1.0.0",
+  "description": "System-tray client for a generic status monitor",
+  "main": ".vite/build/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.5.0",
+    "antd": "^5.22.0",
+    "electron-squirrel-startup": "^1.0.1",
+    "mqtt": "^5.3.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.0.0",
+    "@electron-forge/maker-squirrel": "^7.11.2",
+    "@electron-forge/maker-zip": "^7.0.0",
+    "@electron-forge/plugin-fuses": "^7.0.0",
+    "@electron-forge/plugin-vite": "^7.0.0",
+    "@electron/fuses": "^1.8.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "electron": "^34.0.0",
+    "vite": "^6.0.0"
+  }
+}

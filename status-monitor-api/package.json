@@ -1,0 +1,19 @@
+{
+  "name": "status-monitor-api",
+  "version": "1.0.0",
+  "description": "Generic status monitor skeleton that publishes health state via MQTT and REST",
+  "main": "src/index.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.5.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3",
+    "mqtt": "^5.3.4",
+    "node-cron": "^3.0.3",
+    "uuid": "^9.0.1"
+  }
+}

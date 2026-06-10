@@ -1,0 +1,92 @@
+:root {
+  --base-tone: #1f2937;
+  --bg: var(--base-tone);
+  --bg-end: var(--base-tone);
+  /* Material compensation values are fixed. The selected background color is
+     applied through --base-tone by the background controller. */
+  --workspace-bg-luminance: 0.78;
+  --workspace-bg-darkness: 0.22;
+  --surface-exposure-compensation: 0.1916;
+  --surface-white-mix-compensation: 0.7484;
+  --surface-saturation-compensation: 1.0390;
+  --surface-glass-alpha: 0.6404;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-soft: #f2f6fb;
+  --glass-surface: rgba(255, 255, 255, .68);
+  --glass-surface-strong: rgba(255, 255, 255, .84);
+  --glass-border: rgba(190, 202, 220, .82);
+  --glass-highlight: rgba(255, 255, 255, .60);
+  --ui-text-weight: 760;
+  --liquid-glass-bg-alpha: 0.10;
+  --liquid-glass-backdrop-blur: 6px;
+  --liquid-glass-saturate: 180%;
+  --liquid-glass-border-alpha: 0.40;
+  --liquid-glass-inner-highlight-alpha: 0.16;
+  --liquid-glass-shine-bg-alpha: 0.07;
+  --liquid-glass-shine-blur: 1px;
+  --liquid-glass-edge-alpha: 0.74;
+  --liquid-glass-shine-opacity: 0.32;
+  --liquid-glass-shine-filter-blur: 1px;
+  --liquid-glass-drop-shadow-alpha: 0.12;
+  --liquid-glass-shine-brightness: 1.08;
+  --liquid-glass-top-highlight-alpha: 0.52;
+  --liquid-glass-sheen-alpha: 0.20;
+  --field-bg: rgba(255, 255, 255, .82);
+  --field-border: rgba(196, 206, 221, .90);
+  --ink: #1f2937;
+  --ink-strong: #111827;
+  --muted: #64748b;
+  --muted-strong: #475569;
+  --line: #c4cedd;
+  --line-soft: #d8e0ec;
+  --blue: #2563eb;
+  --blue-hover: #1d4ed8;
+  --blue-soft: #eff6ff;
+  --red: #dc2626;
+  --red-soft: #fef2f2;
+  --amber: #d97706;
+  --amber-soft: #fffbeb;
+  --ok: #0f766e;
+  --ok-soft: #ecfdf5;
+  --green: #10b981;
+  --green-hover: #059669;
+  --green-soft: #ecfdf5;
+  --shadow-card: 0 2px 7px rgba(15, 23, 42, .045);
+  --shadow-soft: 0 2px 6px rgba(15, 23, 42, .04);
+  --shadow-glass: 0 18px 42px rgba(15, 23, 42, .10), inset 0 1px 0 var(--glass-highlight);
+  --shadow-control: 0 8px 20px rgba(15, 23, 42, .08), inset 0 1px 0 var(--glass-highlight);
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+  --space-4: 4px;
+  --space-5: 5px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --motion-fast: .15s ease;
+  --motion-grid: .18s cubic-bezier(.2, .8, .2, 1);
+  --motion-popover: .18s ease;
+  --pressable-hover-transform: translateY(.75px);
+  --pressable-active-transform: translateY(1.5px);
+  --pressable-focus-transform: translateY(0);
+  --z-header: 1500;
+  --z-dropdown: 1501;
+  --z-popover: 1600;
+  --z-modal: 1700;
+  --z-object-control: 1450;
+  --z-object-popover: 1480;
+  --z-navbar-dropdown: 1650;
+  --z-menu-overlay: 2600;
+  --z-drag-ghost: 90;
+  --z-resize-handle: 121;
+}
+
+html {
+  --panel-hover-tint: #ffffff;
+  --panel-hover-inset: rgba(255, 255, 255, .22);
+}
+
+* {
+  box-sizing: border-box;
+}

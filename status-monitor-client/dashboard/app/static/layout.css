@@ -1,0 +1,25 @@
+.cmd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, .22);
+  transition: background var(--motion-fast), box-shadow var(--motion-fast), transform var(--motion-fast);
+  white-space: nowrap;
+}
+
+.cmd-btn:hover {
+  background: var(--blue-hover);
+}
+
+.cmd-btn:active {
+  transform: translateY(1px);
+}

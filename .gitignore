@@ -1,0 +1,64 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.local
+
+# Dependency installs
+node_modules/
+**/node_modules/
+
+# Build and package output
+dist/
+out/
+**/out/
+**/.vite/
+**/dist/
+*.exe
+*.msi
+*.zip
+*.nupkg
+RELEASES
+
+# Installer staging and generated binaries
+status-monitor-api/installer/staging/
+status-monitor-api/installer/*.exe
+status-monitor-api/installer/*.zip
+
+# Runtime databases, generated IDs, and logs
+status-monitor-api/data/
+status-monitor-api/config/topics.json
+*.db
+*.sqlite
+*.sqlite3
+*.log
+logs/
+**/logs/
+
+# Client/source data is not part of the skeleton
+Raw Data Logs/
+Reports/
+Examples/
+docs/
+
+# MAW / Codex local workflow scaffolding is not part of the product skeleton
+.codex/
+runs/
+maw_cli/
+maw.py
+AGENTS.md
+pyproject.toml
+uv.lock
+.venv/
+*.egg-info/
+
+# Local assistant/editor artifacts
+CLAUDE.md
+.claude/
+.vscode/
+.idea/
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
