@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStatusStore, useSettingsStore } from '../store';
 
 // One ring, one word. The status condition is the content — everything else is
@@ -34,7 +34,16 @@ export default function StatusPanel({ mode = 'expanded' }) {
   const { status, detail, checkedAt, connectionState } = useStatusStore();
   const { projectId } = useSettingsStore();
 
+  // Re-render every 30s so the "Checked Xm ago" relative time keeps ticking
+  // even when no new status arrives.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   const live = connectionState === 'live' && !!status;
+  const connecting = !live && connectionState !== 'black' && !!projectId;
   const { accent, mark, title } = resolve(connectionState, status, projectId);
 
   if (mode === 'peek') {
@@ -45,9 +54,11 @@ export default function StatusPanel({ mode = 'expanded' }) {
         : projectId ? 'Waiting for status' : 'Open settings to begin';
     return (
       <div className={`peek ${accent}`}>
-        <span className="peek-dot">{mark}</span>
+        <span className="peek-dot">
+          {connecting ? <span className="spinner" aria-hidden="true" /> : mark}
+        </span>
         <span className="peek-copy">
-          <span className="peek-title">{title}</span>
+          <span className="peek-title" role="status" aria-live="polite">{title}</span>
           <span className="peek-sub">{sub}</span>
         </span>
       </div>
@@ -62,10 +73,18 @@ export default function StatusPanel({ mode = 'expanded' }) {
 
   return (
     <div className={`status-hero ${accent}`}>
-      <div className="status-ring"><span className="status-mark">{mark}</span></div>
-      <div className="status-title">{title}</div>
+      <div className="status-ring">
+        {connecting
+          ? <span className="spinner" aria-hidden="true" />
+          : <span className="status-mark" key={mark}>{mark}</span>}
+      </div>
+      <div className="status-title" role="status" aria-live="polite">{title}</div>
       {detailText && <div className="status-detail">{detailText}</div>}
-      {live && <div className="status-time">Checked {formatRelative(checkedAt)}</div>}
+      {live && (
+        <div className="status-time" title={checkedAt ? new Date(checkedAt).toLocaleString() : undefined}>
+          Checked {formatRelative(checkedAt)}
+        </div>
+      )}
     </div>
   );
 }

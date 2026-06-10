@@ -6,7 +6,8 @@ export default function Settings({ onSaved }) {
   const setStoreSettings = useSettingsStore((s) => s.setSettings);
 
   const [shareCode, setShareCode] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(''); // '' | 'apply' | 'save'
+  const [done, setDone] = useState(''); // '' | 'apply' | 'save'  (brief success state)
   const [error, setError] = useState('');
 
   const [fields, setFields] = useState({
@@ -28,7 +29,7 @@ export default function Settings({ onSaved }) {
 
   async function applyShareCode() {
     if (!shareCode.trim()) return;
-    setSaving(true);
+    setBusy('apply');
     setError('');
     try {
       const result = await window.electron.saveSettings({ shareCode: shareCode.trim() });
@@ -36,17 +37,18 @@ export default function Settings({ onSaved }) {
         const updated = await window.electron.getSettings();
         if (updated) setStoreSettings(updated);
         setShareCode('');
-        onSaved?.();
+        setDone('apply');
+        setTimeout(() => onSaved?.(), 900);
       } else {
         setError(result?.error || 'Invalid share code');
       }
     } finally {
-      setSaving(false);
+      setBusy('');
     }
   }
 
   async function saveManual() {
-    setSaving(true);
+    setBusy('save');
     setError('');
     try {
       const payload = {
@@ -59,12 +61,13 @@ export default function Settings({ onSaved }) {
       const result = await window.electron.saveSettings(payload);
       if (result?.ok) {
         setStoreSettings(payload);
-        onSaved?.();
+        setDone('save');
+        setTimeout(() => onSaved?.(), 900);
       } else {
         setError(result?.error || 'Could not save');
       }
     } finally {
-      setSaving(false);
+      setBusy('');
     }
   }
 
@@ -82,8 +85,8 @@ export default function Settings({ onSaved }) {
           onChange={(e) => setShareCode(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') applyShareCode(); }}
         />
-        <button className="btn-ghost" onClick={applyShareCode} disabled={saving || !shareCode.trim()}>
-          Apply
+        <button className="btn-ghost" onClick={applyShareCode} disabled={!!busy || !!done || !shareCode.trim()}>
+          {done === 'apply' ? '✓ Connected' : busy === 'apply' ? 'Applying…' : 'Apply'}
         </button>
       </div>
 
@@ -117,8 +120,8 @@ export default function Settings({ onSaved }) {
         </div>
       </details>
 
-      <button className="btn-primary" onClick={saveManual} disabled={saving}>
-        Save &amp; Connect
+      <button className="btn-primary" onClick={saveManual} disabled={!!busy || !!done}>
+        {done === 'save' ? '✓ Connected' : busy === 'save' ? 'Connecting…' : 'Save & Connect'}
       </button>
     </div>
   );

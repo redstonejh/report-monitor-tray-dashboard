@@ -354,3 +354,63 @@ body.webgl-glass-on .panel {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 3px; }
+
+/* ─── Motion ──────────────────────────────────────────────────────────────
+   The status condition morphs color smoothly when it changes; the glyph pops
+   gently (it is React-keyed on the mark, so it remounts on change). */
+.status-ring { transition: border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease; }
+.status-mark { transition: color 0.4s ease; animation: markPop 0.32s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+.status-title { transition: color 0.25s ease; }
+.peek-dot { transition: border-color 0.4s ease, background 0.4s ease, box-shadow 0.4s ease, color 0.4s ease; }
+
+@keyframes markPop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+
+/* Red draws the eye: a slow, low-amplitude glow breathe (only when red). The
+   0%/100% keyframes match the resting shadow so starting/stopping is seamless. */
+.status-hero.red .status-ring { animation: ringPulse 2.6s ease-in-out infinite; }
+.peek.red .peek-dot { animation: dotPulse 2.6s ease-in-out infinite; }
+@keyframes ringPulse {
+  0%, 100% { box-shadow: 0 0 30px -8px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+  50%      { box-shadow: 0 0 40px -3px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 18px -6px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+  50%      { box-shadow: 0 0 26px -2px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+}
+
+/* Connecting spinner — a quiet rotating arc shown while waiting for status. */
+.spinner {
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.22);
+  border-top-color: var(--accent);
+  animation: spin 0.9s linear infinite;
+}
+.status-ring .spinner { width: 30px; height: 30px; }
+.peek-dot .spinner { width: 18px; height: 18px; border-width: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* The open-dashboard chevron nudges up on hover, hinting it expands upward. */
+.open-dash .chev { transition: transform 0.15s ease; }
+.open-dash:hover .chev { transform: translateY(-2px); }
+
+/* Keyboard focus: a soft white ring (mouse clicks stay clean via :focus-visible). */
+.icon-btn:focus-visible,
+.btn-primary:focus-visible,
+.btn-ghost:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel.expanded.revealing.edge-bottom,
+  .panel.expanded.revealing.edge-top,
+  .panel.expanded.revealing.edge-left,
+  .panel.expanded.revealing.edge-right,
+  .content-reveal { animation: none; }
+  .status-ring, .status-mark, .status-title, .peek-dot { transition: none; }
+  .status-mark,
+  .status-hero.red .status-ring,
+  .peek.red .peek-dot { animation: none; }
+  .open-dash:hover .chev { transform: none; }
+  .spinner { animation: none; border-top-color: rgba(255, 255, 255, 0.6); }
+}

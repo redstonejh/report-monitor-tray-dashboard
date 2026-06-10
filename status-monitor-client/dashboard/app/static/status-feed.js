@@ -6,9 +6,11 @@
 // hydrates at DOMContentLoaded. The data runtime is created during boot, so
 // ingestion waits for window.dashboardWidgetDataRuntime to appear.
 
+// Canonical status palette — kept identical to the tray popover (src/App.css)
+// so green / amber / red read the same on both surfaces.
 const STATUS_COLORS = {
-  green: "#34c759",
-  yellow: "#f5a623",
+  green: "#32d74b",
+  yellow: "#ffd60a",
   red: "#ff453a",
   grey: "#8e8e93",
   black: "#3a3a3c",
@@ -46,6 +48,7 @@ function statusVisual() {
   const visual = connection === "live" ? (state.status?.status || "grey") : connection;
   return {
     connection,
+    visual,
     color: STATUS_COLORS[visual] || STATUS_COLORS.grey,
     label: STATUS_LABELS[visual] || "Unknown",
   };
@@ -93,9 +96,11 @@ function ensureStatusIndicator() {
 function updateStatusIndicator() {
   const els = ensureStatusIndicator();
   if (!els) return;
-  const { color, label, connection } = statusVisual();
+  const { color, label, connection, visual } = statusVisual();
   const current = state.status || {};
   els.cluster.style.setProperty("--status-color", color);
+  els.cluster.classList.toggle("is-red", visual === "red");
+  els.cluster.classList.toggle("is-connecting", visual === "grey");
   els.button.setAttribute("aria-label", `Monitor status: ${label}`);
 
   const detail = current.detail || (connection === "grey"
@@ -184,6 +189,7 @@ function injectStatusIndicatorStyles() {
         inset 0 1px 1px rgba(255, 255, 255, 0.45);
       mask: none;
       -webkit-mask: none;
+      transition: background 0.4s ease, box-shadow 0.4s ease;
     }
     .status-detail-popover {
       position: absolute;
@@ -240,6 +246,31 @@ function injectStatusIndicatorStyles() {
       flex: none;
       background: var(--status-color, #8e8e93);
       box-shadow: 0 0 0.4em var(--status-color, transparent);
+      transition: background 0.4s ease, box-shadow 0.4s ease;
+    }
+    /* Red draws the eye with a slow, low-amplitude glow breathe. */
+    .status-indicator-cluster.is-red .status-indicator-control::before {
+      animation: statusDotPulse 2.6s ease-in-out infinite;
+    }
+    @keyframes statusDotPulse {
+      0%, 100% { box-shadow: 0 0 7px var(--status-color, transparent), inset 0 1px 1px rgba(255, 255, 255, 0.45); }
+      50%      { box-shadow: 0 0 13px 1px var(--status-color, transparent), inset 0 1px 1px rgba(255, 255, 255, 0.45); }
+    }
+    /* Connecting: the dot becomes a quiet rotating arc (parity with the tray). */
+    .status-indicator-cluster.is-connecting .status-indicator-control::before {
+      background: transparent;
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-top-color: rgba(255, 255, 255, 0.85);
+      box-shadow: none;
+      animation: statusSpin 0.9s linear infinite;
+    }
+    @keyframes statusSpin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .status-indicator-control::before,
+      .status-detail-dot,
+      .status-detail-popover { transition: none; }
+      .status-indicator-cluster.is-red .status-indicator-control::before,
+      .status-indicator-cluster.is-connecting .status-indicator-control::before { animation: none; }
     }
     .status-detail-body {
       font-size: 0.78rem;

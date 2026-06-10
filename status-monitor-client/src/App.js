@@ -83,6 +83,17 @@ export default function App() {
     return () => clearTimeout(fallback);
   }, [isExpanded, anchorEdge]);
 
+  // Escape: from Settings → back to status; from status → close the popover.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || !isExpanded) return;
+      if (view === 'settings') setView('status');
+      else hidePopover();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isExpanded, view]);
+
   return (
     <div
       ref={panelRef}
