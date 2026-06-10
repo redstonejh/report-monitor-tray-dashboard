@@ -21,6 +21,12 @@ export const useStatusStore = create((set) => ({
   setPopoverMode: (popoverMode) => set({ popoverMode }),
 }));
 
+export const useAuthStore = create((set) => ({
+  user: null,      // { username, isAdmin, permissions } or null
+  loaded: false,
+  setUser: (user) => set({ user: user || null, loaded: true }),
+}));
+
 export const useSettingsStore = create((set) => ({
   mqttHost:  '',
   mqttPort:  1883,

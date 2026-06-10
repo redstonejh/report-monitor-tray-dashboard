@@ -5,6 +5,7 @@ import os from 'os';
 import mqtt from 'mqtt';
 import squirrelStartup from 'electron-squirrel-startup';
 import { icons } from './icons';
+import auth from './auth.js';
 
 // Handle Squirrel.Windows install/update/uninstall events — must quit immediately.
 if (squirrelStartup) app.quit();
@@ -198,9 +199,14 @@ function buildContextMenu(status) {
   ]);
 }
 
+let lastTrayStatus = 'grey';
 function updateTray(status) {
   if (!tray) return;
-  tray.setImage(icons[status] || icons.grey);
+  lastTrayStatus = status;
+  // No status is revealed until someone is signed in — the tray icon stays
+  // neutral grey while signed out.
+  const effective = auth.currentUser() ? status : 'grey';
+  tray.setImage(icons[effective] || icons.grey);
   tray.setToolTip('');
   // Context menu is popped up manually on right-click (see tray 'right-click'
   // handler) so that LEFT click is reserved for the popover toggle.
@@ -651,6 +657,8 @@ function sendNotification(payload) {
 app.whenReady().then(() => {
   if (app.dock) app.dock.hide();
 
+  auth.init();
+
   tray = new Tray(icons.grey);
   updateTray('grey');
   createWindow();
@@ -945,6 +953,66 @@ ipcMain.handle('dashboard-window:close', (e) => {
   dashboardWindow.close();
   return { ok: true };
 });
+
+// ─── Accounts / auth ─────────────────────────────────────────────────────────
+
+function broadcastAuth() {
+  const payload = auth.session();
+  BrowserWindow.getAllWindows().forEach((w) => {
+    if (w && !w.isDestroyed()) w.webContents.send('auth:changed', payload);
+  });
+}
+
+function canManageUsers() {
+  const s = auth.session();
+  return !!(s.user && (s.user.isAdmin || s.user.permissions.canManageUsers));
+}
+
+ipcMain.handle('auth:session', () => auth.session());
+
+ipcMain.handle('auth:login', (_e, { username, password } = {}) => {
+  const result = auth.login(username, password);
+  if (result.ok) { broadcastAuth(); updateTray(lastTrayStatus); }
+  return result;
+});
+
+ipcMain.handle('auth:logout', () => {
+  const result = auth.logout();
+  broadcastAuth();
+  updateTray(lastTrayStatus);
+  return result;
+});
+
+ipcMain.handle('auth:register', (_e, payload) => {
+  const result = auth.register(payload || {});
+  if (result.ok) { broadcastAuth(); updateTray(lastTrayStatus); }
+  return result;
+});
+
+ipcMain.handle('auth:set-password', (_e, { password } = {}) => {
+  const result = auth.setOwnPassword(password);
+  if (result.ok) broadcastAuth();
+  return result;
+});
+
+ipcMain.handle('auth:list-users', () => (
+  canManageUsers() ? { ok: true, users: auth.listUsers() } : { ok: false, error: 'Not allowed' }
+));
+
+ipcMain.handle('auth:create-user', (_e, payload) => (
+  canManageUsers() ? auth.createUser(payload || {}) : { ok: false, error: 'Not allowed' }
+));
+
+ipcMain.handle('auth:update-user', (_e, { username, ...rest } = {}) => (
+  canManageUsers() ? auth.updateUser(username, rest) : { ok: false, error: 'Not allowed' }
+));
+
+ipcMain.handle('auth:delete-user', (_e, { username } = {}) => (
+  canManageUsers() ? auth.deleteUser(username) : { ok: false, error: 'Not allowed' }
+));
+
+// Synchronous lookup so a preload can pick the signed-in user's layout store.
+ipcMain.on('auth:current-username', (e) => { e.returnValue = auth.currentUser() || ''; });
 
 ipcMain.handle('history:get', async (_e, limit = 20) => {
   const parsedLimit = Number.parseInt(limit, 10);

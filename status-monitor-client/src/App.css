@@ -58,7 +58,6 @@ body.webgl-glass-on #root { position: relative; z-index: 1; }
 .panel {
   position: relative;
   width: 100%;
-  max-height: 100vh;
   display: flex;
   flex-direction: column;
   border-radius: 20px;
@@ -85,7 +84,9 @@ body.webgl-glass-on .panel {
 }
 
 .panel.peek { max-height: 96px; border-radius: 18px; }
-.panel.expanded { max-height: 100vh; }
+/* No cap: the panel grows to its content (e.g. when "Manual setup" expands) so
+   the ResizeObserver fires and the window grows; main clamps the final height. */
+.panel.expanded { max-height: none; }
 .panel.edge-bottom { margin-top: auto; transform-origin: bottom center; }
 .panel.edge-top { margin-bottom: auto; transform-origin: top center; }
 
@@ -141,8 +142,36 @@ body.webgl-glass-on .panel {
 .icon-btn:hover { background: rgba(255, 255, 255, 0.12); color: var(--text); }
 .icon-btn:disabled { opacity: 0.5; cursor: default; }
 
-.open-dash { padding: 0 10px; gap: 6px; font-size: 12px; font-weight: 500; }
-.open-dash .chev { font-size: 12px; opacity: 0.9; }
+/* The dashboard button reads as a clear, clickable glass pill that stands out
+   from the plain icon controls, with a gently bouncing chevron. */
+.open-dash {
+  height: 28px;
+  padding: 0 12px 0 10px;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(124, 128, 136, 0.48);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  backdrop-filter: blur(16px) saturate(125%);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 9px;
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+.open-dash:hover {
+  background: rgba(142, 146, 154, 0.58);
+  border-color: rgba(255, 255, 255, 0.42);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.open-dash:active { transform: translateY(0); }
+.open-dash .chev { font-size: 12px; }
+.open-dash-label { letter-spacing: 0.01em; }
 
 /* ─── Status hero — centered condition, minimal words ────────────────────── */
 
@@ -351,6 +380,69 @@ body.webgl-glass-on .panel {
 .btn-ghost:hover { background: rgba(255, 255, 255, 0.1); }
 .btn-ghost:disabled { opacity: 0.55; cursor: default; }
 
+.btn-link {
+  align-self: center;
+  background: transparent;
+  border: 0;
+  padding: 2px;
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-link:hover { color: var(--text); text-decoration: underline; }
+
+/* ─── Account (profile button, sign-in, profile view) ────────────────────── */
+
+.topbar-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(150deg, rgba(120, 170, 255, 0.95), rgba(90, 120, 210, 0.95));
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 4px 2px 2px;
+}
+.profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex: none;
+  background: linear-gradient(150deg, rgba(120, 170, 255, 0.95), rgba(90, 120, 210, 0.95));
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 700;
+}
+.profile-id { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.profile-id > strong { font-size: 15px; font-weight: 600; color: var(--text); }
+.role-badge {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-soft);
+}
+.role-badge.role-admin { background: rgba(120, 170, 255, 0.22); color: #aecbff; }
+.role-badge.role-editor { background: rgba(110, 220, 150, 0.2); color: #8fe0b0; }
+.profile-note { font-size: 12px; color: var(--text-soft); }
+.profile-signout { width: 100%; }
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 3px; }
@@ -389,9 +481,14 @@ body.webgl-glass-on .panel {
 .peek-dot .spinner { width: 18px; height: 18px; border-width: 2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* The open-dashboard chevron nudges up on hover, hinting it expands upward. */
-.open-dash .chev { transition: transform 0.15s ease; }
-.open-dash:hover .chev { transform: translateY(-2px); }
+/* The open-dashboard pill lifts on hover; its chevron gently bounces upward to
+   draw the eye and hint it opens the dashboard above. */
+.open-dash { transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
+.open-dash .chev { animation: chevBounce 1.7s ease-in-out infinite; }
+@keyframes chevBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
 
 /* Keyboard focus: a soft white ring (mouse clicks stay clean via :focus-visible). */
 .icon-btn:focus-visible,
@@ -411,6 +508,8 @@ body.webgl-glass-on .panel {
   .status-mark,
   .status-hero.red .status-ring,
   .peek.red .peek-dot { animation: none; }
-  .open-dash:hover .chev { transform: none; }
+  .open-dash { transition: none; }
+  .open-dash:hover { transform: none; }
+  .open-dash .chev { animation: none; }
   .spinner { animation: none; border-top-color: rgba(255, 255, 255, 0.6); }
 }

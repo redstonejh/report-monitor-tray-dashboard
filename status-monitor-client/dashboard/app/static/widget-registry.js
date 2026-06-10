@@ -1710,16 +1710,20 @@
     render: ({ instance }) => {
       const config = instance.config || {};
       const filters = normalizeTimeframeFilters(config);
-      const selectedFilterId = selectedTimeframeFilterId(config, filters);
 
       const displayFilters = filters.length ? filters : TIMEFRAME_DEFAULT_OPTIONS.map((preset) => ({
         id: preset.id,
         label: preset.buttonLabel || preset.label,
       }));
 
+      // Resolve the active id against the buttons actually shown (which fall
+      // back to the default options when no custom filters are configured), so
+      // the selection persists in both cases. With no selection yet, default to
+      // the first button.
+      const selectedFilterId = selectedTimeframeFilterId(config, displayFilters);
+
       const buttons = displayFilters.map((filter, index) => {
-        const isActive = filter.id === selectedFilterId;
-        const active = filters.length ? isActive : index === 0;
+        const active = selectedFilterId ? filter.id === selectedFilterId : index === 0;
         return `<button class="timeframe-filter-btn${active ? " is-active" : ""}" type="button" data-filter-id="${escapeHtml(filter.id)}" aria-pressed="${active ? "true" : "false"}">${escapeHtml(filter.label)}</button>`;
       }).join("");
 

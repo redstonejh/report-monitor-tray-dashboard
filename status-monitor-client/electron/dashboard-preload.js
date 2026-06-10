@@ -23,7 +23,14 @@ contextBridge.exposeInMainWorld('dashboard', {
 // so the JSON store lives here in the preload (window is created with
 // sandbox: false to allow node:fs access).
 
-const storePath = path.join(os.homedir(), '.status-monitor', 'dashboard-layout-store.json');
+// Layout/tabs/save-state are namespaced per signed-in account, resolved once at
+// load. After a sign-in the renderer reloads, so this re-resolves to the new
+// user's store. New accounts therefore start blank.
+const sessionUser = (() => {
+  try { return String(ipcRenderer.sendSync('auth:current-username') || ''); } catch { return ''; }
+})();
+const storeUserKey = sessionUser.replace(/[^a-z0-9_-]/gi, '_') || '_anon';
+const storePath = path.join(os.homedir(), '.status-monitor', `dashboard-layout-store--${storeUserKey}.json`);
 
 function readStore() {
   try {
@@ -73,4 +80,17 @@ contextBridge.exposeInMainWorld('dashboardWindowControls', {
   close() {
     return ipcRenderer.invoke('dashboard-window:close');
   },
+});
+
+contextBridge.exposeInMainWorld('auth', {
+  session: () => ipcRenderer.invoke('auth:session'),
+  login: (username, password) => ipcRenderer.invoke('auth:login', { username, password }),
+  register: (username, password) => ipcRenderer.invoke('auth:register', { username, password }),
+  setPassword: (password) => ipcRenderer.invoke('auth:set-password', { password }),
+  logout: () => ipcRenderer.invoke('auth:logout'),
+  listUsers: () => ipcRenderer.invoke('auth:list-users'),
+  createUser: (payload) => ipcRenderer.invoke('auth:create-user', payload),
+  updateUser: (username, data) => ipcRenderer.invoke('auth:update-user', { username, ...data }),
+  deleteUser: (username) => ipcRenderer.invoke('auth:delete-user', { username }),
+  onChanged: (cb) => ipcRenderer.on('auth:changed', (_e, s) => cb(s)),
 });

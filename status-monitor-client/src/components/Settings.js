@@ -27,6 +27,21 @@ export default function Settings({ onSaved }) {
 
   const set = (key) => (e) => setFields((f) => ({ ...f, [key]: e.target.value }));
 
+  // Expanding "Manual setup" grows the panel; report the new content height so
+  // the popover window resizes to reveal the fields (the ResizeObserver can
+  // miss the flex-constrained growth, so we report it explicitly on toggle).
+  const reportPanelSize = () => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const panel = document.querySelector('.panel');
+      if (panel) {
+        window.electron?.resizeContent?.({
+          width: Math.ceil(panel.scrollWidth),
+          height: Math.ceil(panel.scrollHeight),
+        });
+      }
+    }));
+  };
+
   async function applyShareCode() {
     if (!shareCode.trim()) return;
     setBusy('apply');
@@ -94,7 +109,7 @@ export default function Settings({ onSaved }) {
 
       <div className="settings-divider" />
 
-      <details className="settings-advanced">
+      <details className="settings-advanced" onToggle={reportPanelSize}>
         <summary>Manual setup</summary>
         <div className="settings-grid">
           <label className="settings-field full">

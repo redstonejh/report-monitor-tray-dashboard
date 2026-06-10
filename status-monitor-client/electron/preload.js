@@ -35,3 +35,16 @@ contextBridge.exposeInMainWorld('electron', {
   onPopoverMode: (cb) => ipcRenderer.on('window:mode', (_e, mode) => cb(mode)),
   onAnchorEdge: (cb) => ipcRenderer.on('window:anchor-edge', (_e, edge) => cb(edge)),
 });
+
+contextBridge.exposeInMainWorld('auth', {
+  session: () => ipcRenderer.invoke('auth:session'),
+  login: (username, password) => ipcRenderer.invoke('auth:login', { username, password }),
+  register: (username, password) => ipcRenderer.invoke('auth:register', { username, password }),
+  setPassword: (password) => ipcRenderer.invoke('auth:set-password', { password }),
+  logout: () => ipcRenderer.invoke('auth:logout'),
+  listUsers: () => ipcRenderer.invoke('auth:list-users'),
+  createUser: (payload) => ipcRenderer.invoke('auth:create-user', payload),
+  updateUser: (username, data) => ipcRenderer.invoke('auth:update-user', { username, ...data }),
+  deleteUser: (username) => ipcRenderer.invoke('auth:delete-user', { username }),
+  onChanged: (cb) => ipcRenderer.on('auth:changed', (_e, s) => cb(s)),
+});

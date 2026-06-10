@@ -115,12 +115,31 @@ function updateStatusIndicator() {
   // Live MQTT but the REST history endpoint is unreachable — surface it.
   if (state.historyError && connection === "live") metaParts.push("History unavailable");
 
+  // Recent-status timeline (one bar per check) + a one-line tally.
+  const recent = state.history.slice(-24);
+  const bars = recent.map((row) => {
+    const barColor = STATUS_COLORS[row.status] || STATUS_COLORS.grey;
+    return `<span class="status-detail-bar" style="--bar-color: ${barColor}"></span>`;
+  }).join("");
+  const counts = state.history.reduce((acc, row) => {
+    acc[row.status] = (acc[row.status] || 0) + 1;
+    return acc;
+  }, {});
+  const total = state.history.length;
+  const warnN = counts.yellow || 0;
+  const incN = counts.red || 0;
+  const summary = total
+    ? `${counts.green || 0} healthy · ${warnN} warning${warnN === 1 ? "" : "s"} · ${incN} incident${incN === 1 ? "" : "s"}`
+    : "";
+
   els.popover.innerHTML = `
     <span class="status-detail-title">
       <span class="status-detail-dot" aria-hidden="true"></span>
       ${escapeHtml(label)}
     </span>
     <span class="status-detail-body">${escapeHtml(detail)}</span>
+    ${bars ? `<div class="status-detail-timeline" aria-hidden="true">${bars}</div>` : ""}
+    ${summary ? `<span class="status-detail-meta">${escapeHtml(summary)}</span>` : ""}
     ${metaParts.length ? `<span class="status-detail-meta">${escapeHtml(metaParts.join(" · "))}</span>` : ""}
   `;
 }
@@ -284,6 +303,26 @@ function injectStatusIndicatorStyles() {
       color: #ffffff;
       text-shadow: var(--dashboard-custom-text-shadow);
     }
+    /* Recent-status timeline inside the hover panel: one bar per check. */
+    .status-detail-timeline {
+      display: flex;
+      gap: 2px;
+      height: 16px;
+      margin-top: 2px;
+    }
+    .status-detail-bar {
+      flex: 1 1 0;
+      min-width: 2px;
+      border-radius: 2px;
+      background: var(--bar-color, #8e8e93);
+      opacity: 0.92;
+    }
+    /* Counter widgets read by meaning, but kept as muted/desaturated tints so
+       they harmonise with the glass surface rather than shouting. Scoped to
+       :not(.db-panel-custom-color) so a manual recolor still wins. */
+    .widget-card[data-widget-key="widget-ok"]:not(.db-panel-custom-color) .stat-val { color: #6fc99a !important; }
+    .widget-card[data-widget-key="widget-warn"]:not(.db-panel-custom-color) .stat-val { color: #d4ab63 !important; }
+    .widget-card[data-widget-key="widget-error"]:not(.db-panel-custom-color) .stat-val { color: #e1857c !important; }
   `;
   document.head.appendChild(style);
 }

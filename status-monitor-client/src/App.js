@@ -1,8 +1,11 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SettingOutlined, ArrowLeftOutlined, UpOutlined, CloseOutlined } from '@ant-design/icons';
+import { SettingOutlined, ArrowLeftOutlined, UpOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
 import StatusPanel from './components/StatusPanel';
 import Settings from './components/Settings';
-import { useStatusStore, useSettingsStore } from './store';
+import SignIn from './components/SignIn';
+import SetPassword from './components/SetPassword';
+import Profile from './components/Profile';
+import { useStatusStore, useSettingsStore, useAuthStore } from './store';
 
 // Map live status + connection state → the accent used for the top wash.
 export function resolveAccent(connectionState, status) {
@@ -24,9 +27,15 @@ export default function App() {
   const connectionState = useStatusStore((s) => s.connectionState);
   const status = useStatusStore((s) => s.status);
   const popoverMode = useStatusStore((s) => s.popoverMode);
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const panelRef = useRef(null);
 
-  const accent = resolveAccent(connectionState, status);
+  // A user mid first-login password reset isn't "fully" signed in yet — no
+  // status, dashboard or settings until that's done.
+  const fullyAuthed = !!user && !user.mustChangePassword;
+  // No status is revealed until signed in (the glow stays neutral too).
+  const accent = fullyAuthed ? resolveAccent(connectionState, status) : 'neutral';
   const isExpanded = popoverMode === 'expanded';
 
   const openDashboard = () => window.electron?.openDashboard?.();
@@ -42,6 +51,8 @@ export default function App() {
       setConnectionState(connectionState);
     });
     window.electron?.getSettings().then((s) => { if (s) setSettings(s); });
+    window.auth?.session().then((s) => setUser(s?.user)).catch(() => {});
+    window.auth?.onChanged((s) => setUser(s?.user));
   }, []);
 
   // Subscribe to live MQTT pushes and connection state changes
@@ -87,7 +98,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape' || !isExpanded) return;
-      if (view === 'settings') setView('status');
+      if (view !== 'status') setView('status');
       else hidePopover();
     };
     window.addEventListener('keydown', onKey);
@@ -109,23 +120,38 @@ export default function App() {
 
       {isExpanded && (
         <header className="topbar">
-          <button
-            className="icon-btn open-dash"
-            onClick={openDashboard}
-            title="Open dashboard"
-            aria-label="Open dashboard"
-          >
-            <UpOutlined className="chev" />
-          </button>
+          {fullyAuthed && (
+            <button
+              className="icon-btn open-dash"
+              onClick={openDashboard}
+              title="Open dashboard"
+              aria-label="Open dashboard"
+            >
+              <UpOutlined className="chev" />
+              <span className="open-dash-label">Dashboard</span>
+            </button>
+          )}
           <div className="topbar-spacer" />
-          <button
-            className="icon-btn"
-            onClick={() => setView(view === 'status' ? 'settings' : 'status')}
-            title={view === 'status' ? 'Settings' : 'Back'}
-            aria-label={view === 'status' ? 'Settings' : 'Back'}
-          >
-            {view === 'status' ? <SettingOutlined /> : <ArrowLeftOutlined />}
-          </button>
+          {fullyAuthed && (
+            <button
+              className="icon-btn profile-btn"
+              onClick={() => setView(view === 'profile' ? 'status' : 'profile')}
+              title="Account"
+              aria-label="Account"
+            >
+              <span className="topbar-avatar">{(user.username[0] || '?').toUpperCase()}</span>
+            </button>
+          )}
+          {fullyAuthed && (
+            <button
+              className="icon-btn"
+              onClick={() => setView(view === 'settings' ? 'status' : 'settings')}
+              title={view === 'settings' ? 'Back' : 'Settings'}
+              aria-label={view === 'settings' ? 'Back' : 'Settings'}
+            >
+              {view === 'settings' ? <ArrowLeftOutlined /> : <SettingOutlined />}
+            </button>
+          )}
           <button className="icon-btn" onClick={hidePopover} title="Close" aria-label="Close">
             <CloseOutlined />
           </button>
@@ -133,9 +159,25 @@ export default function App() {
       )}
 
       <div className={`panel-scroll ${isExpanded ? 'content-reveal' : ''}`}>
-        {view === 'status' || !isExpanded
-          ? <StatusPanel mode={popoverMode} />
-          : <Settings onSaved={() => setView('status')} />}
+        {!fullyAuthed
+          ? (!isExpanded
+            ? (
+              <div className="peek neutral">
+                <span className="peek-dot"><UserOutlined /></span>
+                <span className="peek-copy">
+                  <span className="peek-title">{user ? 'Action needed' : 'Signed out'}</span>
+                  <span className="peek-sub">{user ? 'Open to set password' : 'Open to sign in'}</span>
+                </span>
+              </div>
+            )
+            : user && user.mustChangePassword
+              ? <SetPassword />
+              : <SignIn onSignedIn={() => setView('status')} />)
+          : !isExpanded || view === 'status'
+            ? <StatusPanel mode={popoverMode} />
+            : view === 'profile'
+              ? <Profile onSignedOut={() => setView('status')} />
+              : <Settings onSaved={() => setView('status')} />}
       </div>
     </div>
   );
