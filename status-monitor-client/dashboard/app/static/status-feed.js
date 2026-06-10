@@ -336,9 +336,19 @@ const state = {
   historyError: false, // true when the most recent REST history fetch failed
 };
 
+// Readable check time for table display (the raw ISO checkedAt stays for
+// sorting and any chart that needs a real timestamp).
+const formatChecked = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+};
+
 const historyRow = (entry) => ({
   date: entry.checkedAt,
   checkedAt: entry.checkedAt,
+  checked: formatChecked(entry.checkedAt),
   status: entry.status,
   stage: entry.stage || "",
   detail: entry.detail || "",

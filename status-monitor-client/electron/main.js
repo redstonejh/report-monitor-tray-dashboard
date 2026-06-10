@@ -663,6 +663,10 @@ app.whenReady().then(() => {
   updateTray('grey');
   createWindow();
 
+  // The dashboard is the primary surface: open it on launch so users sign in
+  // and land on it by default (the tray popover remains available).
+  openDashboardWindow();
+
   // LEFT click toggles the popover near the tray icon.
   tray.on('click', () => {
     if (mainWindow && mainWindow.isVisible() && popoverPinned) {

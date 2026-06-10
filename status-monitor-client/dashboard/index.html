@@ -61,7 +61,7 @@
 </head>
 <body>
   <main class="page">
-    
+
 <div class="app-window-drag-region" aria-hidden="true"></div>
 <div class="window-control-cluster" aria-label="Window controls">
   <button class="window-glass-control window-minimize-control" type="button" aria-label="Minimize app" title="Minimize app"></button>
@@ -154,102 +154,77 @@
 <nav class="workspace-tab-bar" aria-label="Workspace tabs" data-workspace-tabs></nav>
 
 <div class="workspace-menu-overlay-layer" aria-hidden="true"></div>
+<!--
+  Default Status Monitor layout. Built only from preexisting widget types
+  (timeframe / tracker / graph / table) fed live by status-feed.js: the four
+  trackers receive the check counts, the chart plots status level over time,
+  the table lists recent checks. Users can rearrange, recolor and rename from
+  here; a fresh account starts on this view.
+-->
 <div class="dashboard-layout-grid" data-dashboard-layout-key="builder">
   <div class="stat-band widget-layout" data-widget-layout-key="builder">
-    <a class="stat-card widget-card" data-widget-key="widget-checks" data-widget-type="tracker" data-default-span="1" data-default-grid-col="5" data-default-grid-row="1" data-grid-col="5" data-grid-row="1" data-default-title="Checks" href="#">
+    <div class="widget-card" data-widget-key="widget-timeframe" data-widget-type="timeframe" data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1"></div>
+
+    <a class="stat-card widget-card" data-widget-key="widget-checks" data-widget-type="tracker" data-default-span="1" data-default-grid-col="1" data-default-grid-row="2" data-grid-col="1" data-grid-row="2" data-default-title="Total Checks" href="#">
       <span class="stat-val">0</span>
-      <span class="stat-lbl">Checks</span>
+      <span class="stat-lbl">Total Checks</span>
     </a>
 
-
-
-    <a class="stat-card widget-card" data-widget-key="widget-ok" data-widget-type="tracker" data-default-span="1" data-default-grid-col="6" data-default-grid-row="1" data-grid-col="6" data-grid-row="1" data-default-title="Healthy" href="#">
+    <a class="stat-card widget-card" data-widget-key="widget-ok" data-widget-type="tracker" data-default-span="1" data-default-grid-col="2" data-default-grid-row="2" data-grid-col="2" data-grid-row="2" data-default-title="Healthy" href="#">
       <span class="stat-val">0</span>
       <span class="stat-lbl">Healthy</span>
     </a>
 
-
-
-    <a class="stat-card widget-card" data-widget-key="widget-warn" data-widget-type="tracker" data-default-span="1" data-default-grid-col="5" data-default-grid-row="2" data-grid-col="5" data-grid-row="2" data-default-title="Warnings" href="#">
+    <a class="stat-card widget-card" data-widget-key="widget-warn" data-widget-type="tracker" data-default-span="1" data-default-grid-col="3" data-default-grid-row="2" data-grid-col="3" data-grid-row="2" data-default-title="Warnings" href="#">
       <span class="stat-val">0</span>
       <span class="stat-lbl">Warnings</span>
     </a>
 
-
-
-    <a class="stat-card widget-card" data-widget-key="widget-error" data-widget-type="tracker" data-default-span="1" data-default-grid-col="6" data-default-grid-row="2" data-grid-col="6" data-grid-row="2" data-default-title="Errors" href="#">
+    <a class="stat-card widget-card" data-widget-key="widget-error" data-widget-type="tracker" data-default-span="1" data-default-grid-col="4" data-default-grid-row="2" data-grid-col="4" data-grid-row="2" data-default-title="Errors" href="#">
       <span class="stat-val">0</span>
       <span class="stat-lbl">Errors</span>
     </a>
-
   </div>
 
   <div class="panel-layout" data-layout-key="builder">
-    <section class="db-panel" data-panel-key="builder-content" data-default-span="4" data-default-grid-col="1" data-default-grid-row="3" data-grid-col="1" data-grid-row="3" data-default-title="Content">
+    <section class="db-panel" data-panel-key="builder-chart" data-default-span="6" data-default-grid-col="1" data-default-grid-row="3" data-grid-col="1" data-grid-row="3" data-grid-row-span="2" data-default-title="Status breakdown">
       <div class="db-panel-hd db-panel-hd-items">
-        <span class="db-panel-title">Content</span>
+        <span class="db-panel-title">Status breakdown</span>
         <span class="db-panel-count">0</span>
         <div class="panel-tools">
-    <div class="panel-tool-drawer" aria-label="Panel tools">
-      <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#2563eb"><span class="color-icon" aria-hidden="true"></span></button>
-    </div>
-  </div>
+          <div class="panel-tool-drawer" aria-label="Panel tools">
+            <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
+            <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
+            <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
+            <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
+            <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#3b82f6"><span class="color-icon" aria-hidden="true"></span></button>
+          </div>
+        </div>
       </div>
       <div class="db-panel-body">
-        <div class="empty-state panel-empty-state" data-panel-placeholder="empty">
-          <strong>Empty panel</strong>
-          <small>Drop widgets here</small>
-          <span class="panel-empty-action" aria-hidden="true">Add widgets</span>
+        <div class="panel-internal-widget-grid" data-widget-layout-key="builder-chart">
+          <div class="widget-card" data-widget-key="widget-status-chart" data-widget-type="graph" data-widget-runtime-type="chart" data-widget-config='{"title":"Status breakdown","chartType":"donut","xField":"status","aggregation":"count","sortBy":"status","sortDirection":"asc","display":{"showLegend":true,"showAxes":false,"showLabels":true}}' style="--widget-data-primary:#6fc99a; --widget-data-secondary:#e1857c; --widget-data-tertiary:#d4ab63;" data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
         </div>
       </div>
     </section>
 
-    <section class="db-panel db-panel-collapsed" data-collapse-default="closed" data-panel-key="builder-menu" data-default-span="2" data-default-grid-col="5" data-default-grid-row="3" data-grid-col="5" data-grid-row="3" data-default-title="Menu">
+    <section class="db-panel" data-panel-key="builder-history" data-default-span="6" data-default-grid-col="1" data-default-grid-row="5" data-grid-col="1" data-grid-row="5" data-grid-row-span="2" data-default-title="Recent checks">
       <div class="db-panel-hd db-panel-hd-items">
-        <span class="db-panel-title">Menu</span>
+        <span class="db-panel-title">Recent checks</span>
         <span class="db-panel-count">0</span>
         <div class="panel-tools">
-    <div class="panel-tool-drawer" aria-label="Panel tools">
-      <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#16a34a"><span class="color-icon" aria-hidden="true"></span></button>
-    </div>
-  </div>
-      </div>
-      <div class="db-panel-body">
-        <div class="empty-state panel-empty-state" data-panel-placeholder="empty">
-          <strong>Empty panel</strong>
-          <small>Drop widgets here</small>
-          <span class="panel-empty-action" aria-hidden="true">Add widgets</span>
+          <div class="panel-tool-drawer" aria-label="Panel tools">
+            <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
+            <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
+            <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
+            <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
+            <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#64748b"><span class="color-icon" aria-hidden="true"></span></button>
+          </div>
         </div>
       </div>
-    </section>
-
-    <section class="db-panel" data-panel-key="builder-notes" data-default-span="2" data-default-grid-col="5" data-default-grid-row="4" data-grid-col="5" data-grid-row="4" data-default-title="Notes">
-      <div class="db-panel-hd db-panel-hd-items">
-        <span class="db-panel-title">Notes</span>
-        <span class="db-panel-count">0</span>
-        <div class="panel-tools">
-    <div class="panel-tool-drawer" aria-label="Panel tools">
-      <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
-      <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#9333ea"><span class="color-icon" aria-hidden="true"></span></button>
-    </div>
-  </div>
-      </div>
       <div class="db-panel-body">
-        <div class="empty-state panel-empty-state" data-panel-placeholder="empty">
-          <strong>Empty panel</strong>
-          <small>Drop widgets here</small>
-          <span class="panel-empty-action" aria-hidden="true">Add widgets</span>
+        <div class="panel-internal-widget-grid" data-widget-layout-key="builder-history">
+          <div class="widget-card" data-widget-key="widget-history" data-widget-type="table" data-widget-runtime-type="table" data-widget-config='{"title":"Recent checks","columns":["checked","status","detail"],"sortBy":"checkedAt","sortDirection":"desc","limit":12}' data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
         </div>
       </div>
     </section>
