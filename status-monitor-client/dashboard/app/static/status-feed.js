@@ -477,6 +477,8 @@ function injectCompanyCss() {
   .company-tab-bar{ display:flex; align-items:center; justify-content:center; gap:clamp(10px,2.4vw,24px); width:min(100%, 1000px); max-width:100%; margin:2px auto 0; box-sizing:border-box; padding:0 6px; }
   .company-tab-scroller{ display:flex; align-items:center; justify-content:center; gap:clamp(14px,3.5vw,38px); min-width:0; }
   .company-tab-scroller .workspace-tab{ flex:0 0 auto; --tab-accent:#edf2f8; }
+  .company-tab-scroller .workspace-tab.is-offline{ --tab-accent:#8a8f98; opacity:.5; }
+  .company-overflow-item.is-offline{ color:rgba(138,143,152,0.85); }
   .company-overflow{ flex:0 0 auto; appearance:none; -webkit-appearance:none; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:#edf2f8; opacity:0.5; font-size:clamp(18px,2.5vw,27px); line-height:1; padding:0 4px; cursor:pointer; }
   .company-overflow:hover{ opacity:1; }
   .company-overflow[hidden]{ display:none !important; }
@@ -514,9 +516,9 @@ function openOverflowMenu(side, anchor) {
     const co = companyState.companies.find((c) => c.id === id); if (!co) continue;
     const item = document.createElement("button");
     item.type = "button";
-    item.className = "company-overflow-item";
+    item.className = "company-overflow-item" + (co.online === false ? " is-offline" : "");
     item.textContent = conciseLabel(co.label);
-    item.title = co.label;
+    item.title = co.online === false ? `${co.label} — offline` : co.label;
     item.addEventListener("click", () => { closeOverflowMenu(); setActiveCompany(id); });
     menu.appendChild(item);
   }
@@ -564,11 +566,11 @@ function renderCompanyTabs() {
     const isActive = co.id === companyState.active;
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "workspace-tab"; // reuse the existing tab styling exactly
+    b.className = "workspace-tab" + (co.online === false ? " is-offline" : ""); // reuse the existing tab styling
     b.dataset.companyId = co.id;
     b.setAttribute("aria-pressed", String(isActive));
     b.setAttribute("tabindex", isActive ? "0" : "-1");
-    b.title = co.label; // full name on hover
+    b.title = co.online === false ? `${co.label} — offline` : co.label; // full name on hover
     const label = document.createElement("span");
     label.className = "workspace-tab-label";
     label.textContent = conciseLabel(co.label);
@@ -594,7 +596,9 @@ async function startFeed() {
     if (Array.isArray(list)) companyState.companies = list;
   } catch {}
   if (companyState.companies.length) {
-    companyState.active = companyState.active || companyState.companies[0].id;
+    // Default to a live company so the dashboard opens on real data, not an offline tab.
+    companyState.active = companyState.active
+      || (companyState.companies.find((c) => c.online !== false) || companyState.companies[0]).id;
     await loadCompanyHistory(companyState.active);
   }
   renderCompanyTabs();

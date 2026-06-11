@@ -77,6 +77,9 @@ let settings = loadSettings();
 let clientsConfig = loadClients();
 // companyId -> { id, label, pings: [...], lastByCheck: Map<checkId, ping> }
 const companies = new Map();
+// Persistent roster of every company ever seen: id -> { id, label, lastSeen }.
+// Lets offline clients keep their tab (shown grey) when their checks go quiet.
+let roster = new Map();
 let isQuitting = false;
 let popoverMode = 'peek';        // 'peek' | 'expanded'
 let popoverPinned = false;
@@ -157,6 +160,7 @@ const MAX_PINGS_PER_COMPANY = 3000;
 function ingestCheck(payload) {
   if (!payload || payload.available === undefined) return null;
   const co = companyForCheck(payload.label, payload.id);
+  rememberCompany(co);
   let entry = companies.get(co.id);
   if (!entry) { entry = { id: co.id, label: co.label, pings: [], lastByCheck: new Map() }; companies.set(co.id, entry); }
   const ping = checkToPing(payload);
@@ -169,6 +173,41 @@ function ingestCheck(payload) {
   return { companyId: co.id, ping };
 }
 
+// A company is "online" only if one of its checks reported within this window;
+// retained-but-stale or never-seen-this-session companies read as offline.
+const ONLINE_MS = 5 * 60 * 1000;
+
+function rosterFile() {
+  return path.join(app.getPath('userData'), 'roster.json');
+}
+function loadRoster() {
+  try {
+    const data = JSON.parse(fs.readFileSync(rosterFile(), 'utf8'));
+    const m = new Map();
+    for (const c of (data.companies || [])) {
+      if (c && c.id) m.set(c.id, { id: c.id, label: c.label || c.id, lastSeen: c.lastSeen || 0 });
+    }
+    return m;
+  } catch { return new Map(); }
+}
+let rosterSaveTimer = null;
+function saveRosterSoon() {
+  if (rosterSaveTimer) return;
+  rosterSaveTimer = setTimeout(() => {
+    rosterSaveTimer = null;
+    try { fs.writeFileSync(rosterFile(), JSON.stringify({ companies: [...roster.values()] }, null, 2)); } catch {}
+  }, 2000);
+}
+function rememberCompany(co) {
+  const known = roster.get(co.id);
+  if (!known || known.label !== co.label) {
+    roster.set(co.id, { id: co.id, label: co.label, lastSeen: Date.now() });
+  } else {
+    known.lastSeen = Date.now();
+  }
+  saveRosterSoon();
+}
+
 function companyWorst(entry) {
   let worst = 'green';
   for (const ping of entry.lastByCheck.values()) {
@@ -178,20 +217,44 @@ function companyWorst(entry) {
   return worst;
 }
 
-function companyList() {
-  return [...companies.values()]
-    .map((e) => ({ id: e.id, label: e.label, status: companyWorst(e), checks: e.lastByCheck.size }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+function companyOnline(entry) {
+  const now = Date.now();
+  for (const ping of entry.lastByCheck.values()) {
+    if (ping.checkedAt && now - new Date(ping.checkedAt).getTime() < ONLINE_MS) return true;
+  }
+  return false;
 }
 
-// Aggregate health across every company — drives the tray icon + popover.
+// The full roster (every company ever seen) merged with this session's live
+// data. Live companies report their real status; the rest read as offline.
+function companyList() {
+  const out = new Map();
+  for (const r of roster.values()) {
+    out.set(r.id, { id: r.id, label: r.label, status: 'offline', online: false, checks: 0 });
+  }
+  for (const e of companies.values()) {
+    const online = companyOnline(e);
+    out.set(e.id, {
+      id: e.id,
+      label: e.label,
+      status: online ? companyWorst(e) : 'offline',
+      online,
+      checks: e.lastByCheck.size,
+    });
+  }
+  return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// Aggregate health across the live companies — drives the tray icon + popover.
 function overallSnapshot() {
   const list = companyList();
-  const down = list.filter((c) => c.status === 'red').length;
-  const warn = list.filter((c) => c.status === 'yellow').length;
+  const live = list.filter((c) => c.online);
+  const down = live.filter((c) => c.status === 'red').length;
+  const warn = live.filter((c) => c.status === 'yellow').length;
+  const offline = list.length - live.length;
   const status = down ? 'red' : warn ? 'yellow' : 'green';
   const detail = list.length
-    ? `${down ? `${down} down · ` : warn ? `${warn} degraded · ` : ''}${list.length} monitored`
+    ? `${down ? `${down} down · ` : warn ? `${warn} degraded · ` : ''}${live.length} live${offline ? ` · ${offline} offline` : ''}`
     : 'Waiting for data…';
   return { status, detail, checkedAt: lastCheckedAt };
 }
@@ -772,6 +835,7 @@ function sendNotification(payload) {
 app.whenReady().then(() => {
   if (app.dock) app.dock.hide();
 
+  roster = loadRoster();
   auth.init();
 
   tray = new Tray(icons.grey);
