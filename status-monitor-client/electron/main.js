@@ -19,12 +19,31 @@ Menu.setApplicationMenu(null);
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
 
 const DEFAULT_SETTINGS = {
-  mqttHost: '127.0.0.1',
+  mqttHost: '24.121.212.206',
   mqttPort: 1883,
   projectId: '',
   systemId: '',
   apiPort: 3847, // REST API port for history (mirrors DEFAULT_API_PORT below)
 };
+
+// Maps monitored checks → companies (dashboard tabs). Editable JSON shipped with
+// the app; loaded at startup. Empty companies[] => one tab per check (auto-named).
+function clientsConfigPath() {
+  const candidates = [
+    path.join(app.getPath('userData'), 'clients.json'),
+    app.isPackaged ? path.join(process.resourcesPath, 'clients.json') : '',
+    path.join(__dirname, '..', 'clients.json'),
+  ].filter(Boolean);
+  return candidates.find((p) => { try { return fs.existsSync(p); } catch { return false; } }) || candidates[candidates.length - 1];
+}
+function loadClients() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(clientsConfigPath(), 'utf8'));
+    return { companies: Array.isArray(cfg.companies) ? cfg.companies : [] };
+  } catch {
+    return { companies: [] };
+  }
+}
 
 function loadSettings() {
   try {
@@ -47,8 +66,11 @@ let dashboardWindow = null;
 let mqttClient = null;
 let currentStatus = null;        // most recent status payload
 let currentConnectionState = 'grey'; // 'grey' | 'live' | 'black'
-let lastCheckedAt = null;        // payload.checkedAt from most recent message
+let lastCheckedAt = null;        // checkedAt from most recent message
 let settings = loadSettings();
+let clientsConfig = loadClients();
+// companyId -> { id, label, pings: [...], lastByCheck: Map<checkId, ping> }
+const companies = new Map();
 let isQuitting = false;
 let popoverMode = 'peek';        // 'peek' | 'expanded'
 let popoverPinned = false;
@@ -71,12 +93,11 @@ const POPOVER_HIDE_GRACE_MS = 250;
 const POPOVER_ANCHOR_GAP = 6;
 const SUPPORTS_TRAY_HOVER = process.platform !== 'linux';
 
-// ─── MQTT ──────────────────────────────────────────────────────────────────────
-
-function mqttTopic(s) {
-  if (!s.projectId || !s.systemId) return null;
-  return `${s.projectId}/${s.systemId}/status`;
-}
+// ─── MQTT (multi-company) ────────────────────────────────────────────────────
+// The broker carries one branch per monitoring server (projectId/systemId) with
+// a check per topic: `<projectId>/<systemId>/checks/<checkId>`. We subscribe to
+// all of them, parse each check's {available, latencyMs, packetLoss, ...}, group
+// the checks into companies (clients.json), and keep a per-company ping buffer.
 
 function setConnectionState(state) {
   currentConnectionState = state;
@@ -84,29 +105,105 @@ function setConnectionState(state) {
   if (state === 'black') updateTray('black');
 }
 
-function statusSnapshot() {
+function slugify(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/\(from [^)]*\)/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'unknown';
+}
+
+// Which company tab a check belongs to. Explicit clients.json matches win;
+// otherwise the company is derived from the check label (one tab per check).
+function companyForCheck(label, id) {
+  const hay = `${id || ''} ${label || ''}`.toLowerCase();
+  for (const c of (clientsConfig.companies || [])) {
+    if (Array.isArray(c.match) && c.match.some((m) => hay.includes(String(m).toLowerCase()))) {
+      return { id: slugify(c.label), label: String(c.label) };
+    }
+  }
+  const derived = String(label || id || 'Unknown').replace(/\s*\(from [^)]*\)\s*/i, '').trim() || 'Unknown';
+  return { id: slugify(derived), label: derived };
+}
+
+// A raw check payload → a dashboard ping row. A check is binary up/down
+// (available); packet loss flags a degraded (amber) ping.
+function checkToPing(p) {
+  const status = p.available === false ? 'red' : (Number(p.packetLoss) > 0 ? 'yellow' : 'green');
+  const bits = [];
+  if (p.host) bits.push(p.host);
+  if (p.available === false) bits.push('unreachable');
+  else if (p.latencyMs != null) bits.push(`${p.latencyMs} ms`);
+  if (Number(p.packetLoss) > 0) bits.push(`${p.packetLoss}% loss`);
+  if (p.error) bits.push(String(p.error));
   return {
-    status: currentStatus,
-    connectionState: currentConnectionState,
+    checkedAt: p.checkedAt || new Date().toISOString(),
+    status,
+    machine: p.label || p.id || '',
+    checkId: p.id || '',
+    host: p.host || '',
+    detail: bits.join(' · '),
   };
 }
 
+const MAX_PINGS_PER_COMPANY = 3000;
+
+function ingestCheck(payload) {
+  if (!payload || payload.available === undefined) return null;
+  const co = companyForCheck(payload.label, payload.id);
+  let entry = companies.get(co.id);
+  if (!entry) { entry = { id: co.id, label: co.label, pings: [], lastByCheck: new Map() }; companies.set(co.id, entry); }
+  const ping = checkToPing(payload);
+  const prev = entry.lastByCheck.get(ping.checkId);
+  if (prev && prev.checkedAt === ping.checkedAt) return null; // retained re-delivery / duplicate
+  entry.lastByCheck.set(ping.checkId, ping);
+  entry.pings.push(ping);
+  if (entry.pings.length > MAX_PINGS_PER_COMPANY) entry.pings.splice(0, entry.pings.length - MAX_PINGS_PER_COMPANY);
+  if (ping.checkedAt) lastCheckedAt = ping.checkedAt;
+  return { companyId: co.id, ping };
+}
+
+function companyWorst(entry) {
+  let worst = 'green';
+  for (const ping of entry.lastByCheck.values()) {
+    if (ping.status === 'red') return 'red';
+    if (ping.status === 'yellow') worst = 'yellow';
+  }
+  return worst;
+}
+
+function companyList() {
+  return [...companies.values()]
+    .map((e) => ({ id: e.id, label: e.label, status: companyWorst(e), checks: e.lastByCheck.size }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// Aggregate health across every company — drives the tray icon + popover.
+function overallSnapshot() {
+  const list = companyList();
+  const down = list.filter((c) => c.status === 'red').length;
+  const warn = list.filter((c) => c.status === 'yellow').length;
+  const status = down ? 'red' : warn ? 'yellow' : 'green';
+  const detail = list.length
+    ? `${down ? `${down} down · ` : warn ? `${warn} degraded · ` : ''}${list.length} monitored`
+    : 'Waiting for data…';
+  return { status, detail, checkedAt: lastCheckedAt };
+}
+
+function statusSnapshot() {
+  return { status: currentStatus || overallSnapshot(), connectionState: currentConnectionState };
+}
+
+let overallBroadcastAt = 0;
 function connectMqtt() {
   if (mqttClient) {
     mqttClient.end(true);
     mqttClient = null;
   }
 
-  // Reset to grey when (re)connecting
   currentConnectionState = 'grey';
   broadcastConnectionState('grey');
   updateTray('grey');
-
-  const topic = mqttTopic(settings);
-  if (!topic) {
-    console.log('[MQTT] No topic configured — open Settings to enter your share code.');
-    return;
-  }
 
   const url = `mqtt://${settings.mqttHost}:${settings.mqttPort}`;
   console.log(`[MQTT] Connecting to ${url}`);
@@ -114,38 +211,29 @@ function connectMqtt() {
   mqttClient = mqtt.connect(url, { clean: true, reconnectPeriod: 15_000 });
 
   mqttClient.on('connect', () => {
-    console.log(`[MQTT] Connected — subscribing to topic`);
-    mqttClient.subscribe(topic, { qos: 1 });
-    // Stay grey until the retained message arrives
+    console.log('[MQTT] Connected — subscribing to +/+/checks/+');
+    mqttClient.subscribe('+/+/checks/+', { qos: 0 });
   });
 
-  mqttClient.on('message', (_topic, message) => {
+  mqttClient.on('message', (topic, message) => {
+    if (!topic.includes('/checks/')) return;
     let payload;
-    try {
-      payload = JSON.parse(message.toString());
-    } catch {
-      return;
-    }
+    try { payload = JSON.parse(message.toString()); } catch { return; }
+    const res = ingestCheck(payload);
+    if (!res) return;
+    broadcastCheck(res.companyId, res.ping);
 
-    lastCheckedAt = payload.checkedAt;
-    const age = lastCheckedAt
-      ? Date.now() - new Date(lastCheckedAt).getTime()
-      : Infinity;
+    const age = lastCheckedAt ? Date.now() - new Date(lastCheckedAt).getTime() : Infinity;
+    if (age > STALE_MS) { setConnectionState('black'); return; }
+    setConnectionState('live');
 
-    const prev = currentStatus;
-    currentStatus = payload;
-    broadcastToRenderer(payload);
-
-    if (age > STALE_MS) {
-      // Broker has a retained message but the API stopped publishing long ago
-      setConnectionState('black');
-    } else {
-      const wasBlackOrGrey = currentConnectionState !== 'live';
-      setConnectionState('live');
-      updateTray(payload.status);
-      if (prev && prev.status !== payload.status && !wasBlackOrGrey) {
-        sendNotification(payload);
-      }
+    // Checks arrive in per-minute bursts; coalesce the tray/popover refresh.
+    const now = Date.now();
+    if (now - overallBroadcastAt > 1500) {
+      overallBroadcastAt = now;
+      currentStatus = overallSnapshot();
+      updateTray(currentStatus.status);
+      broadcastToRenderer(currentStatus);
     }
   });
 
@@ -154,11 +242,8 @@ function connectMqtt() {
     setConnectionState('black');
   });
 
-  // Tray shows grey while reconnecting, but panel keeps last known status
   mqttClient.on('close', () => {
-    if (currentConnectionState === 'live') {
-      updateTray('grey');
-    }
+    if (currentConnectionState === 'live') updateTray('grey');
   });
 }
 
@@ -657,6 +742,13 @@ function broadcastConnectionState(state) {
   openRendererWindows().forEach((win) => win.webContents.send('mqtt:connection', state));
 }
 
+// A single new ping for one company → the dashboard (which buffers per company).
+function broadcastCheck(companyId, ping) {
+  if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+    dashboardWindow.webContents.send('mqtt:check', { companyId, ping });
+  }
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 function sendNotification(payload) {
@@ -732,6 +824,16 @@ app.on('will-quit', () => {
 // ─── IPC handlers ─────────────────────────────────────────────────────────────
 
 ipcMain.handle('status:get', () => statusSnapshot());
+
+// Multi-company API for the dashboard tabs.
+ipcMain.handle('companies:get', () => companyList());
+
+ipcMain.handle('company:history', (_e, payload = {}) => {
+  const entry = companies.get(payload.companyId);
+  if (!entry) return { ok: true, results: [] };
+  const n = Math.min(Math.max(Number(payload.limit) || 2000, 1), 5000);
+  return { ok: true, results: entry.pings.slice(-n) };
+});
 
 ipcMain.handle('settings:get', () => settings);
 

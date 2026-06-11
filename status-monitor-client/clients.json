@@ -1,0 +1,4 @@
+{
+  "comment": "Groups monitored checks into dashboard tabs. A check joins a company if its label or id contains any term in 'match' (case-insensitive). Any check that matches nothing becomes its own tab, named from its label. To fold a machine into a company, add an entry — e.g. { \"label\": \"Schmidbauer\", \"match\": [\"schmidbauer\", \"baxley\"] }. Edit and restart the app; no rebuild needed.",
+  "companies": []
+}

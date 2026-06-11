@@ -11,6 +11,11 @@ contextBridge.exposeInMainWorld('dashboard', {
   onStatus: (cb) => ipcRenderer.on('mqtt:status', (_e, payload) => cb(payload)),
   onConnection: (cb) => ipcRenderer.on('mqtt:connection', (_e, state) => cb(state)),
   getHistory: (limit) => ipcRenderer.invoke('history:get', limit),
+  // Multi-company tabs: the company list, one company's ping history, and live
+  // per-company pings as they arrive.
+  getCompanies: () => ipcRenderer.invoke('companies:get'),
+  getCompanyHistory: (companyId, limit) => ipcRenderer.invoke('company:history', { companyId, limit }),
+  onCheck: (cb) => ipcRenderer.on('mqtt:check', (_e, payload) => cb(payload)),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
