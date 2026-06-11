@@ -318,7 +318,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       : null
   );
-  const pageTimeRangeForLayout = (layoutKey = "builder") => cloneTimeRange(pageTimeframeState.get(layoutKey) || null);
+  const pageTimeRangeForLayout = (layoutKey = "builder") => {
+    // Panel-internal widgets carry a nested layout key (e.g. "builder-trend")
+    // while the timeframe publishes to the page key ("builder"). Walk up the
+    // key so panels inherit the page-level timeframe selection; a more specific
+    // key (a panel with its own timeframe) still wins because it is checked first.
+    let key = layoutKey;
+    while (key) {
+      const range = pageTimeframeState.get(key);
+      if (range) return cloneTimeRange(range);
+      const idx = key.lastIndexOf("-");
+      if (idx <= 0) break;
+      key = key.slice(0, idx);
+    }
+    return null;
+  };
   const notifyPageTimeframeSubscribers = (layoutKey, timeRange) => {
     pageTimeframeSubscribers.forEach((subscriber) => {
       try {
