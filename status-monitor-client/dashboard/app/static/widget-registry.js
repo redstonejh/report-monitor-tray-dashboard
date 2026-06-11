@@ -823,42 +823,55 @@
       const ds = card?.dataset || {};
       const drilled = !!(ds.drillStart && ds.drillEnd);
       let scoped = rows;
-      let level;
       if (drilled) {
         const a = Date.parse(ds.drillStart), b = Date.parse(ds.drillEnd);
         scoped = rows.filter((r) => { const t = Date.parse(r?.checkedAt || r?.date); return Number.isFinite(t) && t >= a && t <= b; });
-        level = ds.drillLevel || "hour";
-      } else {
-        const times = rows.map((r) => Date.parse(r?.checkedAt || r?.date)).filter(Number.isFinite);
-        const spanH = times.length ? (Math.max(...times) - Math.min(...times)) / 3600000 : 0;
-        level = spanH <= 50 ? "hour" : spanH <= 24 * 70 ? "day" : "month";
       }
+      // Granularity follows the span of the rows in view. An hour or less shows
+      // the individual pings themselves; wider windows aggregate up to hour /
+      // day / month buckets. Clicking a bucket narrows the range, which drops to
+      // the next finer granularity automatically.
+      const times = scoped.map((r) => Date.parse(r?.checkedAt || r?.date)).filter(Number.isFinite);
+      const spanH = times.length ? (Math.max(...times) - Math.min(...times)) / 3600000 : 0;
+      const level = spanH <= 1.5 ? "ping" : spanH <= 50 ? "hour" : spanH <= 24 * 70 ? "day" : "month";
       const bucketInfo = (iso) => {
         const d = new Date(iso);
-        if (level === "ping") return { key: String(iso), label: `${pad(d.getHours())}:${pad(d.getMinutes())}`, start: "", end: "", next: "" };
-        if (level === "hour") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()); return { key: `h${s.getTime()}`, label: `${pad(d.getHours())}:00`, start: s.toISOString(), end: new Date(s.getTime() + 3600000 - 1).toISOString(), next: "ping" }; }
-        if (level === "day") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return { key: `d${s.getTime()}`, label: `${MONTHS[d.getMonth()]} ${d.getDate()}`, start: s.toISOString(), end: new Date(s.getTime() + 86400000 - 1).toISOString(), next: "hour" }; }
+        if (level === "ping") return { key: String(iso), label: `${pad(d.getHours())}:${pad(d.getMinutes())}`, start: "", end: "" };
+        if (level === "hour") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()); return { key: `h${s.getTime()}`, label: `${pad(d.getHours())}:00`, start: s.toISOString(), end: new Date(s.getTime() + 3600000 - 1).toISOString() }; }
+        if (level === "day") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return { key: `d${s.getTime()}`, label: `${MONTHS[d.getMonth()]} ${d.getDate()}`, start: s.toISOString(), end: new Date(s.getTime() + 86400000 - 1).toISOString() }; }
         const s = new Date(d.getFullYear(), d.getMonth(), 1);
-        return { key: `m${s.getTime()}`, label: MONTHS[d.getMonth()], start: s.toISOString(), end: new Date(new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime() - 1).toISOString(), next: "day" };
+        return { key: `m${s.getTime()}`, label: MONTHS[d.getMonth()], start: s.toISOString(), end: new Date(new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime() - 1).toISOString() };
       };
       const buckets = new Map();
       for (const r of scoped) {
         const t = Date.parse(r?.checkedAt || r?.date); if (!Number.isFinite(t)) continue;
         const info = bucketInfo(r.checkedAt || r.date);
         let bk = buckets.get(info.key);
-        if (!bk) { bk = { label: info.label, start: info.start, end: info.end, next: info.next, success: 0, fail: 0, order: t }; buckets.set(info.key, bk); }
+        if (!bk) { bk = { label: info.label, start: info.start, end: info.end, success: 0, fail: 0, total: 0, order: t, checkedAt: r.checkedAt || r.date, detail: r.detail || "" }; buckets.set(info.key, bk); }
         if (r.status === "green") bk.success += 1; else bk.fail += 1;
+        bk.total += 1;
         if (t < bk.order) bk.order = t;
       }
       const ordered = [...buckets.values()].sort((a, b) => a.order - b.order);
-      const colourFor = (bk) => (level === "ping" ? (bk.fail ? "#e1857c" : "#6fc99a") : (!bk.fail ? "#6fc99a" : (!bk.success ? "#e1857c" : "#d4ab63")));
+      const isPing = level === "ping";
+      const colourFor = (bk) => (isPing ? (bk.fail ? "#e1857c" : "#6fc99a") : (!bk.fail ? "#6fc99a" : (!bk.success ? "#e1857c" : "#d4ab63")));
       return {
         ...base,
         graphic: drilled ? [{ type: "text", left: 10, top: 6, silent: true, style: { text: "‹ back", fill: axis.text, fontSize: 11, opacity: 0.7 } }] : undefined,
-        tooltip: { trigger: "axis", confine: true },
+        tooltip: {
+          trigger: "item",
+          confine: true,
+          // A bucket reports its health; an individual ping reports its details.
+          formatter: (params) => {
+            const d = params?.data; if (!d) return "";
+            if (d._ping) return `<b>${d._label}</b> &middot; ${d._success ? "Pass" : "Fail"}` + (d._detail ? `<br>${d._detail}` : "");
+            const pct = d._total ? Math.round((d._success / d._total) * 100) : 0;
+            return `<b>${d._label}</b><br>${pct}% healthy &middot; ${d._success}/${d._total} passed`;
+          },
+        },
         xAxis: { type: "category", data: ordered.map((bk) => bk.label), axisLabel: { color: axis.text }, axisLine: { lineStyle: { color: axis.line } } },
         yAxis: { type: "value", show: false, min: 0, max: 100 },
-        series: [{ type: "bar", barCategoryGap: "16%", barMaxWidth: 40, cursor: "pointer", data: ordered.map((bk) => ({ value: 100, itemStyle: { color: colourFor(bk), borderRadius: 3 }, _drillStart: bk.start, _drillEnd: bk.end, _drillLevel: bk.next })) }],
+        series: [{ type: "bar", barCategoryGap: "16%", barMaxWidth: 40, cursor: "pointer", data: ordered.map((bk) => ({ value: 100, itemStyle: { color: colourFor(bk), borderRadius: 3 }, _ping: isPing, _start: bk.start, _end: bk.end, _checkedAt: bk.checkedAt, _detail: bk.detail, _success: bk.success, _total: bk.total, _label: bk.label })) }],
       };
     }
     if (["bar", "horizontal-bar", "grouped-bar", "stacked-bar", "lollipop"].includes(chartType)) {
@@ -1124,6 +1137,8 @@
           // green/red on hover.
           const rowResult = row.original?.result;
           if (rowResult) tr.dataset.result = rowResult;
+          // Lets the status timeline scroll to and highlight a specific ping.
+          if (row.original?.checkedAt) tr.dataset.checkedAt = row.original.checkedAt;
           row.getVisibleCells().forEach((cell) => {
             const td = document.createElement("td");
             const value = String(cell.getValue() ?? "");
@@ -1249,13 +1264,25 @@
           const card = target.closest(".widget-card") || target;
           chart.on("click", (params) => {
             const d = params?.data;
-            if (!d || !d._drillStart || !d._drillLevel) return;
+            if (!d) return;
+            if (d._ping) {
+              // Clicking a ping jumps to it in the table: scroll it into the
+              // centre and flash a highlight.
+              if (!d._checkedAt) return;
+              const row = document.querySelector(`[data-widget-key="widget-history"] tbody tr[data-checked-at="${(window.CSS && CSS.escape) ? CSS.escape(d._checkedAt) : d._checkedAt}"]`);
+              if (row) {
+                row.scrollIntoView({ block: "center", behavior: "smooth" });
+                row.classList.add("ping-focus");
+                window.setTimeout(() => row.classList.remove("ping-focus"), 2400);
+              }
+              return;
+            }
+            if (!d._start || !d._end) return; // a single ping with no range — nothing to drill
             const stack = JSON.parse(card.dataset.drillStack || "[]");
-            stack.push({ start: card.dataset.drillStart || "", end: card.dataset.drillEnd || "", level: card.dataset.drillLevel || "" });
+            stack.push({ start: card.dataset.drillStart || "", end: card.dataset.drillEnd || "" });
             card.dataset.drillStack = JSON.stringify(stack);
-            card.dataset.drillStart = d._drillStart;
-            card.dataset.drillEnd = d._drillEnd;
-            card.dataset.drillLevel = d._drillLevel;
+            card.dataset.drillStart = d._start;
+            card.dataset.drillEnd = d._end;
             paint();
           });
           chart.getZr().on("click", (event) => {
@@ -1267,11 +1294,9 @@
             if (prev && prev.start) {
               card.dataset.drillStart = prev.start;
               card.dataset.drillEnd = prev.end;
-              card.dataset.drillLevel = prev.level;
             } else {
               delete card.dataset.drillStart;
               delete card.dataset.drillEnd;
-              delete card.dataset.drillLevel;
             }
             paint();
           });
