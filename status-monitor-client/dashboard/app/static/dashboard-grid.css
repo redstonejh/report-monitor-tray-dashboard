@@ -2389,13 +2389,18 @@ that put the drawer on top — palette * has to declare its tier explicitly. */ 
   background: rgba(111, 201, 154, 0.14);
 }.runtime-table tbody tr[data-result="Fail"]:hover{
   background: rgba(225, 133, 124, 0.16);
-}.runtime-table tbody tr.ping-focus{
-  background: rgba(96, 165, 250, 0.26);
-  box-shadow: inset 2px 0 0 var(--blue, #3b82f6);
-  animation: ping-focus-fade 2.4s ease;
-}@keyframes ping-focus-fade{
-  0%{ background: rgba(96, 165, 250, 0.42); }
-  100%{ background: rgba(96, 165, 250, 0.10); }
+}.runtime-table tbody tr.ping-focus[data-result="Pass"]{
+  box-shadow: inset 2px 0 0 #6fc99a;
+  animation: ping-focus-pass 2.4s ease;
+}.runtime-table tbody tr.ping-focus[data-result="Fail"]{
+  box-shadow: inset 2px 0 0 #e1857c;
+  animation: ping-focus-fail 2.4s ease;
+}@keyframes ping-focus-pass{
+  0%{ background: rgba(111, 201, 154, 0.5); }
+  100%{ background: rgba(111, 201, 154, 0.12); }
+}@keyframes ping-focus-fail{
+  0%{ background: rgba(225, 133, 124, 0.5); }
+  100%{ background: rgba(225, 133, 124, 0.14); }
 }.runtime-table-density-compact{
   gap: 2px;
 }.runtime-table-density-compact .runtime-table-meta{

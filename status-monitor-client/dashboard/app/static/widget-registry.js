@@ -855,18 +855,28 @@
       const ordered = [...buckets.values()].sort((a, b) => a.order - b.order);
       const isPing = level === "ping";
       const colourFor = (bk) => (isPing ? (bk.fail ? "#e1857c" : "#6fc99a") : (!bk.fail ? "#6fc99a" : (!bk.success ? "#e1857c" : "#d4ab63")));
+      // Breadcrumb of the period currently in view (only while drilled in).
+      const ctx = drilled ? new Date(ds.drillStart) : null;
+      const contextLabel = ctx
+        ? (isPing ? `Pings · ${MONTHS[ctx.getMonth()]} ${ctx.getDate()}, ${pad(ctx.getHours())}:00`
+          : level === "hour" ? `${MONTHS[ctx.getMonth()]} ${ctx.getDate()}`
+          : MONTHS[ctx.getMonth()])
+        : "";
       return {
         ...base,
-        graphic: drilled ? [{ type: "text", left: 10, top: 6, silent: true, style: { text: "‹ back", fill: axis.text, fontSize: 11, opacity: 0.7 } }] : undefined,
+        graphic: drilled ? [
+          { type: "text", left: 10, top: 6, silent: true, style: { text: "‹ back", fill: axis.text, fontSize: 11, opacity: 0.6 } },
+          { type: "text", right: 12, top: 6, silent: true, style: { text: contextLabel, fill: axis.text, fontSize: 11, opacity: 0.85 } },
+        ] : undefined,
         tooltip: {
           trigger: "item",
           confine: true,
-          // A bucket reports its health; an individual ping reports its details.
+          // Keep it terse: a ping is just its time + pass/fail; a bucket its health.
           formatter: (params) => {
             const d = params?.data; if (!d) return "";
-            if (d._ping) return `<b>${d._label}</b> &middot; ${d._success ? "Pass" : "Fail"}` + (d._detail ? `<br>${d._detail}` : "");
+            if (d._ping) return `${d._label} · ${d._success ? "Pass" : "Fail"}`;
             const pct = d._total ? Math.round((d._success / d._total) * 100) : 0;
-            return `<b>${d._label}</b><br>${pct}% healthy &middot; ${d._success}/${d._total} passed`;
+            return `${d._label} · ${pct}% healthy`;
           },
         },
         xAxis: { type: "category", data: ordered.map((bk) => bk.label), axisLabel: { color: axis.text }, axisLine: { lineStyle: { color: axis.line } } },
