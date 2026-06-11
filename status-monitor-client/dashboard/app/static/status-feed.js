@@ -353,8 +353,11 @@ const historyRow = (entry) => ({
   stage: entry.stage || "",
   detail: entry.detail || "",
   lastSuccess: entry.lastSuccess || "",
-  // Numeric level so sum/avg/min/max metrics and charts have a value field.
-  value: entry.status === "green" ? 2 : entry.status === "yellow" ? 1 : 0,
+  // Health score 0–100 (green healthy / yellow degraded / red down) so a chart
+  // of avg(health) over time reads as an uptime/health trend.
+  health: entry.status === "green" ? 100 : entry.status === "yellow" ? 50 : 0,
+  // Kept for back-compat with any chart that referenced the old field.
+  value: entry.status === "green" ? 100 : entry.status === "yellow" ? 50 : 0,
 });
 
 function currentStatusRow() {
