@@ -473,7 +473,10 @@
     const filters = normalizeTimeframeFilters(config);
     const selectedFilter = filters.find((filter) => filter.id === selectedTimeframeFilterId(config, filters));
     if (selectedFilter) return resolveTimeframeFilter(selectedFilter, config, now);
-    const preset = String(config.selectedPreset || config.preset || "").trim();
+    // The built-in timeframe buttons carry the preset as their id (e.g.
+    // "last_7_days"), so fall back to the selected id when no explicit preset is
+    // stored — otherwise the default buttons never resolve a date range.
+    const preset = String(config.selectedPreset || config.preset || config.selectedFilterId || "").trim();
     const explicit = config.timeRange && typeof config.timeRange === "object" ? config.timeRange : null;
     const field = String(config.field || explicit?.field || "").trim();
     const today = now ? localDateFrom(now) : localToday();

@@ -195,6 +195,15 @@ export const createWidgetRuntimeControls = ({
         renderWidgetRuntimeContent(widget);
         syncWidgetContextOutputs(widget);
         publishTimeframeSelection?.(widget);
+        // Publishing the new range alone does not re-render the data widgets, so
+        // refresh the sibling widgets here so charts/stats/tables immediately
+        // reflect the selected timeframe.
+        const grid = widget.closest(".dashboard-layout-grid");
+        if (grid) {
+          grid.querySelectorAll(".widget-card[data-widget-definition]").forEach((sibling) => {
+            if (sibling !== widget) renderWidgetRuntimeContent(sibling);
+          });
+        }
         event.__widgetRuntimeHandledBy = widget;
         persistRuntimeControlChange({ history: true });
         return;
