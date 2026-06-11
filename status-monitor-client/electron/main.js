@@ -47,7 +47,13 @@ function loadClients() {
 
 function loadSettings() {
   try {
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) };
+    const merged = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')) };
+    // Migrate pre-multi-company configs that pointed at a local broker — the
+    // company data lives on the central broker now.
+    if (!merged.mqttHost || merged.mqttHost === 'localhost' || merged.mqttHost === '127.0.0.1') {
+      merged.mqttHost = DEFAULT_SETTINGS.mqttHost;
+    }
+    return merged;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
