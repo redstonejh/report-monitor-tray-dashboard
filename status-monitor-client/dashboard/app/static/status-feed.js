@@ -564,6 +564,24 @@ async function startFeed() {
   renderCompanyTabs();
   publish();
 
+  // ← / → flip between companies (skip while typing or with a menu/modifier).
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable
+      || (t.closest && t.closest('[contenteditable="true"], [data-inline-text-editing="true"]')))) return;
+    if (companyMenuOpen) return;
+    const all = companyState.companies;
+    if (!all.length) return;
+    let i = all.findIndex((c) => c.id === companyState.active);
+    if (i < 0) i = 0;
+    const n = all.length;
+    const next = e.key === "ArrowLeft" ? (i - 1 + n) % n : (i + 1) % n;
+    e.preventDefault();
+    setActiveCompany(all[next].id);
+  });
+
   bridge.onConnection((cs) => { state.connection = cs; updateStatusIndicator(); });
   bridge.onStatus((payload) => { state.status = payload; updateStatusIndicator(); });
   bridge.onCheck?.(({ companyId, ping }) => {
