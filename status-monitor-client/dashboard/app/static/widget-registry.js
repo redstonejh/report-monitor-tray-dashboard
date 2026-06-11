@@ -781,6 +781,7 @@
     // When a chart plots the 0–100 health score, colour each value by tier
     // (red <50 / amber 50–80 / green ≥80) so the graph reflects the condition
     // rather than a flat green.
+    const healthTierColor = (v) => (v >= 80 ? "#6fc99a" : v >= 50 ? "#d4ab63" : "#e1857c");
     const healthTierVisualMap = () => (chartValueField(config) === "health" ? {
       visualMap: { show: false, type: "piecewise", pieces: [
         { lt: 50, color: "#e1857c" },
@@ -792,19 +793,26 @@
       const usesSeries = ["grouped-bar", "stacked-bar"].includes(chartType);
       const model = chartSeriesData(rows, config, { series: usesSeries });
       const horizontal = chartType === "horizontal-bar";
+      // Uniform mode: every bar is the same full height and only its colour
+      // (health tier) varies — an equal-sized status node per bucket across the
+      // selected timeframe.
+      const uniform = !!config.uniformBars && !horizontal && chartValueField(config) === "health";
       return {
         ...base,
-        ...healthTierVisualMap(),
+        ...(uniform ? null : healthTierVisualMap()),
         tooltip: { trigger: "axis", confine: true },
         legend: display.showLegend && usesSeries ? { bottom: 0, textStyle: { color: axis.text, fontSize: 10 } } : undefined,
         xAxis: horizontal ? { type: "value", axisLabel: { color: axis.text }, splitLine: { lineStyle: { color: axis.line } } } : { type: "category", data: model.categories, axisLabel: { color: axis.text }, axisLine: { lineStyle: { color: axis.line } } },
-        yAxis: horizontal ? { type: "category", data: model.categories, axisLabel: { color: axis.text }, axisLine: { lineStyle: { color: axis.line } } } : { type: "value", axisLabel: { color: axis.text }, splitLine: { show: display.showGrid, lineStyle: { color: axis.line } } },
+        yAxis: horizontal ? { type: "category", data: model.categories, axisLabel: { color: axis.text }, axisLine: { lineStyle: { color: axis.line } } } : (uniform ? { type: "value", show: false, min: 0, max: 100 } : { type: "value", axisLabel: { color: axis.text }, splitLine: { show: display.showGrid, lineStyle: { color: axis.line } } }),
         series: model.series.map((series) => ({
           name: series.name,
           type: "bar",
           stack: chartType === "stacked-bar" ? "total" : undefined,
-          barMaxWidth: chartType === "lollipop" ? 8 : 18,
-          data: series.data,
+          barMaxWidth: uniform ? 40 : (chartType === "lollipop" ? 8 : 18),
+          barCategoryGap: uniform ? "16%" : undefined,
+          data: uniform
+            ? series.data.map((v) => ({ value: 100, itemStyle: { color: healthTierColor(Number(v) || 0), borderRadius: 3 } }))
+            : series.data,
           itemStyle: { borderRadius: horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0] },
         })),
       };
