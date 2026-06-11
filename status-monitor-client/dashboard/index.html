@@ -168,7 +168,7 @@
   </div>
 
   <div class="panel-layout" data-layout-key="builder">
-    <section class="db-panel" data-panel-key="builder-metrics" data-default-span="6" data-default-grid-col="1" data-default-grid-row="2" data-grid-col="1" data-grid-row="2" data-grid-row-span="5" data-default-title="Metrics">
+    <section class="db-panel" data-panel-key="builder-metrics" data-default-span="6" data-default-grid-col="1" data-default-grid-row="2" data-grid-col="1" data-grid-row="2" data-grid-row-span="3" data-default-title="Metrics">
       <div class="db-panel-hd db-panel-hd-items">
         <span class="db-panel-title">Metrics</span>
         <span class="db-panel-count">0</span>
@@ -184,23 +184,23 @@
       </div>
       <div class="db-panel-body">
         <div class="panel-internal-widget-grid" data-widget-layout-key="builder-metrics">
-          <a class="stat-card widget-card" data-widget-key="widget-uptime" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"up","label":"Uptime %","title":"Uptime %","format":"percent"}' data-default-span="2" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Uptime %</span></a>
-          <a class="stat-card widget-card" data-widget-key="widget-loss" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"packetLossPct","label":"Pkt loss %","title":"Pkt loss %","format":"number"}' data-default-span="2" data-default-grid-col="3" data-default-grid-row="1" data-grid-col="3" data-grid-row="1" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Pkt loss %</span></a>
-          <a class="stat-card widget-card" data-widget-key="widget-fails" data-widget-type="tracker" data-widget-config='{"metric":"count","label":"Fails","title":"Fails","format":"number"}' data-default-span="2" data-default-grid-col="5" data-default-grid-row="1" data-grid-col="5" data-grid-row="1" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Fails</span></a>
-          <a class="stat-card widget-card" data-widget-key="widget-avgms" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"latencyMs","label":"Avg ms","title":"Avg ms","format":"number"}' data-default-span="2" data-default-grid-col="1" data-default-grid-row="3" data-grid-col="1" data-grid-row="3" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Avg ms</span></a>
-          <a class="stat-card widget-card" data-widget-key="widget-minms" data-widget-type="tracker" data-widget-config='{"metric":"min","valueField":"latencyMs","label":"Min ms","title":"Min ms","format":"number"}' data-default-span="2" data-default-grid-col="3" data-default-grid-row="3" data-grid-col="3" data-grid-row="3" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Min ms</span></a>
-          <a class="stat-card widget-card" data-widget-key="widget-maxms" data-widget-type="tracker" data-widget-config='{"metric":"max","valueField":"latencyMs","label":"Max ms","title":"Max ms","format":"number"}' data-default-span="2" data-default-grid-col="5" data-default-grid-row="3" data-grid-col="5" data-grid-row="3" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Max ms</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-uptime" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"up","label":"Uptime %","title":"Uptime %","format":"percent"}' data-default-span="2" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="1" href="#"><span class="stat-val">0</span><span class="stat-lbl">Uptime %</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-loss" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"packetLossPct","label":"Pkt loss %","title":"Pkt loss %","format":"number"}' data-default-span="2" data-default-grid-col="3" data-default-grid-row="1" data-grid-col="3" data-grid-row="1" data-grid-row-span="1" href="#"><span class="stat-val">0</span><span class="stat-lbl">Pkt loss %</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-fails" data-widget-type="tracker" data-widget-config='{"metric":"count","label":"Fails","title":"Fails","format":"number"}' data-default-span="2" data-default-grid-col="5" data-default-grid-row="1" data-grid-col="5" data-grid-row="1" data-grid-row-span="1" href="#"><span class="stat-val">0</span><span class="stat-lbl">Fails</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-avgms" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"latencyMs","label":"Avg ms","title":"Avg ms","format":"number"}' data-default-span="2" data-default-grid-col="1" data-default-grid-row="2" data-grid-col="1" data-grid-row="2" data-grid-row-span="1" href="#"><span class="stat-val">0</span><span class="stat-lbl">Avg ms</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-minms" data-widget-type="tracker" data-widget-config='{"metric":"min","valueField":"latencyMs","label":"Min ms","title":"Min ms","format":"number"}' data-default-span="2" data-default-grid-col="3" data-default-grid-row="2" data-grid-col="3" data-grid-row="2" data-grid-row-span="1" href="#"><span class="stat-val">0</span><span class="stat-lbl">Min ms</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-maxms" data-widget-type="tracker" data-widget-config='{"metric":"max","valueField":"latencyMs","label":"Max ms","title":"Max ms","format":"number"}' data-default-span="2" data-default-grid-col="5" data-default-grid-row="2" data-grid-col="5" data-grid-row="2" data-grid-row-span="1" href="#"><span class="stat-val">0</span><span class="stat-lbl">Max ms</span></a>
         </div>
       </div>
     </section>
   </div>
 
   <div class="widget-layout" data-widget-layout-key="builder-chart">
-    <div class="widget-card" data-widget-key="widget-trend" data-widget-type="graph" data-widget-runtime-type="chart" data-widget-config='{"title":"Status timeline","chartType":"bar","xField":"day","yField":"health","aggregation":"min","uniformBars":true,"adaptiveBucket":true,"display":{"showLegend":false,"showAxes":true,"showGrid":false,"showLabels":false}}' style="--widget-data-primary:#6fc99a;" data-default-span="6" data-default-grid-col="1" data-default-grid-row="7" data-grid-col="1" data-grid-row="7" data-grid-row-span="3"></div>
+    <div class="widget-card" data-widget-key="widget-trend" data-widget-type="graph" data-widget-runtime-type="chart" data-widget-config='{"title":"Status timeline","chartType":"bar","xField":"day","yField":"health","aggregation":"min","uniformBars":true,"adaptiveBucket":true,"display":{"showLegend":false,"showAxes":true,"showGrid":false,"showLabels":false}}' style="--widget-data-primary:#6fc99a;" data-default-span="6" data-default-grid-col="1" data-default-grid-row="5" data-grid-col="1" data-grid-row="5" data-grid-row-span="3"></div>
   </div>
 
   <div class="widget-layout" data-widget-layout-key="builder-table">
-    <div class="widget-card" data-widget-key="widget-history" data-widget-type="table" data-widget-runtime-type="table" data-widget-config='{"title":"Recent checks","columns":["checked","result","detail"],"sortBy":"checkedAt","sortDirection":"desc","limit":2000}' data-default-span="6" data-default-grid-col="1" data-default-grid-row="10" data-grid-col="1" data-grid-row="10" data-grid-row-span="3"></div>
+    <div class="widget-card" data-widget-key="widget-history" data-widget-type="table" data-widget-runtime-type="table" data-widget-config='{"title":"Recent checks","columns":["checked","result","detail"],"sortBy":"checkedAt","sortDirection":"desc","limit":2000}' data-default-span="6" data-default-grid-col="1" data-default-grid-row="8" data-grid-col="1" data-grid-row="8" data-grid-row-span="3"></div>
   </div>
 </div>
 
