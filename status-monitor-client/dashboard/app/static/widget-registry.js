@@ -822,17 +822,29 @@
       const card = element?.closest?.(".widget-card") || element;
       const ds = card?.dataset || {};
       const drilled = !!(ds.drillStart && ds.drillEnd);
+      // Granularity tracks the size of the window in view — the drill range when
+      // drilled in, otherwise the SELECTED timeframe (not how much data happens
+      // to exist), so a week always buckets by day and a year by month even with
+      // only a few days of history. ≤1.5h shows individual pings, then hour /
+      // day / month. Clicking a bucket narrows the range and drops a level.
       let scoped = rows;
+      let spanH;
       if (drilled) {
         const a = Date.parse(ds.drillStart), b = Date.parse(ds.drillEnd);
         scoped = rows.filter((r) => { const t = Date.parse(r?.checkedAt || r?.date); return Number.isFinite(t) && t >= a && t <= b; });
+        spanH = (b - a) / 3600000;
+      } else {
+        const layoutKey = element?.closest?.("[data-widget-layout-key]")?.dataset?.widgetLayoutKey;
+        const tf = (typeof window !== "undefined" && window.dashboardTimeframeRuntime?.activeRange?.(layoutKey)) || null;
+        const bound = (v, end) => (!v ? NaN : (String(v).includes("T") ? Date.parse(v) : Date.parse(`${v}T${end ? "23:59:59" : "00:00:00"}`)));
+        const a = bound(tf?.start, false), b = bound(tf?.end, true);
+        if (Number.isFinite(a) && Number.isFinite(b)) {
+          spanH = (b - a) / 3600000;
+        } else {
+          const times = scoped.map((r) => Date.parse(r?.checkedAt || r?.date)).filter(Number.isFinite);
+          spanH = times.length ? (Math.max(...times) - Math.min(...times)) / 3600000 : 0;
+        }
       }
-      // Granularity follows the span of the rows in view. An hour or less shows
-      // the individual pings themselves; wider windows aggregate up to hour /
-      // day / month buckets. Clicking a bucket narrows the range, which drops to
-      // the next finer granularity automatically.
-      const times = scoped.map((r) => Date.parse(r?.checkedAt || r?.date)).filter(Number.isFinite);
-      const spanH = times.length ? (Math.max(...times) - Math.min(...times)) / 3600000 : 0;
       const level = spanH <= 1.5 ? "ping" : spanH <= 50 ? "hour" : spanH <= 24 * 70 ? "day" : "month";
       const bucketInfo = (iso) => {
         const d = new Date(iso);
