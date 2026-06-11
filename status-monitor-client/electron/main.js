@@ -80,6 +80,10 @@ const companies = new Map();
 // Persistent roster of every company ever seen: id -> { id, label, lastSeen }.
 // Lets offline clients keep their tab (shown grey) when their checks go quiet.
 let roster = new Map();
+// "<projectId>/<systemId>" -> last activity (ms). Fed by heartbeats and any
+// check/connection message, so a company is online whenever its monitoring
+// agent is alive — even if an individual circuit check publishes slowly.
+const systemActivity = new Map();
 let isQuitting = false;
 let popoverMode = 'peek';        // 'peek' | 'expanded'
 let popoverPinned = false;
@@ -146,7 +150,8 @@ function checkToPing(p) {
   if (Number(p.packetLoss) > 0) bits.push(`${p.packetLoss}% loss`);
   if (p.error) bits.push(String(p.error));
   return {
-    checkedAt: p.checkedAt || new Date().toISOString(),
+    // checks/ use checkedAt; connections/ use lastReceived.
+    checkedAt: p.checkedAt || p.lastReceived || new Date().toISOString(),
     status,
     machine: p.label || p.id || '',
     checkId: p.id || '',
@@ -157,12 +162,15 @@ function checkToPing(p) {
 
 const MAX_PINGS_PER_COMPANY = 3000;
 
-function ingestCheck(payload) {
+function ingestCheck(payload, system) {
   if (!payload || payload.available === undefined) return null;
   const co = companyForCheck(payload.label, payload.id);
   rememberCompany(co);
   let entry = companies.get(co.id);
-  if (!entry) { entry = { id: co.id, label: co.label, pings: [], lastByCheck: new Map() }; companies.set(co.id, entry); }
+  if (!entry) { entry = { id: co.id, label: co.label, pings: [], lastByCheck: new Map(), systems: new Set() }; companies.set(co.id, entry); }
+  // Record which monitoring agent(s) cover this company so liveness can be judged
+  // by the agent's heartbeat, not by one (possibly slow) check's timestamp.
+  if (system) entry.systems.add(system);
   const ping = checkToPing(payload);
   const prev = entry.lastByCheck.get(ping.checkId);
   if (prev && prev.checkedAt === ping.checkedAt) return null; // retained re-delivery / duplicate
@@ -219,8 +227,9 @@ function companyWorst(entry) {
 
 function companyOnline(entry) {
   const now = Date.now();
-  for (const ping of entry.lastByCheck.values()) {
-    if (ping.checkedAt && now - new Date(ping.checkedAt).getTime() < ONLINE_MS) return true;
+  // Online if any covering agent has reported (heartbeat or check) recently.
+  for (const sys of entry.systems || []) {
+    if (now - (systemActivity.get(sys) || 0) < ONLINE_MS) return true;
   }
   return false;
 }
@@ -282,15 +291,41 @@ function connectMqtt() {
   mqttClient = mqtt.connect(url, { clean: true, reconnectPeriod: 15_000 });
 
   mqttClient.on('connect', () => {
-    console.log('[MQTT] Connected — subscribing to +/+/checks/+');
-    mqttClient.subscribe('+/+/checks/+', { qos: 0 });
+    console.log('[MQTT] Connected — subscribing to checks, connections, heartbeats');
+    // Local server checks live under <proj>/<sys>/checks/<id>; client WAN circuits
+    // (the connection tests) live under connections/<subject>/<proj>/<sys>/<id>;
+    // each agent's liveness comes from <proj>/<sys>/heartbeat.
+    mqttClient.subscribe(['+/+/checks/+', 'connections/#', '+/+/heartbeat'], { qos: 0 });
   });
 
   mqttClient.on('message', (topic, message) => {
-    if (!topic.includes('/checks/')) return;
     let payload;
     try { payload = JSON.parse(message.toString()); } catch { return; }
-    const res = ingestCheck(payload);
+    const parts = topic.split('/');
+
+    // Heartbeat: just marks the agent (system) alive — used for online/offline.
+    if (topic.endsWith('/heartbeat')) {
+      const system = `${parts[0]}/${parts[1]}`;
+      const ts = payload.publishedAt ? new Date(payload.publishedAt).getTime() : 0;
+      if (ts) systemActivity.set(system, Math.max(systemActivity.get(system) || 0, ts));
+      setConnectionState('live');
+      return;
+    }
+
+    // Identify the publishing agent from the topic shape.
+    let system = null;
+    if (topic.includes('/checks/')) {
+      system = `${parts[0]}/${parts[1]}`;               // <proj>/<sys>/checks/<id>
+    } else if (parts[0] === 'connections' && parts.length >= 5) {
+      system = `${parts[2]}/${parts[3]}`;               // connections/<subject>/<proj>/<sys>/<id>
+    } else {
+      return; // ignore legacy <proj>/<sys>/status and anything else
+    }
+
+    const tts = payload.checkedAt || payload.lastReceived;
+    if (tts) systemActivity.set(system, Math.max(systemActivity.get(system) || 0, new Date(tts).getTime()));
+
+    const res = ingestCheck(payload, system);
     if (!res) return;
     broadcastCheck(res.companyId, res.ping);
 
