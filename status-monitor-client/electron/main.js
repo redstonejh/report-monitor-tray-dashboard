@@ -242,7 +242,9 @@ function companyList() {
       checks: e.lastByCheck.size,
     });
   }
-  return [...out.values()].sort((a, b) => a.label.localeCompare(b.label));
+  // Live clients first (left), offline clients last (right); alphabetical within each.
+  return [...out.values()].sort((a, b) =>
+    (Number(b.online) - Number(a.online)) || a.label.localeCompare(b.label));
 }
 
 // Aggregate health across the live companies — drives the tray icon + popover.
