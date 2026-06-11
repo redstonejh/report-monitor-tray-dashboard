@@ -256,18 +256,29 @@ function companyList() {
     (Number(b.online) - Number(a.online)) || a.label.localeCompare(b.label));
 }
 
-// Aggregate health across the live companies — drives the tray icon + popover.
+// Aggregate health across the whole fleet — drives the tray icon, tooltip,
+// right-click menu, and popover.
 function overallSnapshot() {
   const list = companyList();
-  const live = list.filter((c) => c.online);
-  const down = live.filter((c) => c.status === 'red').length;
-  const warn = live.filter((c) => c.status === 'yellow').length;
-  const offline = list.length - live.length;
-  const status = down ? 'red' : warn ? 'yellow' : 'green';
-  const detail = list.length
-    ? `${down ? `${down} down · ` : warn ? `${warn} degraded · ` : ''}${live.length} live${offline ? ` · ${offline} offline` : ''}`
-    : 'Waiting for data…';
-  return { status, detail, checkedAt: lastCheckedAt };
+  const down = list.filter((c) => c.online && c.status === 'red').map((c) => c.label);
+  const degraded = list.filter((c) => c.online && c.status === 'yellow').map((c) => c.label);
+  const offline = list.filter((c) => !c.online).map((c) => c.label);
+  // Red if a client is down; amber if a client is degraded OR we've lost
+  // monitoring on one (offline); green only when everything is live and healthy.
+  const status = down.length ? 'red' : (degraded.length || offline.length) ? 'yellow' : 'green';
+  let detail;
+  if (!list.length) {
+    detail = 'Waiting for data…';
+  } else if (status === 'green') {
+    detail = `All ${list.length} clients healthy`;
+  } else {
+    const parts = [];
+    if (down.length) parts.push(`${down.length} down`);
+    if (degraded.length) parts.push(`${degraded.length} degraded`);
+    if (offline.length) parts.push(`${offline.length} offline`);
+    detail = parts.join(' · ');
+  }
+  return { status, detail, down, degraded, offline, live: list.length - offline.length, total: list.length, checkedAt: lastCheckedAt };
 }
 
 function statusSnapshot() {
@@ -373,21 +384,37 @@ function startStalenessCheck() {
 
 function statusLabel(s) {
   const labels = {
-    green: 'All good', yellow: 'Needs attention',
-    red: 'Source issue', grey: 'Connecting…', black: 'No updates',
+    green: 'All healthy', yellow: 'Attention needed',
+    red: 'Client down', grey: 'Connecting…', black: 'No updates',
   };
   return labels[s] || 'Unknown';
 }
 
-function buildContextMenu(status) {
-  return Menu.buildFromTemplate([
-    { label: 'Status Monitor', enabled: false },
-    { label: `Status: ${statusLabel(status)}`, enabled: false },
+function buildContextMenu() {
+  const items = [{ label: 'Status Monitor', enabled: false }];
+  const snap = (auth.currentUser() && currentConnectionState === 'live') ? overallSnapshot() : null;
+  if (!snap) {
+    items.push({ label: `Status: ${statusLabel(currentConnectionState)}`, enabled: false });
+  } else {
+    items.push({ label: snap.detail, enabled: false });
+    // Name the clients that need attention so the menu tells the whole story.
+    const addNames = (prefix, names) => {
+      if (!names.length) return;
+      items.push({ type: 'separator' });
+      for (const n of names.slice(0, 8)) items.push({ label: `   ${prefix} ${n}`, enabled: false });
+      if (names.length > 8) items.push({ label: `   …and ${names.length - 8} more`, enabled: false });
+    };
+    addNames('✕', snap.down);       // down
+    addNames('▲', snap.degraded);   // degraded
+    addNames('○', snap.offline);    // offline (lost monitoring)
+  }
+  items.push(
     { type: 'separator' },
     { label: 'Open Details', click: () => showExpandedWindow(true) },
     { type: 'separator' },
     { label: 'Quit', click: () => app.quit() },
-  ]);
+  );
+  return Menu.buildFromTemplate(items);
 }
 
 let lastTrayStatus = 'grey';
@@ -396,11 +423,17 @@ function updateTray(status) {
   lastTrayStatus = status;
   // No status is revealed until someone is signed in — the tray icon stays
   // neutral grey while signed out.
-  const effective = auth.currentUser() ? status : 'grey';
+  const signedIn = !!auth.currentUser();
+  const effective = signedIn ? status : 'grey';
   tray.setImage(icons[effective] || icons.grey);
-  tray.setToolTip('');
-  // Context menu is popped up manually on right-click (see tray 'right-click'
-  // handler) so that LEFT click is reserved for the popover toggle.
+  // A hover tooltip summarizes the fleet — and is the reliable fallback when the
+  // hover popover can't show (e.g. the icon is in the Windows overflow flyout).
+  let tip = 'Status Monitor';
+  if (signedIn) {
+    if (currentConnectionState !== 'live') tip += ` — ${statusLabel(currentConnectionState)}`;
+    else if (currentStatus?.detail) tip += ` — ${currentStatus.detail}`;
+  }
+  tray.setToolTip(tip);
 }
 
 // ─── Main window ──────────────────────────────────────────────────────────────
@@ -908,12 +941,9 @@ app.whenReady().then(() => {
     });
   }
 
-  // RIGHT click shows the show/quit context menu.
+  // RIGHT click shows the status breakdown + show/quit menu.
   tray.on('right-click', () => {
-    const label = currentConnectionState === 'live' && currentStatus
-      ? currentStatus.status
-      : currentConnectionState;
-    tray.popUpContextMenu(buildContextMenu(label));
+    tray.popUpContextMenu(buildContextMenu());
   });
 
   startStalenessCheck();
