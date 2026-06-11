@@ -427,12 +427,29 @@ async function loadCompanyHistory(id) {
   } catch {}
 }
 
+// Slide the dashboard content in from the direction of travel (1 = next/right,
+// -1 = prev/left) for a little swipe between companies.
+function animateCompanySwitch(dir) {
+  const grid = document.querySelector(".dashboard-layout-grid");
+  if (!grid || !dir) return;
+  const cls = dir < 0 ? "company-switch-prev" : "company-switch-next";
+  grid.classList.remove("company-switch-prev", "company-switch-next");
+  void grid.offsetWidth; // restart the animation
+  grid.classList.add(cls);
+  setTimeout(() => grid.classList.remove(cls), 300);
+}
+
 async function setActiveCompany(id) {
   if (!id || id === companyState.active) return;
+  const all = companyState.companies;
+  const from = all.findIndex((c) => c.id === companyState.active);
+  const to = all.findIndex((c) => c.id === id);
+  const dir = (from < 0 || to < 0) ? 1 : Math.sign(to - from);
   companyState.active = id;
   renderCompanyTabs();
   if (!(companyState.pingsById.get(id) || []).length) await loadCompanyHistory(id);
   publish();
+  animateCompanySwitch(dir);
 }
 
 // ── Company tab bar (scrollable, with "…" overflow menus on each end) ──────────
@@ -453,7 +470,12 @@ function injectCompanyCss() {
   .company-overflow:hover{ opacity:1; }
   .company-overflow-menu{ position:fixed; z-index:9999; max-height:62vh; overflow-y:auto; background:rgba(28,30,38,0.96); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:6px; box-shadow:0 12px 40px rgba(0,0,0,0.45); display:flex; flex-direction:column; gap:2px; min-width:200px; }
   .company-overflow-item{ display:block; appearance:none; -webkit-appearance:none; padding:8px 12px; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:rgba(255,255,255,0.85); font:inherit; font-size:0.95rem; text-align:left; border-radius:6px; cursor:pointer; white-space:nowrap; }
-  .company-overflow-item:hover{ background:rgba(255,255,255,0.1) !important; color:#fff; }`;
+  .company-overflow-item:hover{ background:rgba(255,255,255,0.1) !important; color:#fff; }
+  @keyframes company-slide-next{ from{ transform:translateX(30px); opacity:.25; } to{ transform:translateX(0); opacity:1; } }
+  @keyframes company-slide-prev{ from{ transform:translateX(-30px); opacity:.25; } to{ transform:translateX(0); opacity:1; } }
+  .dashboard-layout-grid.company-switch-next{ animation:company-slide-next 260ms cubic-bezier(.22,1,.36,1); }
+  .dashboard-layout-grid.company-switch-prev{ animation:company-slide-prev 260ms cubic-bezier(.22,1,.36,1); }
+  @media (prefers-reduced-motion: reduce){ .dashboard-layout-grid.company-switch-next, .dashboard-layout-grid.company-switch-prev{ animation:none !important; } }`;
   document.head.appendChild(style);
 }
 
