@@ -317,12 +317,15 @@ function injectStatusIndicatorStyles() {
       background: var(--bar-color, #8e8e93);
       opacity: 0.92;
     }
-    /* Counter widgets read by meaning, but kept as muted/desaturated tints so
-       they harmonise with the glass surface rather than shouting. Scoped to
-       :not(.db-panel-custom-color) so a manual recolor still wins. */
-    .widget-card[data-widget-key="widget-ok"]:not(.db-panel-custom-color) .stat-val { color: #6fc99a !important; }
-    .widget-card[data-widget-key="widget-warn"]:not(.db-panel-custom-color) .stat-val { color: #d4ab63 !important; }
-    .widget-card[data-widget-key="widget-error"]:not(.db-panel-custom-color) .stat-val { color: #e1857c !important; }
+    /* All widget text is always pure white (numbers + labels), regardless of
+       status, theme ink, or per-tab accent. */
+    .widget-card .stat-val,
+    .widget-card .stat-lbl,
+    .stat-card .stat-val,
+    .stat-card .stat-lbl {
+      color: #ffffff !important;
+      -webkit-text-fill-color: #ffffff !important;
+    }
   `;
   document.head.appendChild(style);
 }
