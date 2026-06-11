@@ -818,6 +818,7 @@
     // an individual ping is binary (green = succeeded, red = not).
     if (config.adaptiveBucket && Array.isArray(rows)) {
       const pad = (n) => String(n).padStart(2, "0");
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const card = element?.closest?.(".widget-card") || element;
       const ds = card?.dataset || {};
       const drilled = !!(ds.drillStart && ds.drillEnd);
@@ -835,10 +836,10 @@
       const bucketInfo = (iso) => {
         const d = new Date(iso);
         if (level === "ping") return { key: String(iso), label: `${pad(d.getHours())}:${pad(d.getMinutes())}`, start: "", end: "", next: "" };
-        if (level === "hour") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()); return { key: `h${s.getTime()}`, label: `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:00`, start: s.toISOString(), end: new Date(s.getTime() + 3600000 - 1).toISOString(), next: "ping" }; }
-        if (level === "day") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return { key: `d${s.getTime()}`, label: `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, start: s.toISOString(), end: new Date(s.getTime() + 86400000 - 1).toISOString(), next: "hour" }; }
+        if (level === "hour") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()); return { key: `h${s.getTime()}`, label: `${pad(d.getHours())}:00`, start: s.toISOString(), end: new Date(s.getTime() + 3600000 - 1).toISOString(), next: "ping" }; }
+        if (level === "day") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return { key: `d${s.getTime()}`, label: `${MONTHS[d.getMonth()]} ${d.getDate()}`, start: s.toISOString(), end: new Date(s.getTime() + 86400000 - 1).toISOString(), next: "hour" }; }
         const s = new Date(d.getFullYear(), d.getMonth(), 1);
-        return { key: `m${s.getTime()}`, label: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, start: s.toISOString(), end: new Date(new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime() - 1).toISOString(), next: "day" };
+        return { key: `m${s.getTime()}`, label: MONTHS[d.getMonth()], start: s.toISOString(), end: new Date(new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime() - 1).toISOString(), next: "day" };
       };
       const buckets = new Map();
       for (const r of scoped) {
@@ -1119,6 +1120,10 @@
         const tbody = document.createElement("tbody");
         table.getRowModel().rows.forEach((row) => {
           const tr = document.createElement("tr");
+          // Tag the row with its pass/fail result so it can subtly highlight
+          // green/red on hover.
+          const rowResult = row.original?.result;
+          if (rowResult) tr.dataset.result = rowResult;
           row.getVisibleCells().forEach((cell) => {
             const td = document.createElement("td");
             const value = String(cell.getValue() ?? "");

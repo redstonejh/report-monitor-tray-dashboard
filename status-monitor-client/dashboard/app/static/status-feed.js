@@ -363,6 +363,8 @@ const historyRow = (entry) => ({
   checked: formatChecked(entry.checkedAt),
   day: formatDay(entry.checkedAt),
   status: entry.status,
+  // A ping is binary: it passed (healthy) or it did not.
+  result: entry.status === "green" ? "Pass" : "Fail",
   stage: entry.stage || "",
   detail: entry.detail || "",
   lastSuccess: entry.lastSuccess || "",

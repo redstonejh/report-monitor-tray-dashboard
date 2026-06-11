@@ -2383,6 +2383,12 @@ that put the drawer on top — palette * has to declare its tier explicitly. */ 
   letter-spacing: 0;
 }.runtime-table td{
   color: var(--widget-content-fg);
+}.runtime-table tbody tr{
+  transition: background-color 120ms ease;
+}.runtime-table tbody tr[data-result="Pass"]:hover{
+  background: rgba(111, 201, 154, 0.14);
+}.runtime-table tbody tr[data-result="Fail"]:hover{
+  background: rgba(225, 133, 124, 0.16);
 }.runtime-table-density-compact{
   gap: 2px;
 }.runtime-table-density-compact .runtime-table-meta{
