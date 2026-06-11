@@ -393,6 +393,17 @@ const companyState = {
   pingsById: new Map(),  // id -> [ping]
 };
 
+// Trim protocol/source noise from a tab title — "(ICMP)", "(TCP 23)",
+// "(from … NOC)" — while keeping meaningful parentheticals like a location
+// "(H St.)". The full name stays available via the tab's title tooltip.
+const conciseLabel = (s) => {
+  const trimmed = String(s || "")
+    .replace(/\s*\((?:ICMP|TCP|UDP|HTTP|HTTPS|from\b)[^)]*\)\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return trimmed || String(s || "");
+};
+
 // One company's pings → widget rows (the shape the widgets already read).
 function rowsForActive() {
   return (companyState.pingsById.get(companyState.active) || []).map(historyRow);
@@ -504,7 +515,8 @@ function openOverflowMenu(side, anchor) {
     const item = document.createElement("button");
     item.type = "button";
     item.className = "company-overflow-item";
-    item.textContent = co.label;
+    item.textContent = conciseLabel(co.label);
+    item.title = co.label;
     item.addEventListener("click", () => { closeOverflowMenu(); setActiveCompany(id); });
     menu.appendChild(item);
   }
@@ -556,9 +568,10 @@ function renderCompanyTabs() {
     b.dataset.companyId = co.id;
     b.setAttribute("aria-pressed", String(isActive));
     b.setAttribute("tabindex", isActive ? "0" : "-1");
+    b.title = co.label; // full name on hover
     const label = document.createElement("span");
     label.className = "workspace-tab-label";
-    label.textContent = co.label;
+    label.textContent = conciseLabel(co.label);
     b.appendChild(label);
     b.addEventListener("click", () => setActiveCompany(co.id));
     scroller.appendChild(b);
