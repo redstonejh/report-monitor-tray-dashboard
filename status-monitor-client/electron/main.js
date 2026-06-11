@@ -153,6 +153,9 @@ function checkToPing(p) {
     // checks/ use checkedAt; connections/ use lastReceived.
     checkedAt: p.checkedAt || p.lastReceived || new Date().toISOString(),
     status,
+    // Numeric latency for the stat cards; null when unreachable so it's excluded
+    // from avg/min/max rather than counted as 0 ms.
+    latencyMs: (p.available !== false && p.latencyMs != null && p.latencyMs !== '') ? Number(p.latencyMs) : null,
     machine: p.label || p.id || '',
     checkId: p.id || '',
     host: p.host || '',

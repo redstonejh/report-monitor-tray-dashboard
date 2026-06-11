@@ -1862,7 +1862,11 @@
     renderContent: ({ instance }) => {
       const config = instance.config || {};
       const { total } = statMetricContext({ instance });
-      return `<span class="stat-val">${escapeHtml(formatMetricValue(total, config.format))}</span>`;
+      // Always include the label in the body: these cards render at "tiny"
+      // density, which hides the shell header — without this they were bare
+      // numbers with no indication of what they measure.
+      return `<span class="stat-val">${escapeHtml(formatMetricValue(total, config.format))}</span>`
+        + `<span class="stat-lbl">${escapeHtml(statLabelFor(config))}</span>`;
     },
   });
 

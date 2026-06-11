@@ -366,6 +366,8 @@ const historyRow = (entry) => ({
   // A ping is binary: it passed (healthy) or it did not.
   result: entry.status === "green" ? "Pass" : "Fail",
   machine: entry.machine || "",
+  // Numeric latency (ms) for the stat cards; null/undefined for down pings.
+  latencyMs: entry.latencyMs ?? null,
   stage: entry.stage || "",
   detail: entry.detail || "",
   lastSuccess: entry.lastSuccess || "",
@@ -409,19 +411,35 @@ function rowsForActive() {
   return (companyState.pingsById.get(companyState.active) || []).map(historyRow);
 }
 
+// The four stat cards summarize the active company's latency + failures. The
+// config (metric/valueField/title) is set once; the runtime aggregates over the
+// timeframe-filtered rows, so the numbers track the selected time range.
+let statConfigSent = false;
 function publish() {
   const dataRuntime = window.dashboardWidgetDataRuntime;
   if (!dataRuntime?.ingest) return;
   const rows = rowsForActive();
+  // Latency cards only see pings that actually responded (a real ms value);
+  // down pings have no latency and would otherwise skew avg/min toward 0.
+  const latencyRows = rows.filter((r) => r.latencyMs != null);
+  const failRows = rows.filter((r) => r.status === "red");
+  const widgets = {
+    "widget-checks": { rows: latencyRows }, // Avg ms  (avg latencyMs)
+    "widget-ok": { rows: latencyRows },     // Min ms  (min latencyMs)
+    "widget-warn": { rows: latencyRows },   // Max ms  (max latencyMs)
+    "widget-error": { rows: failRows },     // Fails   (count of down pings)
+  };
+  if (!statConfigSent) {
+    statConfigSent = true;
+    widgets["widget-checks"].config = { metric: "avg", valueField: "latencyMs", label: "Avg ms", title: "Avg ms", format: "number" };
+    widgets["widget-ok"].config = { metric: "min", valueField: "latencyMs", label: "Min ms", title: "Min ms", format: "number" };
+    widgets["widget-warn"].config = { metric: "max", valueField: "latencyMs", label: "Max ms", title: "Max ms", format: "number" };
+    widgets["widget-error"].config = { metric: "count", label: "Fails", title: "Fails", format: "number" };
+  }
   dataRuntime.ingest({
     default: { rows },
     types: { status: { rows: rows.length ? [rows[rows.length - 1]] : [currentStatusRow()] } },
-    widgets: {
-      "widget-checks": { rows },
-      "widget-ok": { rows: rows.filter((r) => r.status === "green") },
-      "widget-warn": { rows: rows.filter((r) => r.status === "yellow") },
-      "widget-error": { rows: rows.filter((r) => r.status === "red") },
-    },
+    widgets,
   });
 }
 
