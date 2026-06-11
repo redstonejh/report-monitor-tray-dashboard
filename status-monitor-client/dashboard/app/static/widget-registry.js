@@ -778,12 +778,23 @@
       tooltip: { trigger: "item", confine: true },
       grid: { left: 28, right: 12, top: 14, bottom: 24, containLabel: true },
     };
+    // When a chart plots the 0–100 health score, colour each value by tier
+    // (red <50 / amber 50–80 / green ≥80) so the graph reflects the condition
+    // rather than a flat green.
+    const healthTierVisualMap = () => (chartValueField(config) === "health" ? {
+      visualMap: { show: false, type: "piecewise", pieces: [
+        { lt: 50, color: "#e1857c" },
+        { gte: 50, lt: 80, color: "#d4ab63" },
+        { gte: 80, color: "#6fc99a" },
+      ] },
+    } : null);
     if (["bar", "horizontal-bar", "grouped-bar", "stacked-bar", "lollipop"].includes(chartType)) {
       const usesSeries = ["grouped-bar", "stacked-bar"].includes(chartType);
       const model = chartSeriesData(rows, config, { series: usesSeries });
       const horizontal = chartType === "horizontal-bar";
       return {
         ...base,
+        ...healthTierVisualMap(),
         tooltip: { trigger: "axis", confine: true },
         legend: display.showLegend && usesSeries ? { bottom: 0, textStyle: { color: axis.text, fontSize: 10 } } : undefined,
         xAxis: horizontal ? { type: "value", axisLabel: { color: axis.text }, splitLine: { lineStyle: { color: axis.line } } } : { type: "category", data: model.categories, axisLabel: { color: axis.text }, axisLine: { lineStyle: { color: axis.line } } },
@@ -803,6 +814,7 @@
       const model = chartSeriesData(rows, config, { series: usesSeries });
       return {
         ...base,
+        ...healthTierVisualMap(),
         tooltip: { trigger: "axis", confine: true },
         grid: chartType === "sparkline" ? { left: 4, right: 4, top: 4, bottom: 4 } : base.grid,
         legend: display.showLegend && usesSeries && chartType !== "sparkline" ? { bottom: 0, textStyle: { color: axis.text, fontSize: 10 } } : undefined,
@@ -844,6 +856,7 @@
       })).filter((point) => point.x != null && point.y != null).slice(0, chartLimit(config, 80));
       return {
         ...base,
+        ...healthTierVisualMap(),
         xAxis: { type: "value", axisLabel: { color: axis.text }, splitLine: { lineStyle: { color: axis.line } } },
         yAxis: { type: "value", axisLabel: { color: axis.text }, splitLine: { lineStyle: { color: axis.line } } },
         series: [{

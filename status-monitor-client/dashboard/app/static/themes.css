@@ -4951,6 +4951,9 @@ no card. Active * filter is indicated by a subtle underline + slightly higher * 
 }
 .widget-card[data-widget-definition="timeframe"] > .widget-shell{
   flex: 0 0 auto !important;
+}
+.widget-card[data-widget-definition="timeframe"] .timeframe-body{
+  justify-content: center !important;
 }.timeframe-filter-btn{
   appearance: none !important;
   -webkit-appearance: none !important;

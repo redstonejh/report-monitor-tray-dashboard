@@ -348,10 +348,20 @@ const formatChecked = (iso) => {
   return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
+const formatDay = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  // "MM-DD": one bucket per day, sorts chronologically as a string.
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
 const historyRow = (entry) => ({
   date: entry.checkedAt,
   checkedAt: entry.checkedAt,
   checked: formatChecked(entry.checkedAt),
+  day: formatDay(entry.checkedAt),
   status: entry.status,
   stage: entry.stage || "",
   detail: entry.detail || "",
