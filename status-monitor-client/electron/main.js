@@ -572,6 +572,22 @@ function dashboardIndexPath() {
   return candidates.find((candidate) => fs.existsSync(candidate)) || candidates[0];
 }
 
+// Seed a brand-new account's layout store with the shipped default layout
+// (dashboard/default-layout.json) so every signed-in user lands on it. Existing
+// accounts keep their own saved layout (the store file already exists).
+function seedDefaultLayoutForUser(username) {
+  try {
+    if (!username) return;
+    const key = String(username).replace(/[^a-z0-9_-]/gi, '_') || '_anon';
+    const storePath = path.join(os.homedir(), '.status-monitor', `dashboard-layout-store--${key}.json`);
+    if (fs.existsSync(storePath)) return;
+    const defaultPath = path.join(path.dirname(dashboardIndexPath()), 'default-layout.json');
+    if (!fs.existsSync(defaultPath)) return;
+    fs.mkdirSync(path.dirname(storePath), { recursive: true });
+    fs.copyFileSync(defaultPath, storePath);
+  } catch {}
+}
+
 function createDashboardWindow() {
   if (dashboardWindow && !dashboardWindow.isDestroyed()) {
     dashboardWindow.show();
@@ -600,6 +616,7 @@ function createDashboardWindow() {
     },
   });
 
+  seedDefaultLayoutForUser(auth.currentUser());
   dashboardWindow.loadFile(dashboardIndexPath());
 
   dashboardWindow.once('ready-to-show', () => {
@@ -976,7 +993,7 @@ ipcMain.handle('auth:session', () => auth.session());
 
 ipcMain.handle('auth:login', (_e, { username, password } = {}) => {
   const result = auth.login(username, password);
-  if (result.ok) { broadcastAuth(); updateTray(lastTrayStatus); }
+  if (result.ok) { seedDefaultLayoutForUser(auth.currentUser()); broadcastAuth(); updateTray(lastTrayStatus); }
   return result;
 });
 
@@ -989,7 +1006,7 @@ ipcMain.handle('auth:logout', () => {
 
 ipcMain.handle('auth:register', (_e, payload) => {
   const result = auth.register(payload || {});
-  if (result.ok) { broadcastAuth(); updateTray(lastTrayStatus); }
+  if (result.ok) { seedDefaultLayoutForUser(auth.currentUser()); broadcastAuth(); updateTray(lastTrayStatus); }
   return result;
 });
 
