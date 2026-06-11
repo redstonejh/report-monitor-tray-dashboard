@@ -442,17 +442,14 @@ function injectCompanyCss() {
   if (companyCssInjected) return;
   companyCssInjected = true;
   const style = document.createElement("style");
-  // Company tabs are the unchanged .workspace-tab. This only lets the strip
-  // scroll when there are many, and styles the "…" overflow controls — with the
-  // base <button> blue background/shadow explicitly removed.
+  // Company tabs are the unchanged .workspace-tab. Only a fixed window of them is
+  // shown at once; a "…" on each end opens the rest. The base <button> blue
+  // background/shadow is explicitly removed from the "…" controls.
   style.textContent = `
-  .company-tab-bar{ position:relative; width:min(100%, 1100px); max-width:100%; margin:2px auto 0; box-sizing:border-box; }
-  .company-tab-scroller{ display:flex; align-items:center; justify-content:safe center; gap:clamp(14px,3.5vw,38px); overflow-x:auto; scrollbar-width:none; padding:0 40px; box-sizing:border-box; }
-  .company-tab-scroller::-webkit-scrollbar{ display:none; }
+  .company-tab-bar{ display:flex; align-items:center; justify-content:center; gap:clamp(10px,2.4vw,24px); width:min(100%, 1000px); max-width:100%; margin:2px auto 0; box-sizing:border-box; padding:0 6px; }
+  .company-tab-scroller{ display:flex; align-items:center; justify-content:center; gap:clamp(14px,3.5vw,38px); min-width:0; }
   .company-tab-scroller .workspace-tab{ flex:0 0 auto; --tab-accent:#edf2f8; }
-  .company-overflow{ position:absolute; top:50%; transform:translateY(-50%); appearance:none; -webkit-appearance:none; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:#edf2f8; opacity:0.5; font-size:clamp(18px,2.5vw,27px); line-height:1; padding:0 8px; cursor:pointer; z-index:2; }
-  .company-overflow-left{ left:0; }
-  .company-overflow-right{ right:0; }
+  .company-overflow{ flex:0 0 auto; appearance:none; -webkit-appearance:none; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:#edf2f8; opacity:0.5; font-size:clamp(18px,2.5vw,27px); line-height:1; padding:0 4px; cursor:pointer; }
   .company-overflow:hover{ opacity:1; }
   .company-overflow-menu{ position:fixed; z-index:9999; max-height:62vh; overflow-y:auto; background:rgba(28,30,38,0.96); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:6px; box-shadow:0 12px 40px rgba(0,0,0,0.45); display:flex; flex-direction:column; gap:2px; min-width:200px; }
   .company-overflow-item{ display:block; appearance:none; -webkit-appearance:none; padding:8px 12px; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:rgba(255,255,255,0.85); font:inherit; font-size:0.95rem; text-align:left; border-radius:6px; cursor:pointer; white-space:nowrap; }
@@ -470,11 +467,8 @@ function onDocClickForMenu(e) {
   if (companyMenuOpen && !companyMenuOpen.contains(e.target) && !e.target.closest(".company-overflow")) closeOverflowMenu();
 }
 function offscreenCompanies(side) {
-  const s = document.querySelector(".company-tab-scroller"); if (!s) return [];
-  const left = s.scrollLeft, right = s.scrollLeft + s.clientWidth;
-  return [...s.querySelectorAll(".workspace-tab")].filter((tab) => (
-    side === "left" ? tab.offsetLeft + tab.offsetWidth <= left + 4 : tab.offsetLeft >= right - 4
-  )).map((tab) => tab.dataset.companyId);
+  const bar = document.querySelector(".company-tab-bar"); if (!bar) return [];
+  return (side === "left" ? bar._leftHidden : bar._rightHidden) || [];
 }
 function openOverflowMenu(side, anchor) {
   if (companyMenuOpen) { closeOverflowMenu(); return; }
@@ -499,12 +493,8 @@ function openOverflowMenu(side, anchor) {
   companyMenuOpen = menu;
   setTimeout(() => document.addEventListener("click", onDocClickForMenu, true), 0);
 }
-function updateOverflow() {
-  const bar = document.querySelector(".company-tab-bar"); if (!bar) return;
-  const s = bar.querySelector(".company-tab-scroller");
-  bar.querySelector(".company-overflow-left").hidden = s.scrollLeft <= 2;
-  bar.querySelector(".company-overflow-right").hidden = s.scrollLeft + s.clientWidth >= s.scrollWidth - 2;
-}
+// Only a window of tabs is shown at once; the rest live behind the "…" menus.
+const VISIBLE_COMPANY_TABS = 4;
 
 function renderCompanyTabs() {
   injectCompanyCss();
@@ -519,21 +509,30 @@ function renderCompanyTabs() {
       + '<div class="company-tab-scroller"></div>'
       + '<button class="company-overflow company-overflow-right" type="button" aria-label="More companies (right)" hidden>…</button>';
     (wsBar?.parentElement || document.querySelector(".page") || document.body).insertBefore(bar, wsBar || null);
-    bar.querySelector(".company-tab-scroller").addEventListener("scroll", updateOverflow);
-    window.addEventListener("resize", updateOverflow);
     bar.querySelector(".company-overflow-left").addEventListener("click", (e) => openOverflowMenu("left", e.currentTarget));
     bar.querySelector(".company-overflow-right").addEventListener("click", (e) => openOverflowMenu("right", e.currentTarget));
   }
+  const all = companyState.companies;
+  const n = all.length;
+  let active = all.findIndex((c) => c.id === companyState.active);
+  if (active < 0) active = 0;
+  // Window of VISIBLE tabs, keeping the active one in view (second slot).
+  const start = Math.min(Math.max(0, active - 1), Math.max(0, n - VISIBLE_COMPANY_TABS));
+  const end = Math.min(n, start + VISIBLE_COMPANY_TABS);
+  bar._leftHidden = all.slice(0, start).map((c) => c.id);
+  bar._rightHidden = all.slice(end).map((c) => c.id);
+  bar.querySelector(".company-overflow-left").hidden = start <= 0;
+  bar.querySelector(".company-overflow-right").hidden = end >= n;
   const scroller = bar.querySelector(".company-tab-scroller");
   scroller.innerHTML = "";
-  for (const co of companyState.companies) {
-    const active = co.id === companyState.active;
+  for (const co of all.slice(start, end)) {
+    const isActive = co.id === companyState.active;
     const b = document.createElement("button");
     b.type = "button";
     b.className = "workspace-tab"; // reuse the existing tab styling exactly
     b.dataset.companyId = co.id;
-    b.setAttribute("aria-pressed", String(active));
-    b.setAttribute("tabindex", active ? "0" : "-1");
+    b.setAttribute("aria-pressed", String(isActive));
+    b.setAttribute("tabindex", isActive ? "0" : "-1");
     const label = document.createElement("span");
     label.className = "workspace-tab-label";
     label.textContent = co.label;
@@ -541,10 +540,6 @@ function renderCompanyTabs() {
     b.addEventListener("click", () => setActiveCompany(co.id));
     scroller.appendChild(b);
   }
-  requestAnimationFrame(() => {
-    document.querySelector('.company-tab-scroller .workspace-tab[aria-pressed="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
-    updateOverflow();
-  });
 }
 
 async function startFeed() {
