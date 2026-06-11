@@ -731,9 +731,12 @@ and ghost states */ .widget-card.widget-tools-open,
 }.panel-internal-widget-grid > .stat-card{
   padding: 8px 11px;
 }.panel-internal-widget-grid > .widget-card .stat-val{
-  font-size: clamp(18px, 2vw, 26px);
+  font-size: clamp(30px, 3.6vw, 52px);
+  font-weight: 700;
+  line-height: 1.05;
 }.panel-internal-widget-grid > .widget-card .stat-lbl{
-  font-size: 11px;
+  font-size: 14px;
+  letter-spacing: .01em;
 }.panel-internal-widget-grid > .widget-placeholder{
   min-height: var(--dashboard-grid-row-height);
 }.widget-row-break{

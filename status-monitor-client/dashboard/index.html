@@ -165,52 +165,12 @@
   <div class="stat-band widget-layout" data-widget-layout-key="builder">
     <div class="widget-card" data-widget-key="widget-timeframe" data-widget-type="timeframe" data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1"></div>
 
-    <a class="stat-card widget-card" data-widget-key="widget-checks" data-widget-type="tracker" data-default-span="1" data-default-grid-col="1" data-default-grid-row="2" data-grid-col="1" data-grid-row="2" data-default-title="Avg ms" href="#">
-      <span class="stat-val">0</span>
-      <span class="stat-lbl">Avg ms</span>
-    </a>
-
-    <a class="stat-card widget-card" data-widget-key="widget-ok" data-widget-type="tracker" data-default-span="1" data-default-grid-col="2" data-default-grid-row="2" data-grid-col="2" data-grid-row="2" data-default-title="Min ms" href="#">
-      <span class="stat-val">0</span>
-      <span class="stat-lbl">Min ms</span>
-    </a>
-
-    <a class="stat-card widget-card" data-widget-key="widget-warn" data-widget-type="tracker" data-default-span="1" data-default-grid-col="3" data-default-grid-row="2" data-grid-col="3" data-grid-row="2" data-default-title="Max ms" href="#">
-      <span class="stat-val">0</span>
-      <span class="stat-lbl">Max ms</span>
-    </a>
-
-    <a class="stat-card widget-card" data-widget-key="widget-error" data-widget-type="tracker" data-default-span="1" data-default-grid-col="4" data-default-grid-row="2" data-grid-col="4" data-grid-row="2" data-default-title="Fails" href="#">
-      <span class="stat-val">0</span>
-      <span class="stat-lbl">Fails</span>
-    </a>
   </div>
 
   <div class="panel-layout" data-layout-key="builder">
-    <section class="db-panel" data-panel-key="builder-uptime" data-default-span="2" data-default-grid-col="1" data-default-grid-row="3" data-grid-col="1" data-grid-row="3" data-grid-row-span="2" data-default-title="Health">
+    <section class="db-panel" data-panel-key="builder-metrics" data-default-span="6" data-default-grid-col="1" data-default-grid-row="2" data-grid-col="1" data-grid-row="2" data-grid-row-span="5" data-default-title="Metrics">
       <div class="db-panel-hd db-panel-hd-items">
-        <span class="db-panel-title">Health</span>
-        <span class="db-panel-count">0</span>
-        <div class="panel-tools">
-          <div class="panel-tool-drawer" aria-label="Panel tools">
-            <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
-            <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
-            <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
-            <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
-            <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#16a34a"><span class="color-icon" aria-hidden="true"></span></button>
-          </div>
-        </div>
-      </div>
-      <div class="db-panel-body">
-        <div class="panel-internal-widget-grid" data-widget-layout-key="builder-uptime">
-          <div class="widget-card" data-widget-key="widget-uptime" data-widget-type="graph" data-widget-runtime-type="chart" data-widget-config='{"title":"Health","chartType":"gauge","yField":"health","aggregation":"avg","display":{"showLegend":false,"showAxes":false,"showLabels":true}}' style="--widget-data-primary:#6fc99a;" data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="db-panel" data-panel-key="builder-trend" data-default-span="4" data-default-grid-col="3" data-default-grid-row="3" data-grid-col="3" data-grid-row="3" data-grid-row-span="2" data-default-title="Status timeline">
-      <div class="db-panel-hd db-panel-hd-items">
-        <span class="db-panel-title">Status timeline</span>
+        <span class="db-panel-title">Metrics</span>
         <span class="db-panel-count">0</span>
         <div class="panel-tools">
           <div class="panel-tool-drawer" aria-label="Panel tools">
@@ -223,32 +183,24 @@
         </div>
       </div>
       <div class="db-panel-body">
-        <div class="panel-internal-widget-grid" data-widget-layout-key="builder-trend">
-          <div class="widget-card" data-widget-key="widget-trend" data-widget-type="graph" data-widget-runtime-type="chart" data-widget-config='{"title":"Status timeline","chartType":"bar","xField":"day","yField":"health","aggregation":"min","uniformBars":true,"adaptiveBucket":true,"display":{"showLegend":false,"showAxes":true,"showGrid":false,"showLabels":false}}' style="--widget-data-primary:#6fc99a;" data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
+        <div class="panel-internal-widget-grid" data-widget-layout-key="builder-metrics">
+          <a class="stat-card widget-card" data-widget-key="widget-uptime" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"up","label":"Uptime %","title":"Uptime %","format":"percent"}' data-default-span="2" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Uptime %</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-loss" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"packetLossPct","label":"Pkt loss %","title":"Pkt loss %","format":"number"}' data-default-span="2" data-default-grid-col="3" data-default-grid-row="1" data-grid-col="3" data-grid-row="1" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Pkt loss %</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-fails" data-widget-type="tracker" data-widget-config='{"metric":"count","label":"Fails","title":"Fails","format":"number"}' data-default-span="2" data-default-grid-col="5" data-default-grid-row="1" data-grid-col="5" data-grid-row="1" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Fails</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-avgms" data-widget-type="tracker" data-widget-config='{"metric":"avg","valueField":"latencyMs","label":"Avg ms","title":"Avg ms","format":"number"}' data-default-span="2" data-default-grid-col="1" data-default-grid-row="3" data-grid-col="1" data-grid-row="3" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Avg ms</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-minms" data-widget-type="tracker" data-widget-config='{"metric":"min","valueField":"latencyMs","label":"Min ms","title":"Min ms","format":"number"}' data-default-span="2" data-default-grid-col="3" data-default-grid-row="3" data-grid-col="3" data-grid-row="3" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Min ms</span></a>
+          <a class="stat-card widget-card" data-widget-key="widget-maxms" data-widget-type="tracker" data-widget-config='{"metric":"max","valueField":"latencyMs","label":"Max ms","title":"Max ms","format":"number"}' data-default-span="2" data-default-grid-col="5" data-default-grid-row="3" data-grid-col="5" data-grid-row="3" data-grid-row-span="2" href="#"><span class="stat-val">0</span><span class="stat-lbl">Max ms</span></a>
         </div>
       </div>
     </section>
+  </div>
 
-    <section class="db-panel" data-panel-key="builder-history" data-default-span="6" data-default-grid-col="1" data-default-grid-row="5" data-grid-col="1" data-grid-row="5" data-grid-row-span="2" data-default-title="Recent checks">
-      <div class="db-panel-hd db-panel-hd-items">
-        <span class="db-panel-title">Recent checks</span>
-        <span class="db-panel-count">0</span>
-        <div class="panel-tools">
-          <div class="panel-tool-drawer" aria-label="Panel tools">
-            <button class="panel-tool-button panel-move-handle" type="button" aria-label="Move panel" title="Move panel"><span class="move-icon" aria-hidden="true"></span></button>
-            <button class="panel-tool-button panel-resize-handle" type="button" aria-label="Resize panel" title="Resize panel"><span class="resize-icon" aria-hidden="true"></span></button>
-            <button class="panel-tool-button panel-pin-toggle" type="button" aria-label="Pin panel" aria-pressed="false" title="Pin panel"><span class="pin-icon" aria-hidden="true"></span></button>
-            <button class="panel-tool-button panel-title-handle" type="button" aria-label="Rename panel" title="Rename panel"><span class="text-icon" aria-hidden="true"></span></button>
-            <button class="panel-tool-button panel-color-toggle" type="button" aria-label="Panel colors" aria-expanded="false" title="Panel colors" data-default-theme="#64748b"><span class="color-icon" aria-hidden="true"></span></button>
-          </div>
-        </div>
-      </div>
-      <div class="db-panel-body">
-        <div class="panel-internal-widget-grid" data-widget-layout-key="builder-history">
-          <div class="widget-card" data-widget-key="widget-history" data-widget-type="table" data-widget-runtime-type="table" data-widget-config='{"title":"Recent checks","columns":["checked","result","detail"],"sortBy":"checkedAt","sortDirection":"desc","limit":2000}' data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
-        </div>
-      </div>
-    </section>
+  <div class="widget-layout" data-widget-layout-key="builder-chart">
+    <div class="widget-card" data-widget-key="widget-trend" data-widget-type="graph" data-widget-runtime-type="chart" data-widget-config='{"title":"Status timeline","chartType":"bar","xField":"day","yField":"health","aggregation":"min","uniformBars":true,"adaptiveBucket":true,"display":{"showLegend":false,"showAxes":true,"showGrid":false,"showLabels":false}}' style="--widget-data-primary:#6fc99a;" data-default-span="6" data-default-grid-col="1" data-default-grid-row="7" data-grid-col="1" data-grid-row="7" data-grid-row-span="3"></div>
+  </div>
+
+  <div class="widget-layout" data-widget-layout-key="builder-table">
+    <div class="widget-card" data-widget-key="widget-history" data-widget-type="table" data-widget-runtime-type="table" data-widget-config='{"title":"Recent checks","columns":["checked","result","detail"],"sortBy":"checkedAt","sortDirection":"desc","limit":2000}' data-default-span="6" data-default-grid-col="1" data-default-grid-row="10" data-grid-col="1" data-grid-row="10" data-grid-row-span="3"></div>
   </div>
 </div>
 

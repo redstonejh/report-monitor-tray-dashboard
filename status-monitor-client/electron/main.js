@@ -156,6 +156,9 @@ function checkToPing(p) {
     // Numeric latency for the stat cards; null when unreachable so it's excluded
     // from avg/min/max rather than counted as 0 ms.
     latencyMs: (p.available !== false && p.latencyMs != null && p.latencyMs !== '') ? Number(p.latencyMs) : null,
+    // Packet loss % (responded pings only) and a 1/0 up flag for uptime %.
+    packetLossPct: (p.available !== false && p.packetLoss != null && p.packetLoss !== '') ? Number(p.packetLoss) : null,
+    up: status === 'red' ? 0 : 1,
     machine: p.label || p.id || '',
     checkId: p.id || '',
     host: p.host || '',
