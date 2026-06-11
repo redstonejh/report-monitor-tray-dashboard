@@ -153,10 +153,13 @@
     return 6;
   };
   const tableVisibleRowCount = (rows, limit) => {
+    // Render up to the configured limit (the scroll container handles overflow)
+    // so a table shows every row in range rather than just what fits its panel;
+    // a floor keeps small panels filled, and 500 caps DOM for huge ranges.
     const safeRows = Math.max(1, Number(rows) || 1);
-    const rowCapacity = Math.max(2, (safeRows * 3) - 1);
+    const rowFloor = Math.max(2, (safeRows * 3) - 1);
     const configuredLimit = Number.isFinite(Number(limit)) ? Math.max(1, Number(limit)) : 50;
-    return Math.min(configuredLimit, rowCapacity);
+    return Math.min(Math.max(configuredLimit, rowFloor), 500);
   };
   const filterFieldForType = (filter) => {
     const explicit = String(filter?.field || "").trim();
@@ -259,8 +262,12 @@
   ];
 
   const TIMEFRAME_OPTIONS = Object.freeze([
-    { id: "today", label: "Today", buttonLabel: "Today", defaultFilterId: "time-today" },
-    { id: "yesterday", label: "Yesterday", buttonLabel: "Yesterday", defaultFilterId: "time-yesterday" },
+    { id: "today", label: "Today" },
+    { id: "yesterday", label: "Yesterday" },
+    { id: "last_1_hour", label: "Last hour", buttonLabel: "1hr", defaultFilterId: "time-last-1-hour" },
+    { id: "last_6_hours", label: "Last 6 hours", buttonLabel: "6hr", defaultFilterId: "time-last-6-hours" },
+    { id: "last_1_day", label: "Last 24 hours", buttonLabel: "1d", defaultFilterId: "time-last-1-day" },
+    { id: "last_2_days", label: "Last 48 hours", buttonLabel: "2d", defaultFilterId: "time-last-2-days" },
     { id: "this_week", label: "This week" },
     { id: "last_week", label: "Last week" },
     { id: "this_month", label: "This month" },
@@ -430,11 +437,20 @@
     const end = shiftedDate(start, seedLengthDays - 1);
     return { start: dateOnly(start), end: dateOnly(end) };
   };
+  // Sub-day presets need true datetime precision (an hour, not a calendar day),
+  // so they resolve to full ISO start/end relative to "now".
+  const SUB_DAY_PRESET_HOURS = { last_1_hour: 1, last_6_hours: 6, last_1_day: 24, last_2_days: 48 };
+  const subDayRange = (type, now = null) => {
+    const hours = SUB_DAY_PRESET_HOURS[type];
+    if (!hours) return null;
+    const endMs = now ? new Date(now).getTime() : Date.now();
+    return { start: new Date(endMs - hours * 3600000).toISOString(), end: new Date(endMs).toISOString() };
+  };
   const resolveTimeframeFilter = (filter, config = {}, now = null) => {
     const normalized = normalizeTimeframeFilter(filter);
     const today = now ? localDateFrom(now) : localToday();
     const weekStartDay = normalized.weekStartDay ?? config.weekStartDay ?? 0;
-    let range = null;
+    let range = subDayRange(normalized.type, now);
     if (normalized.type === "today") range = { start: dateOnly(today), end: dateOnly(today) };
     if (normalized.type === "yesterday") {
       const day = shiftedDate(today, -1);
@@ -483,7 +499,13 @@
     let start = "";
     let end = "";
     let label = "";
-    if (preset === "custom" || explicit?.preset === "custom") {
+    const subDayResolved = subDayRange(preset, now);
+    if (subDayResolved) {
+      start = subDayResolved.start;
+      end = subDayResolved.end;
+      label = timeframePresetById(preset)?.buttonLabel || "Recent";
+    }
+    if (!subDayResolved && (preset === "custom" || explicit?.preset === "custom")) {
       start = config.customStart || explicit?.start || "";
       end = config.customEnd || explicit?.end || "";
       label = start || end ? timeframeLabel({ start, end }, "Custom range") : "Custom range";
@@ -764,11 +786,30 @@
     };
   };
   const chartEchartsOption = ({ instance, definition, rows, element }) => {
-    const config = instance.config || {};
+    let config = instance.config || {};
     const chartType = definition.chartType;
     const colors = chartPaletteForElement(element);
     const axis = chartAxisStyle(element);
     const display = chartDisplayConfig(config);
+    // Adaptive bucketing: pick the x-axis granularity from the span of the
+    // (timeframe-filtered) rows — raw pings for short windows, then hourly /
+    // daily / monthly as the window widens.
+    if (config.adaptiveBucket && Array.isArray(rows) && rows.length) {
+      const times = rows.map((r) => Date.parse(r?.checkedAt || r?.date)).filter(Number.isFinite);
+      const spanH = times.length ? (Math.max(...times) - Math.min(...times)) / 3600000 : 0;
+      const gran = spanH <= 6.5 ? "ping" : spanH <= 50 ? "hour" : spanH <= 24 * 70 ? "day" : "month";
+      const p = (n) => String(n).padStart(2, "0");
+      const bucketOf = (iso) => {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return String(iso || "");
+        if (gran === "ping") return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+        if (gran === "hour") return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:00`;
+        if (gran === "day") return `${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}`;
+      };
+      rows = rows.map((r) => ({ ...r, _bucket: bucketOf(r?.checkedAt || r?.date) }));
+      config = { ...config, xField: "_bucket" };
+    }
     const base = {
       backgroundColor: "transparent",
       color: colors,

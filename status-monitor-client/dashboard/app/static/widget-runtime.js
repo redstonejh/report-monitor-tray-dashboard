@@ -201,8 +201,14 @@
       if (!definition?.capabilities?.supportsTimeRange || (!timeRange?.start && !timeRange?.end) || !rows.length) {
         return data && typeof data === "object" ? data : { rows };
       }
-      const start = timeRange.start ? Date.parse(`${timeRange.start}T00:00:00`) : Number.NEGATIVE_INFINITY;
-      const end = timeRange.end ? Date.parse(`${timeRange.end}T23:59:59.999`) : Number.POSITIVE_INFINITY;
+      // A bare date ("YYYY-MM-DD") is widened to the whole local day; a full ISO
+      // datetime (sub-day presets like the last hour) is honoured as-is.
+      const parseBound = (v, dayEnd) => {
+        if (!v) return dayEnd ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+        return String(v).includes("T") ? Date.parse(v) : Date.parse(`${v}T${dayEnd ? "23:59:59.999" : "00:00:00"}`);
+      };
+      const start = parseBound(timeRange.start, false);
+      const end = parseBound(timeRange.end, true);
       if (!Number.isFinite(start) && !Number.isFinite(end)) return data;
       const field = String(timeRange.field || "").trim();
       return {

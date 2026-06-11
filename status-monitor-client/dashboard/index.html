@@ -208,9 +208,9 @@
       </div>
     </section>
 
-    <section class="db-panel" data-panel-key="builder-trend" data-default-span="4" data-default-grid-col="3" data-default-grid-row="3" data-grid-col="3" data-grid-row="3" data-grid-row-span="2" data-default-title="Status by day">
+    <section class="db-panel" data-panel-key="builder-trend" data-default-span="4" data-default-grid-col="3" data-default-grid-row="3" data-grid-col="3" data-grid-row="3" data-grid-row-span="2" data-default-title="Status timeline">
       <div class="db-panel-hd db-panel-hd-items">
-        <span class="db-panel-title">Status by day</span>
+        <span class="db-panel-title">Status timeline</span>
         <span class="db-panel-count">0</span>
         <div class="panel-tools">
           <div class="panel-tool-drawer" aria-label="Panel tools">
@@ -224,7 +224,7 @@
       </div>
       <div class="db-panel-body">
         <div class="panel-internal-widget-grid" data-widget-layout-key="builder-trend">
-          <div class="widget-card" data-widget-key="widget-trend" data-widget-type="graph" data-widget-runtime-type="chart" data-widget-config='{"title":"Status by day","chartType":"bar","xField":"day","yField":"health","aggregation":"min","uniformBars":true,"display":{"showLegend":false,"showAxes":true,"showGrid":false,"showLabels":false}}' style="--widget-data-primary:#6fc99a;" data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
+          <div class="widget-card" data-widget-key="widget-trend" data-widget-type="graph" data-widget-runtime-type="chart" data-widget-config='{"title":"Status timeline","chartType":"bar","xField":"day","yField":"health","aggregation":"min","uniformBars":true,"adaptiveBucket":true,"display":{"showLegend":false,"showAxes":true,"showGrid":false,"showLabels":false}}' style="--widget-data-primary:#6fc99a;" data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
         </div>
       </div>
     </section>
@@ -245,7 +245,7 @@
       </div>
       <div class="db-panel-body">
         <div class="panel-internal-widget-grid" data-widget-layout-key="builder-history">
-          <div class="widget-card" data-widget-key="widget-history" data-widget-type="table" data-widget-runtime-type="table" data-widget-config='{"title":"Recent checks","columns":["checked","status","detail"],"sortBy":"checkedAt","sortDirection":"desc","limit":12}' data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
+          <div class="widget-card" data-widget-key="widget-history" data-widget-type="table" data-widget-runtime-type="table" data-widget-config='{"title":"Recent checks","columns":["checked","status","detail"],"sortBy":"checkedAt","sortDirection":"desc","limit":250}' data-default-span="6" data-default-grid-col="1" data-default-grid-row="1" data-grid-col="1" data-grid-row="1" data-grid-row-span="2"></div>
         </div>
       </div>
     </section>
