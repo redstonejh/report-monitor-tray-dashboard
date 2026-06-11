@@ -365,6 +365,7 @@ const historyRow = (entry) => ({
   status: entry.status,
   // A ping is binary: it passed (healthy) or it did not.
   result: entry.status === "green" ? "Pass" : "Fail",
+  machine: entry.machine || "",
   stage: entry.stage || "",
   detail: entry.detail || "",
   lastSuccess: entry.lastSuccess || "",
@@ -384,100 +385,208 @@ function currentStatusRow() {
   };
 }
 
+// ─── Per-company feed + tabs ──────────────────────────────────────────────────
+
+const companyState = {
+  companies: [],         // [{ id, label, status, checks }]
+  active: null,          // active company id
+  pingsById: new Map(),  // id -> [ping]
+};
+
+// One company's pings → widget rows (the shape the widgets already read).
+function rowsForActive() {
+  return (companyState.pingsById.get(companyState.active) || []).map(historyRow);
+}
+
 function publish() {
   const dataRuntime = window.dashboardWidgetDataRuntime;
   if (!dataRuntime?.ingest) return;
-
-  const rows = state.history.map(historyRow);
-  if (!rows.length && state.status) rows.push(historyRow(state.status));
-
+  const rows = rowsForActive();
   dataRuntime.ingest({
-    // Every data widget without a more specific source sees the check history.
     default: { rows },
-    types: {
-      status: { rows: [currentStatusRow()] },
-    },
+    types: { status: { rows: rows.length ? [rows[rows.length - 1]] : [currentStatusRow()] } },
     widgets: {
       "widget-checks": { rows },
-      "widget-ok": { rows: rows.filter((row) => row.status === "green") },
-      "widget-warn": { rows: rows.filter((row) => row.status === "yellow") },
-      "widget-error": { rows: rows.filter((row) => row.status === "red") },
+      "widget-ok": { rows: rows.filter((r) => r.status === "green") },
+      "widget-warn": { rows: rows.filter((r) => r.status === "yellow") },
+      "widget-error": { rows: rows.filter((r) => r.status === "red") },
     },
   });
 }
 
-async function refreshHistory() {
-  try {
-    const response = await window.dashboard.getHistory(200);
-    if (response?.ok && Array.isArray(response.results)) {
-      // API returns newest-first; widgets/charts want chronological order.
-      state.history = response.results.slice().reverse();
-      state.historyError = false;
-    } else if (response && response.ok === false) {
-      // Reached the bridge but the REST fetch failed (main returns ok:false).
-      state.historyError = true;
-    }
-  } catch {
-    // Bridge threw — keep whatever history we already have, flag staleness.
-    state.historyError = true;
-  }
+let publishTimer = null;
+function publishSoon() {
+  if (publishTimer) return;
+  publishTimer = setTimeout(() => { publishTimer = null; publish(); }, 250);
 }
 
-// Coalesce history refreshes: a status push that arrives while a fetch is
-// already running marks a single trailing re-run instead of stacking a second
-// concurrent fetch. The final pass always re-fetches and re-publishes, so the
-// freshest history + status are shown; only redundant in-flight work is
-// dropped. Behavior is identical to the old per-push fetch when pushes do not
-// overlap (the common case).
-let historySyncRunning = false;
-let historySyncQueued = false;
-
-async function syncHistoryAndPublish() {
-  if (historySyncRunning) {
-    historySyncQueued = true;
-    return;
-  }
-  historySyncRunning = true;
+async function loadCompanyHistory(id) {
   try {
-    do {
-      historySyncQueued = false;
-      await refreshHistory();
-      publish();
-      updateStatusIndicator();
-    } while (historySyncQueued);
-  } finally {
-    historySyncRunning = false;
+    const res = await window.dashboard.getCompanyHistory(id, 2000);
+    if (res?.ok && Array.isArray(res.results)) companyState.pingsById.set(id, res.results);
+  } catch {}
+}
+
+async function setActiveCompany(id) {
+  if (!id || id === companyState.active) return;
+  companyState.active = id;
+  renderCompanyTabs();
+  if (!(companyState.pingsById.get(id) || []).length) await loadCompanyHistory(id);
+  publish();
+}
+
+// ── Company tab bar (scrollable, with "…" overflow menus on each end) ──────────
+
+let companyCssInjected = false;
+function injectCompanyCss() {
+  if (companyCssInjected) return;
+  companyCssInjected = true;
+  const style = document.createElement("style");
+  // Company tabs are the unchanged .workspace-tab. This only lets the strip
+  // scroll when there are many, and styles the "…" overflow controls — with the
+  // base <button> blue background/shadow explicitly removed.
+  style.textContent = `
+  .company-tab-bar{ position:relative; width:min(100%, 1100px); max-width:100%; margin:2px auto 0; box-sizing:border-box; }
+  .company-tab-scroller{ display:flex; align-items:center; justify-content:safe center; gap:clamp(14px,3.5vw,38px); overflow-x:auto; scrollbar-width:none; padding:0 40px; box-sizing:border-box; }
+  .company-tab-scroller::-webkit-scrollbar{ display:none; }
+  .company-tab-scroller .workspace-tab{ flex:0 0 auto; --tab-accent:#edf2f8; }
+  .company-overflow{ position:absolute; top:50%; transform:translateY(-50%); appearance:none; -webkit-appearance:none; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:#edf2f8; opacity:0.5; font-size:clamp(18px,2.5vw,27px); line-height:1; padding:0 8px; cursor:pointer; z-index:2; }
+  .company-overflow-left{ left:0; }
+  .company-overflow-right{ right:0; }
+  .company-overflow:hover{ opacity:1; }
+  .company-overflow-menu{ position:fixed; z-index:9999; max-height:62vh; overflow-y:auto; background:rgba(28,30,38,0.96); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:6px; box-shadow:0 12px 40px rgba(0,0,0,0.45); display:flex; flex-direction:column; gap:2px; min-width:200px; }
+  .company-overflow-item{ display:block; appearance:none; -webkit-appearance:none; padding:8px 12px; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:rgba(255,255,255,0.85); font:inherit; font-size:0.95rem; text-align:left; border-radius:6px; cursor:pointer; white-space:nowrap; }
+  .company-overflow-item:hover{ background:rgba(255,255,255,0.1) !important; color:#fff; }`;
+  document.head.appendChild(style);
+}
+
+let companyMenuOpen = null;
+function closeOverflowMenu() {
+  companyMenuOpen?.remove();
+  companyMenuOpen = null;
+  document.removeEventListener("click", onDocClickForMenu, true);
+}
+function onDocClickForMenu(e) {
+  if (companyMenuOpen && !companyMenuOpen.contains(e.target) && !e.target.closest(".company-overflow")) closeOverflowMenu();
+}
+function offscreenCompanies(side) {
+  const s = document.querySelector(".company-tab-scroller"); if (!s) return [];
+  const left = s.scrollLeft, right = s.scrollLeft + s.clientWidth;
+  return [...s.querySelectorAll(".workspace-tab")].filter((tab) => (
+    side === "left" ? tab.offsetLeft + tab.offsetWidth <= left + 4 : tab.offsetLeft >= right - 4
+  )).map((tab) => tab.dataset.companyId);
+}
+function openOverflowMenu(side, anchor) {
+  if (companyMenuOpen) { closeOverflowMenu(); return; }
+  const ids = offscreenCompanies(side);
+  if (!ids.length) return;
+  const menu = document.createElement("div");
+  menu.className = "company-overflow-menu";
+  for (const id of ids) {
+    const co = companyState.companies.find((c) => c.id === id); if (!co) continue;
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "company-overflow-item";
+    item.textContent = co.label;
+    item.addEventListener("click", () => { closeOverflowMenu(); setActiveCompany(id); });
+    menu.appendChild(item);
   }
+  document.body.appendChild(menu);
+  const r = anchor.getBoundingClientRect();
+  menu.style.top = `${Math.round(r.bottom + 4)}px`;
+  if (side === "left") menu.style.left = `${Math.round(r.left)}px`;
+  else menu.style.right = `${Math.round(window.innerWidth - r.right)}px`;
+  companyMenuOpen = menu;
+  setTimeout(() => document.addEventListener("click", onDocClickForMenu, true), 0);
+}
+function updateOverflow() {
+  const bar = document.querySelector(".company-tab-bar"); if (!bar) return;
+  const s = bar.querySelector(".company-tab-scroller");
+  bar.querySelector(".company-overflow-left").hidden = s.scrollLeft <= 2;
+  bar.querySelector(".company-overflow-right").hidden = s.scrollLeft + s.clientWidth >= s.scrollWidth - 2;
+}
+
+function renderCompanyTabs() {
+  injectCompanyCss();
+  const wsBar = document.querySelector(".workspace-tab-bar");
+  if (wsBar) wsBar.style.display = "none"; // company tabs take over the tab strip
+  let bar = document.querySelector(".company-tab-bar");
+  if (!bar) {
+    bar = document.createElement("nav");
+    bar.className = "company-tab-bar";
+    bar.setAttribute("aria-label", "Companies");
+    bar.innerHTML = '<button class="company-overflow company-overflow-left" type="button" aria-label="More companies (left)" hidden>…</button>'
+      + '<div class="company-tab-scroller"></div>'
+      + '<button class="company-overflow company-overflow-right" type="button" aria-label="More companies (right)" hidden>…</button>';
+    (wsBar?.parentElement || document.querySelector(".page") || document.body).insertBefore(bar, wsBar || null);
+    bar.querySelector(".company-tab-scroller").addEventListener("scroll", updateOverflow);
+    window.addEventListener("resize", updateOverflow);
+    bar.querySelector(".company-overflow-left").addEventListener("click", (e) => openOverflowMenu("left", e.currentTarget));
+    bar.querySelector(".company-overflow-right").addEventListener("click", (e) => openOverflowMenu("right", e.currentTarget));
+  }
+  const scroller = bar.querySelector(".company-tab-scroller");
+  scroller.innerHTML = "";
+  for (const co of companyState.companies) {
+    const active = co.id === companyState.active;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "workspace-tab"; // reuse the existing tab styling exactly
+    b.dataset.companyId = co.id;
+    b.setAttribute("aria-pressed", String(active));
+    b.setAttribute("tabindex", active ? "0" : "-1");
+    const label = document.createElement("span");
+    label.className = "workspace-tab-label";
+    label.textContent = co.label;
+    b.appendChild(label);
+    b.addEventListener("click", () => setActiveCompany(co.id));
+    scroller.appendChild(b);
+  }
+  requestAnimationFrame(() => {
+    document.querySelector('.company-tab-scroller .workspace-tab[aria-pressed="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
+    updateOverflow();
+  });
 }
 
 async function startFeed() {
   const bridge = window.dashboard;
-  if (!bridge) {
-    console.warn("[status-feed] window.dashboard bridge unavailable — no live data.");
-    return;
-  }
+  if (!bridge) { console.warn("[status-feed] window.dashboard bridge unavailable — no live data."); return; }
 
   try {
     const snapshot = await bridge.getStatus();
     if (snapshot?.status) state.status = snapshot.status;
     if (snapshot?.connectionState) state.connection = snapshot.connectionState;
   } catch {}
-
-  await refreshHistory();
-  publish();
   updateStatusIndicator();
 
-  bridge.onStatus((payload) => {
-    state.status = payload;
-    updateStatusIndicator();
-    syncHistoryAndPublish();
+  try {
+    const list = await bridge.getCompanies?.();
+    if (Array.isArray(list)) companyState.companies = list;
+  } catch {}
+  if (companyState.companies.length) {
+    companyState.active = companyState.active || companyState.companies[0].id;
+    await loadCompanyHistory(companyState.active);
+  }
+  renderCompanyTabs();
+  publish();
+
+  bridge.onConnection((cs) => { state.connection = cs; updateStatusIndicator(); });
+  bridge.onStatus((payload) => { state.status = payload; updateStatusIndicator(); });
+  bridge.onCheck?.(({ companyId, ping }) => {
+    if (companyId !== companyState.active || !ping) return;
+    let buf = companyState.pingsById.get(companyId);
+    if (!buf) { buf = []; companyState.pingsById.set(companyId, buf); }
+    buf.push(ping);
+    if (buf.length > 3000) buf.splice(0, buf.length - 3000);
+    publishSoon();
   });
 
-  bridge.onConnection((connectionState) => {
-    state.connection = connectionState;
-    updateStatusIndicator();
-    publish();
-  });
+  // Refresh the company list + per-tab statuses every 30s.
+  setInterval(async () => {
+    try {
+      const list = await bridge.getCompanies?.();
+      if (Array.isArray(list) && list.length) { companyState.companies = list; renderCompanyTabs(); }
+    } catch {}
+  }, 30000);
 }
 
 function whenDataRuntimeReady(callback, timeoutMs = 15000) {
