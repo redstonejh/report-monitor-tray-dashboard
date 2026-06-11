@@ -468,6 +468,7 @@ function injectCompanyCss() {
   .company-tab-scroller .workspace-tab{ flex:0 0 auto; --tab-accent:#edf2f8; }
   .company-overflow{ flex:0 0 auto; appearance:none; -webkit-appearance:none; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:#edf2f8; opacity:0.5; font-size:clamp(18px,2.5vw,27px); line-height:1; padding:0 4px; cursor:pointer; }
   .company-overflow:hover{ opacity:1; }
+  .company-overflow[hidden]{ display:none !important; }
   .company-overflow-menu{ position:fixed; z-index:9999; max-height:62vh; overflow-y:auto; background:rgba(28,30,38,0.96); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:6px; box-shadow:0 12px 40px rgba(0,0,0,0.45); display:flex; flex-direction:column; gap:2px; min-width:200px; }
   .company-overflow-item{ display:block; appearance:none; -webkit-appearance:none; padding:8px 12px; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:rgba(255,255,255,0.85); font:inherit; font-size:0.95rem; text-align:left; border-radius:6px; cursor:pointer; white-space:nowrap; }
   .company-overflow-item:hover{ background:rgba(255,255,255,0.1) !important; color:#fff; }
