@@ -201,7 +201,13 @@ export const createWidgetRuntimeControls = ({
         const grid = widget.closest(".dashboard-layout-grid");
         if (grid) {
           grid.querySelectorAll(".widget-card[data-widget-definition]").forEach((sibling) => {
-            if (sibling !== widget) renderWidgetRuntimeContent(sibling);
+            if (sibling === widget) return;
+            // A new timeframe resets any chart drill-down to the top level.
+            delete sibling.dataset.drillStart;
+            delete sibling.dataset.drillEnd;
+            delete sibling.dataset.drillLevel;
+            delete sibling.dataset.drillStack;
+            renderWidgetRuntimeContent(sibling);
           });
         }
         event.__widgetRuntimeHandledBy = widget;
