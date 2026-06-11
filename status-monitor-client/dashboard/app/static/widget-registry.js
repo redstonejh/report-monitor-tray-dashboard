@@ -905,19 +905,25 @@
           series: [{ type: "bar", data: [value], barWidth: 18, itemStyle: { borderRadius: 9 }, label: { show: true, position: "inside", color: axis.strong, formatter: () => formatMetricValue(value, config.format) } }],
         };
       }
+      // A gauge reads as a condition: low = bad. Colour the arc in three tiers
+      // (red / amber / green by fraction of max) and let the needle + value pick
+      // up the zone colour, so e.g. a health of 0 is red, not green.
+      const isGauge = chartType === "gauge";
       return {
         ...base,
         series: [{
           type: "gauge",
           min: 0,
           max,
-          progress: { show: true, roundCap: true },
-          axisLine: { roundCap: true, lineStyle: { width: 9 } },
-          pointer: { show: chartType === "gauge" },
+          progress: { show: !isGauge, roundCap: true },
+          axisLine: isGauge
+            ? { roundCap: true, lineStyle: { width: 10, color: [[0.5, "#e1857c"], [0.8, "#d4ab63"], [1, "#6fc99a"]] } }
+            : { roundCap: true, lineStyle: { width: 9 } },
+          pointer: { show: isGauge, itemStyle: { color: "auto" } },
           axisTick: { show: false },
           splitLine: { show: false },
           axisLabel: { show: false },
-          detail: { color: axis.strong, fontSize: 16, formatter: () => chartType === "radial-progress" ? `${Math.round((value / Math.max(1, max)) * 100)}%` : formatMetricValue(value, config.format) },
+          detail: { color: isGauge ? "auto" : axis.strong, fontSize: 16, formatter: () => chartType === "radial-progress" ? `${Math.round((value / Math.max(1, max)) * 100)}%` : formatMetricValue(value, config.format) },
           data: [{ value }],
         }],
       };

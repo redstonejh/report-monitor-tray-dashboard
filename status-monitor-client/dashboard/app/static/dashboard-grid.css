@@ -2362,18 +2362,21 @@ that put the drawer on top — palette * has to declare its tier explicitly. */ 
 }.runtime-table{
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  /* Auto layout so short columns (dates, status) hug their content and the
+     remaining width goes to the long column instead of equal thirds. */
+  table-layout: auto;
   font-size: 0.69rem;
   color: var(--widget-content-fg);
 }.runtime-table th,
 .runtime-table td{
-  max-width: 96px;
-  padding: 2px 3px;
+  max-width: 460px;
+  padding: 2px 8px 2px 3px;
   border-bottom: 1px solid var(--widget-content-line);
-  overflow: hidden;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  vertical-align: top;
+  /* Let long cells wrap rather than truncate. */
+  white-space: normal;
+  overflow-wrap: anywhere;
 }.runtime-table th{
   color: var(--widget-content-muted);
   font-weight: 690;

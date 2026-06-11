@@ -4941,6 +4941,16 @@ no card. Active * filter is indicated by a subtle underline + slightly higher * 
   align-items: stretch !important;
   justify-content: center !important;
   overflow: visible !important;
+}
+/* The timeframe widget's shell is its natural (short) height; centre it in the
+   taller card so the filter buttons sit vertically centred, not pinned to top. */
+.widget-card[data-widget-definition="timeframe"]{
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+.widget-card[data-widget-definition="timeframe"] > .widget-shell{
+  flex: 0 0 auto !important;
 }.timeframe-filter-btn{
   appearance: none !important;
   -webkit-appearance: none !important;

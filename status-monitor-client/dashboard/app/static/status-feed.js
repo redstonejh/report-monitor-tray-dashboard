@@ -342,7 +342,10 @@ const formatChecked = (iso) => {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  // "MM-DD HH:MM": readable yet sorts chronologically as a string, so a chart
+  // using this field for its x-axis stays in time order.
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
 const historyRow = (entry) => ({
