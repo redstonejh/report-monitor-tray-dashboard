@@ -787,13 +787,15 @@
   );
   const visualWellTone = (config = {}) => normalizeVisualWellTone(config.wellTone);
   const wellToneAttribute = (config = {}) => `data-well-tone="${escapeHtml(visualWellTone(config))}"`;
+  // PROTOTYPE (liquid-glass wells): wells always render as translucent glass,
+  // so the well-tone pickers are hidden — these helpers strip the option from
+  // the color menu and the widget settings instead of injecting it. Restore
+  // the originals alongside reverting the glass-well CSS block in themes.css.
   const withWellToneSetting = (settings = []) => (
-    settings.includes("wellTone")
-      ? settings
-      : settings.flatMap((setting) => setting === "color" ? ["wellTone", setting] : [setting])
+    settings.filter((setting) => setting !== "wellTone")
   );
   const withWellToneFields = (fields = []) => (
-    fields.some((field) => field?.key === "wellTone") ? fields : [...fields, visualWellToneField()]
+    fields.filter((field) => field?.key !== "wellTone")
   );
   const withWellToneDefault = (config = {}) => ({ ...config, wellTone: "dark" });
   const visualWellToneField = () => ({

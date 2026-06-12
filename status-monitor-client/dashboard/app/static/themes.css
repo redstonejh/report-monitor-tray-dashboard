@@ -5811,13 +5811,14 @@ body.webgl-glass-on .runtime-well-widget .widget-content-well.widget-library-sur
     0 10px 28px rgba(0, 0, 0, 0.22) !important;
   color: rgba(255, 255, 255, 0.96) !important;
 }
-/* The pinned table header is the same liquid glass as the well — a
- * whisper of tint plus a heavy backdrop blur, so rows frost out as they
- * scroll beneath it instead of hiding behind a solid bar. */
+/* The pinned table header is pure glass: no tint of its own (a tint
+ * would stack on the well's and read as a grey bar) — just a heavy
+ * backdrop blur so rows frost out as they scroll beneath it, plus a
+ * faint highlight film and hairline edges to define the boundary. */
 body.webgl-glass-on .runtime-well-widget .runtime-table thead th{
-  background: linear-gradient(180deg, rgba(18, 24, 36, 0.30), rgba(8, 12, 20, 0.22)) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(140%) !important;
-  backdrop-filter: blur(22px) saturate(140%) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(140%) !important;
+  backdrop-filter: blur(26px) saturate(140%) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 1px 0 rgba(255, 255, 255, 0.14) !important;
