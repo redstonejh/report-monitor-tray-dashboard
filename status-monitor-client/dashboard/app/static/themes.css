@@ -5780,3 +5780,43 @@ body.panel-resize-active :is(.widget-layout > .widget-card, .panel-internal-widg
   background: var(--panel-chrome-hover-bg), var(--panel-chrome-surface) !important;
 }
 
+
+
+/* ── PROTOTYPE: liquid-glass widget wells ─────────────────────────────────
+ *
+ * The chart/table content wells become translucent frosted glass over the
+ * WebGL liquid-glass material the parent widget card already renders,
+ * instead of an opaque light/dark slab. Content stays exactly as readable:
+ * the well pins light ink vars (text, gridlines, separators) regardless of
+ * the configured well tone, since the photo backdrop now shows through.
+ * Revert this block to restore the solid wells. */
+body.webgl-glass-on .runtime-well-widget .widget-content-well.widget-library-surface{
+  --widget-content-fg: rgba(255, 255, 255, 0.96);
+  --widget-content-title: rgba(255, 255, 255, 0.96);
+  --widget-content-muted: rgba(255, 255, 255, 0.76);
+  --widget-content-meta: rgba(255, 255, 255, 0.66);
+  --widget-content-meta-strong: rgba(255, 255, 255, 0.92);
+  --widget-content-meta-quiet: rgba(255, 255, 255, 0.6);
+  --widget-content-line: rgba(255, 255, 255, 0.16);
+  --widget-library-fg: rgba(255, 255, 255, 0.96);
+  --widget-library-muted: rgba(255, 255, 255, 0.76);
+  --widget-library-grid: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(180deg, rgba(18, 24, 36, 0.34), rgba(8, 12, 20, 0.28)) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
+  backdrop-filter: blur(18px) saturate(135%) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -10px 22px rgba(0, 0, 0, 0.14),
+    0 10px 28px rgba(0, 0, 0, 0.22) !important;
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+/* The pinned table header keeps a stronger frost so rows never ghost
+ * through it while scrolling. */
+body.webgl-glass-on .runtime-well-widget .runtime-table thead th{
+  background: rgba(14, 20, 32, 0.55) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(130%) !important;
+  backdrop-filter: blur(16px) saturate(130%) !important;
+}
+/* Tooltip and level-strip text stay on their well-aware vars, which the
+ * block above pins light — nothing else changes. */
