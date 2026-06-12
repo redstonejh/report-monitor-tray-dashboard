@@ -1104,6 +1104,10 @@
       if (card?.dataset) card.dataset.chartContext = contextLabel;
       return {
         ...base,
+        // Symmetric fixed padding — containLabel expands the grid by however
+        // much the EDGE labels overhang, which is asymmetric and shoved the
+        // bars off-centre. Fixed margins keep the strip perfectly centred.
+        grid: { left: 22, right: 22, top: 14, bottom: 26, containLabel: false },
         graphic: [],
         tooltip: {
           trigger: "item",

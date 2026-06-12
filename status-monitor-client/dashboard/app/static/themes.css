@@ -5816,17 +5816,23 @@ body.webgl-glass-on .runtime-well-widget .widget-content-well.widget-library-sur
     0 10px 28px rgba(0, 0, 0, 0.22) !important;
   color: rgba(255, 255, 255, 0.96) !important;
 }
-/* The pinned table header is pure glass: no tint of its own (a tint
- * would stack on the well's and read as a grey bar) — just a heavy
- * backdrop blur so rows frost out as they scroll beneath it, plus a
- * faint highlight film and hairline edges to define the boundary. */
+/* The pinned table header: one flat translucent film, identical across
+ * every cell — per-cell backdrop blur drew visible seams between the
+ * labels and the stacked highlights read as a gradient, so neither is
+ * used. A single continuous bottom hairline closes the strip. */
 body.webgl-glass-on .runtime-well-widget .runtime-table thead th{
-  background: rgba(255, 255, 255, 0.05) !important;
-  -webkit-backdrop-filter: blur(26px) saturate(140%) !important;
-  backdrop-filter: blur(26px) saturate(140%) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.14) !important;
+  background: rgba(14, 20, 32, 0.5) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.16) !important;
+  border-bottom: 0 !important;
+}
+/* The app already paints scrollbars fully transparent, so the default
+ * 19px gutter was pure dead space holding the header short of the well's
+ * right edge — drop the gutter entirely (wheel/keyboard scrolling is
+ * untouched). */
+body.webgl-glass-on .runtime-well-widget .widget-content-well.widget-library-surface{
+  scrollbar-width: none;
 }
 /* Tooltip and level-strip text stay on their well-aware vars, which the
  * block above pins light — nothing else changes. */
