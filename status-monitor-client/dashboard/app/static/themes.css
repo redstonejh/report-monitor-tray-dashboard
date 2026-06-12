@@ -5811,12 +5811,16 @@ body.webgl-glass-on .runtime-well-widget .widget-content-well.widget-library-sur
     0 10px 28px rgba(0, 0, 0, 0.22) !important;
   color: rgba(255, 255, 255, 0.96) !important;
 }
-/* The pinned table header keeps a stronger frost so rows never ghost
- * through it while scrolling. */
+/* The pinned table header is the same liquid glass as the well — a
+ * whisper of tint plus a heavy backdrop blur, so rows frost out as they
+ * scroll beneath it instead of hiding behind a solid bar. */
 body.webgl-glass-on .runtime-well-widget .runtime-table thead th{
-  background: rgba(14, 20, 32, 0.55) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(130%) !important;
-  backdrop-filter: blur(16px) saturate(130%) !important;
+  background: linear-gradient(180deg, rgba(18, 24, 36, 0.30), rgba(8, 12, 20, 0.22)) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(140%) !important;
+  backdrop-filter: blur(22px) saturate(140%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.14) !important;
 }
 /* Tooltip and level-strip text stay on their well-aware vars, which the
  * block above pins light — nothing else changes. */
