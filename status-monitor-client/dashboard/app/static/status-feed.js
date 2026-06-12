@@ -672,7 +672,7 @@ function injectCompanyCss() {
   // text control opening a glass menu.
   style.textContent = `
   .company-tab-bar{ display:flex; align-items:flex-start; justify-content:center; gap:clamp(10px,2vw,20px); width:min(100%, 1100px); max-width:100%; margin:4px auto 0; box-sizing:border-box; padding:0 6px; }
-  .company-tab-scroller{ display:flex; align-items:flex-start; justify-content:center; gap:clamp(14px,2.8vw,32px); min-width:0; }
+  .company-tab-scroller{ display:flex; align-items:flex-start; justify-content:center; min-width:0; }
   .company-tab{
     flex:0 0 auto;
     appearance:none !important; -webkit-appearance:none !important;
@@ -680,20 +680,32 @@ function injectCompanyCss() {
     border:0 !important; background:transparent !important; background-color:transparent !important;
     box-shadow:none !important; outline:0 !important; filter:none !important;
     min-height:0 !important; padding:0 2px !important; border-radius:0 !important;
+    margin:0 clamp(8px,1.4vw,16px);
     font:inherit; font-weight:650; line-height:1.15; letter-spacing:.01em;
     color:rgba(255,255,255,0.46);
     text-shadow:var(--dashboard-custom-text-shadow);
     text-decoration:none !important;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     cursor:pointer;
-    transition:color .18s ease, font-size .18s ease, transform .18s ease, max-width .18s ease, opacity .18s ease;
+    /* The rolling-hill motion: every property of the hierarchy eases on one
+       long, soft curve, and the outer tiers trail the centre slightly so a
+       quick run across companies reads as a wave passing over the row. */
+    transition:
+      color .38s cubic-bezier(.25,.8,.25,1),
+      font-size .38s cubic-bezier(.25,.8,.25,1),
+      transform .38s cubic-bezier(.25,.8,.25,1),
+      max-width .38s cubic-bezier(.25,.8,.25,1),
+      margin .38s cubic-bezier(.25,.8,.25,1),
+      opacity .3s ease;
   }
-  .company-tab.tier-0{ font-size:26px; color:#ffffff; transform:translateY(0); max-width:none; }
-  .company-tab.tier-1{ font-size:17px; color:rgba(255,255,255,0.52); transform:translateY(7px); max-width:140px; }
-  .company-tab.tier-2{ font-size:14px; color:rgba(255,255,255,0.36); transform:translateY(11px); max-width:100px; }
+  .company-tab.tier-0{ font-size:26px; color:#ffffff; transform:translateY(0); max-width:300px; transition-delay:0ms; }
+  .company-tab.tier-1{ font-size:17px; color:rgba(255,255,255,0.52); transform:translateY(12px); max-width:140px; transition-delay:45ms; }
+  .company-tab.tier-2{ font-size:14px; color:rgba(255,255,255,0.36); transform:translateY(20px); max-width:100px; transition-delay:90ms; }
+  .company-tab.tier-off{ font-size:12px; color:rgba(255,255,255,0); transform:translateY(26px); max-width:0; margin:0; padding:0 !important; opacity:0; pointer-events:none; transition-delay:120ms; }
   .company-tab:hover, .company-tab:focus-visible{ color:rgba(255,255,255,0.9); }
   .company-tab.tier-0:hover{ color:#ffffff; }
   .company-tab.is-offline{ opacity:.4; }
+  .company-tab.tier-off.is-offline{ opacity:0; }
   .company-overflow-item.is-offline{ color:rgba(255,255,255,0.4); }
   .company-overflow{
     flex:0 0 auto; align-self:flex-start;
@@ -701,7 +713,7 @@ function injectCompanyCss() {
     border:0 !important; background:transparent !important; box-shadow:none !important;
     filter:none !important; min-height:0 !important; padding:0 4px !important;
     color:rgba(255,255,255,0.36); font:inherit; font-size:15px; font-weight:650; line-height:1.15;
-    transform:translateY(11px);
+    transform:translateY(20px);
     text-shadow:var(--dashboard-custom-text-shadow);
     cursor:pointer; transition:color .18s ease;
   }
@@ -801,25 +813,40 @@ function renderCompanyTabs() {
   bar._rightHidden = all.slice(end).map((c) => c.id);
   bar.querySelector(".company-overflow-left").hidden = start <= 0;
   bar.querySelector(".company-overflow-right").hidden = end >= n;
+  // Reconcile persistent buttons instead of rebuilding: every company keeps
+  // its element (off-window ones collapse to zero width), so tier changes
+  // ANIMATE — the hierarchy rolls across the row like a wave instead of
+  // snapping, even when flipping through companies quickly.
   const scroller = bar.querySelector(".company-tab-scroller");
-  scroller.innerHTML = "";
-  all.slice(start, end).forEach((co, offset) => {
-    const index = start + offset;
+  if (!scroller._tabsById) scroller._tabsById = new Map();
+  const tabsById = scroller._tabsById;
+  for (const [id, el] of [...tabsById]) {
+    if (!all.some((c) => c.id === id)) { el.remove(); tabsById.delete(id); }
+  }
+  all.forEach((co, index) => {
+    let b = tabsById.get(co.id);
+    if (!b) {
+      b = document.createElement("button");
+      b.type = "button";
+      b.dataset.companyId = co.id;
+      b.addEventListener("click", () => setActiveCompany(co.id));
+      tabsById.set(co.id, b);
+    }
     const isActive = co.id === companyState.active;
+    const inWindow = index >= start && index < end;
     // Visual hierarchy: tier 0 = active (largest, highest, white, full name);
-    // tiers 1 and 2 step down in size, position, and brightness, truncated.
-    const tier = Math.min(Math.abs(index - active), 2);
-    const b = document.createElement("button");
-    b.type = "button";
+    // tiers 1 and 2 step down in size, position, and brightness, truncated;
+    // off-window tabs collapse away entirely.
+    const tier = inWindow ? Math.min(Math.abs(index - active), 2) : "off";
     b.className = `company-tab tier-${tier}` + (co.online === false ? " is-offline" : "");
-    b.dataset.companyId = co.id;
     b.setAttribute("aria-pressed", String(isActive));
+    b.setAttribute("aria-hidden", String(!inWindow));
     b.setAttribute("tabindex", isActive ? "0" : "-1");
     b.title = co.online === false ? `${co.label} — offline` : co.label; // full name on hover
     b.textContent = conciseLabel(co.label);
-    b.addEventListener("click", () => setActiveCompany(co.id));
-    scroller.appendChild(b);
+    if (scroller.children[index] !== b) scroller.insertBefore(b, scroller.children[index] || null);
   });
+  while (scroller.children.length > all.length) scroller.lastChild.remove();
 }
 
 async function startFeed() {
