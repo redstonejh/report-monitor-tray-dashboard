@@ -41,9 +41,16 @@ body.webgl-glass-on .app-nav.workspace-chrome.floating-control-bar{
   background-color: transparent !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
-}body.webgl-glass-on .db-panel.db-panel-custom-color,
-body.webgl-glass-on .widget-card.db-panel-custom-color{
+}body.webgl-glass-on .db-panel.db-panel-custom-color{
   background: transparent !important;
+}/* Custom-colored widget cards keep their accent visible on the WebGL glass:
+   a soft accent tint instead of fully transparent glass — this is what makes
+   user-picked preset colors and the adaptive status colors actually show. */
+body.webgl-glass-on .widget-card.db-panel-custom-color{
+  background-color: rgba(var(--panel-accent-rgb, 37, 99, 235), 0.12) !important;
+  background-image: linear-gradient(180deg,
+    rgba(var(--panel-accent-rgb, 37, 99, 235), 0.30),
+    rgba(var(--panel-accent-rgb, 37, 99, 235), 0.10)) !important;
 }/* Static dashboard grid layout */ .dashboard-layout-grid{
   --widget-gap: 14px;
   --panel-gap: 18px;
@@ -708,7 +715,10 @@ and ghost states */ .widget-card.widget-tools-open,
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16), 0 0 20px rgba(37, 99, 235, .12);
   transition: grid-column var(--motion-grid), grid-row var(--motion-grid), width var(--motion-grid), height var(--motion-grid), min-height .14s ease, background .14s ease, border-color .14s ease;
 }.panel-internal-widget-grid{
-  --dashboard-grid-row-height: 66px;
+  /* Same cell scale as the workspace grid: internal columns already resolve to
+     ~the workspace column width, so rows use the same 81px unit — a 1×1 cell
+     inside a panel is the same size as a 1×1 cell on the base dashboard. */
+  --dashboard-grid-row-height: 81px;
   --panel-internal-grid-inset-block: 12px;
   --panel-internal-grid-inset-inline: 12px;
   --panel-internal-grid-gap: 10px;
@@ -2384,6 +2394,20 @@ that put the drawer on top — palette * has to declare its tier explicitly. */ 
   color: var(--widget-content-muted);
   font-weight: 690;
   letter-spacing: 0;
+}/* The header row stays pinned while the table body scrolls. The fill follows
+   the widget's well tone so light wells get a light header and dark wells a
+   dark one — header text uses the tone-aware muted color either way. */
+.runtime-table thead th{
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: rgba(252, 253, 255, 0.94);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 0 var(--widget-content-line);
+}
+.runtime-well-widget[data-well-tone="dark"] .runtime-table thead th{
+  background: rgba(24, 32, 45, 0.94);
 }.runtime-table td{
   color: var(--widget-content-fg);
 }.runtime-table tbody tr{
@@ -2391,6 +2415,12 @@ that put the drawer on top — palette * has to declare its tier explicitly. */ 
 }.runtime-table tbody tr[data-result="Pass"]:hover{
   background: rgba(111, 201, 154, 0.14);
 }.runtime-table tbody tr[data-result="Fail"]:hover{
+  background: rgba(225, 133, 124, 0.16);
+}.runtime-table tbody tr[data-level="green"]:hover{
+  background: rgba(111, 201, 154, 0.14);
+}.runtime-table tbody tr[data-level="yellow"]:hover{
+  background: rgba(212, 171, 99, 0.16);
+}.runtime-table tbody tr[data-level="red"]:hover{
   background: rgba(225, 133, 124, 0.16);
 }.runtime-table tbody tr.ping-focus[data-result="Pass"]{
   box-shadow: inset 2px 0 0 #6fc99a;
@@ -2404,6 +2434,108 @@ that put the drawer on top — palette * has to declare its tier explicitly. */ 
 }@keyframes ping-focus-fail{
   0%{ background: rgba(225, 133, 124, 0.5); }
   100%{ background: rgba(225, 133, 124, 0.14); }
+}@keyframes ping-focus-degraded{
+  0%{ background: rgba(212, 171, 99, 0.5); }
+  100%{ background: rgba(212, 171, 99, 0.14); }
+}/* Criticality-driven row highlight: the three-level logic (green healthy /
+   amber degraded / red down) wins over the binary Pass/Fail rules above. */
+.runtime-table tbody tr.ping-focus[data-level="green"]{
+  box-shadow: inset 2px 0 0 #6fc99a;
+  animation: ping-focus-pass 2.4s ease;
+}.runtime-table tbody tr.ping-focus[data-level="yellow"]{
+  box-shadow: inset 2px 0 0 #d4ab63;
+  animation: ping-focus-degraded 2.4s ease;
+}.runtime-table tbody tr.ping-focus[data-level="red"]{
+  box-shadow: inset 2px 0 0 #e1857c;
+  animation: ping-focus-fail 2.4s ease;
+}/* Muted broader-trend delta beside an average stat value ("+13" = thirteen
+   over the all-history average). */
+.stat-card .stat-val .stat-delta{
+  margin-left: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .01em;
+  vertical-align: 2px;
+  color: rgba(255, 255, 255, 0.45) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.45) !important;
+}/* Granularity strip under the status timeline: level selectors on the left,
+   the viewable range on the right. The chart surface flexes so the plot gives
+   up the strip's height (shorter bars, plot shifted up). */
+.widget-content-well.runtime-chart-library-surface{
+  display: flex !important;
+  flex-direction: column !important;
+}
+.widget-content-well.runtime-chart-library-surface > .runtime-chart-echarts{
+  /* The vendored rule pins this to height:100%, which would shove the level
+     strip out of the clipped well — in the flex column the plot takes the
+     leftover height instead. */
+  flex: 1 1 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+.chart-level-strip{
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 10px 2px;
+  min-height: 24px;
+}
+.chart-level-buttons{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+/* Sleek text-only level selectors — the same plain-text treatment as the
+   timeframe controls (no pill, no fill, no border), tinted by the well tone
+   so they read on both light and dark wells. */
+.chart-level-btn{
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 4px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  filter: none !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  font-weight: 650 !important;
+  line-height: 1 !important;
+  letter-spacing: .01em !important;
+  color: var(--widget-content-muted, rgba(55, 65, 81, 0.78)) !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  text-underline-offset: 3px !important;
+  text-decoration-thickness: 2px !important;
+  transition: color .12s ease !important;
+}
+.chart-level-btn[hidden]{
+  display: none !important; /* the inline-flex above would defeat [hidden] */
+}
+.chart-level-btn:hover,
+.chart-level-btn:focus-visible{
+  color: var(--widget-content-fg, #111827) !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+.chart-level-btn.is-active{
+  color: var(--widget-content-fg, #111827) !important;
+  text-decoration: underline !important;
+}
+.chart-level-range{
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--widget-content-meta, rgba(55, 65, 81, 0.7));
+  white-space: nowrap;
 }.runtime-table-density-compact{
   gap: 2px;
 }.runtime-table-density-compact .runtime-table-meta{

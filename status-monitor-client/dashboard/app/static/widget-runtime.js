@@ -474,7 +474,11 @@
     };
     const syncRenderedHeightToFootprint = (widget, rowSpan = null, metrics = null) => {
       if (!deps.isWidgetGridItem?.(widget)) return;
-      const layout = widget.closest(".widget-layout");
+      // Panel-internal grids carry their own (smaller) row height and gap;
+      // resolving only ".widget-layout" here made panel children compute their
+      // pixel height from the workspace metrics (81px rows + 16px gap) instead
+      // of the panel's (66px + 10px), so vertical sizing drifted off the grid.
+      const layout = widget.closest(".widget-layout, .panel-internal-widget-grid");
       const gap = metrics?.gap ?? deps.gridGapForLayout?.(layout);
       const rowHeight = metrics?.rowHeight ?? deps.gridRowHeightForLayout?.(layout);
       const rows = Math.max(deps.gridItemMinimumRows?.(widget) || 1, Math.round(Number(rowSpan) || deps.gridItemRowSpan?.(widget, metrics) || 1));

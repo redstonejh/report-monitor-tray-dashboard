@@ -47,7 +47,6 @@ export const createOrderedDragRuntime = (deps = {}) => {
     syncCommittedWorkspaceScrollFloor,
     scheduleWorkspaceVisualLodRefresh,
     applyGroupDelta,
-    viewportRowFloorForLayout,
   } = deps;
 
   const runOrderedDrag = ({
@@ -127,26 +126,10 @@ export const createOrderedDragRuntime = (deps = {}) => {
       row: Number(item.dataset.gridRow) || 1,
     };
     let lastMoveEvent = event;
-    let committedPageBottomRow = Infinity;
-
-    const snapshotCommittedBottom = (snapshot, fallback = Infinity) => {
-      if (!snapshot?.size) return fallback;
-      let bottom = 1;
-      snapshot.forEach((state) => {
-        const row = Math.max(1, Math.round(Number(state?.gridRow) || 1));
-        const rowSpan = Math.max(1, Math.round(Number(state?.gridRowSpan) || 1));
-        bottom = Math.max(bottom, row + rowSpan - 1);
-      });
-      return bottom;
-    };
-
-    const snapshotCommittedPageBottom = (targetLayout, fallback = Infinity, metrics = null) => {
-      if (!targetLayout) return fallback;
-      const resolvedMetrics = metrics || createGridMetrics(targetLayout);
-      const rows = viewportRowFloorForLayout?.(targetLayout, resolvedMetrics);
-      const fallbackRows = Number.isFinite(fallback) ? Math.max(1, Math.round(fallback)) : fallback;
-      return Number.isFinite(rows) && rows > 0 ? Math.max(1, rows) : fallbackRows;
-    };
+    // Drag targets used to be clamped to the rows visible in the viewport
+    // ("committed page bottom"). That lock blocked dragging objects below the
+    // fold and caused interaction bugs, so drags are unbounded now.
+    const committedPageBottomRow = Infinity;
 
     const clampCellToCommittedRows = (cell, rowSpan = null, maxBottom = committedPageBottomRow) => {
       if (!cell || !Number.isFinite(maxBottom)) return cell;
@@ -156,27 +139,6 @@ export const createOrderedDragRuntime = (deps = {}) => {
         ...cell,
         row: Math.max(1, Math.min(maxRow, Math.round(Number(cell.row) || 1))),
       };
-    };
-
-    const gridBoundsOverlap = (a, b) => (
-      a && b &&
-      a.col <= b.right &&
-      a.right >= b.col &&
-      a.row <= b.bottom &&
-      a.bottom >= b.row
-    );
-
-    const panelInternalOpenCell = (cell, movingItem, metrics = null) => {
-      if (!cell || !isPanelLocalDrag) return cell;
-      const targetBounds = boundsAtGridSlot(movingItem, cell.col, cell.row, metrics);
-      const blocked = [...layout.querySelectorAll(":scope > .widget-card:not([hidden])")]
-        .filter((candidate) => (
-          candidate !== item &&
-          candidate !== movingItem &&
-          !candidate.classList.contains("widget-dragging")
-        ))
-        .some((candidate) => gridBoundsOverlap(targetBounds, gridBoundsForItem(candidate, metrics)));
-      return blocked ? { ...originalCell } : cell;
     };
 
     const setDragVisualPosition = (left, top) => {
@@ -213,9 +175,6 @@ export const createOrderedDragRuntime = (deps = {}) => {
       item.dataset.lod = "active";
       rect = item.getBoundingClientRect();
       startSnapshot = snapshotGridLayout(layout);
-      committedPageBottomRow = isPanelLocalDrag
-        ? Infinity
-        : snapshotCommittedPageBottom(layout, snapshotCommittedBottom(startSnapshot));
       const groupItems = groupTransformItems(item)
         .filter((groupItem) => groupItem === item || !groupItem.classList.contains("db-panel-pinned"));
       if (item.classList.contains("group-selected") && groupItems.length > 1) {
@@ -228,7 +187,6 @@ export const createOrderedDragRuntime = (deps = {}) => {
         offsetX = startX - groupLive.groupRect.left;
         offsetY = startY - groupLive.groupRect.top;
         targetCell = { col: groupBox.col, row: groupBox.row };
-        committedPageBottomRow = snapshotCommittedPageBottom(layout, snapshotCommittedBottom(startSnapshot, groupBox.bottom));
         document.body.classList.add("group-transform-active");
         groupItems.forEach((groupItem) => groupItem.classList.add("group-transform-member"));
       } else {
@@ -479,7 +437,7 @@ export const createOrderedDragRuntime = (deps = {}) => {
         snapshot,
         metrics: createGridMetrics(internalGrid),
         reflowItems: reflowItemsForLayout(internalGrid, panelPlaceholder),
-        committedPageBottomRow: snapshotCommittedPageBottom(internalGrid, snapshotCommittedBottom(snapshot)),
+        committedPageBottomRow: Infinity,
         targetCell: null,
         entryZone: options.zone || "body",
         entryTransitionPlayed: false,
@@ -572,7 +530,7 @@ export const createOrderedDragRuntime = (deps = {}) => {
         snapshot,
         metrics: createGridMetrics(workspaceExitLayout),
         reflowItems: reflowItemsForLayout(workspaceExitLayout, workspacePlaceholder),
-        committedPageBottomRow: snapshotCommittedPageBottom(workspaceExitLayout, snapshotCommittedBottom(snapshot)),
+        committedPageBottomRow: Infinity,
         targetCell: null,
         exitTransitionPlayed: false,
       };
@@ -623,19 +581,9 @@ export const createOrderedDragRuntime = (deps = {}) => {
       const rawCell = options.preservePointerOffset
         ? gridCellFromDragPointer(layout, previewItem, clientX, clientY, offsetX, offsetY, metrics, rect)
         : gridCellFromPoint(layout, previewItem, clientX, clientY, metrics);
-      const nextCell = isPanelLocalDrag && !groupDrag
-        ? panelInternalOpenCell(rawCell, previewItem, metrics)
-        : clampCellToCommittedRows(rawCell, groupDrag ? groupDrag.groupBox.bottom - groupDrag.groupBox.row + 1 : gridItemRowSpan(previewItem));
+      const nextCell = clampCellToCommittedRows(rawCell, groupDrag ? groupDrag.groupBox.bottom - groupDrag.groupBox.row + 1 : gridItemRowSpan(previewItem));
       if (targetCell && targetCell.col === nextCell.col && targetCell.row === nextCell.row) return;
       targetCell = nextCell;
-      if (isPanelLocalDrag && !groupDrag) {
-        widgetRuntimeController.applyGridPosition(placeholder, nextCell.col, nextCell.row);
-        syncPanelFootprintToInternalItem(sourcePanelForPanelLocalDrag, placeholder, {
-          includePlaceholders: true,
-          reflow: false,
-        });
-        return;
-      }
       const expandedPanelDrag = !groupDrag && workspaceObjectCapabilities(item).hasExpandedFootprint && !item.classList.contains("db-panel-collapsed");
       const localVacancy = groupDrag
         ? groupBoxBounds(groupDrag.groupBox)
@@ -668,6 +616,14 @@ export const createOrderedDragRuntime = (deps = {}) => {
           });
         }
       }, item, { items: reflowItems, metrics });
+      // Keep the host panel's footprint tracking the displaced internal rows
+      // while the preview reflows widgets inside it.
+      if (isPanelLocalDrag && !groupDrag) {
+        syncPanelFootprintToInternalItem(sourcePanelForPanelLocalDrag, placeholder, {
+          includePlaceholders: true,
+          reflow: false,
+        });
+      }
     };
 
     const onMove = (moveEvent) => {
@@ -818,13 +774,15 @@ export const createOrderedDragRuntime = (deps = {}) => {
               clearPanelExitPreview();
               restoreGridLayoutSnapshot(startSnapshot, { exclude: [item] });
               placeholder.remove();
-              const safeCell = panelInternalOpenCell(finalCell, item, dragMetrics);
-              widgetRuntimeController.applyGridPosition(item, safeCell.col, safeCell.row);
+              // Dropping onto an occupied internal cell uses the same
+              // collision/displacement commit as the base dashboard instead of
+              // bouncing the drag back to its original cell.
+              const localVacancy = boundsAtGridSlot(item, originalCell.col, originalCell.row, dragMetrics);
+              result = commitActiveDropSlot(layout, item, finalCell, {
+                localVacancy,
+                metrics: dragMetrics,
+              });
               syncPanelFootprintToInternalItem(sourcePanelForPanelLocalDrag, item, { reflow: false });
-              result = {
-                bounds: gridBoundsForItem(item, dragMetrics),
-                movedItems: 0,
-              };
             } else if (groupDrag) {
               clearPanelExitPreview();
               restoreGridLayoutSnapshot(startSnapshot);

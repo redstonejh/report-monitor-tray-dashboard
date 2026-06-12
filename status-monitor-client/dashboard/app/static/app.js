@@ -318,6 +318,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       : null
   );
+  // Preset ranges ("last hour", "last 7 days") are anchored to the moment they
+  // were selected. Re-resolve them against "now" on every read so a rolling
+  // window keeps sliding — otherwise live pings arriving after the selection
+  // fall outside the frozen end bound and the data widgets stop updating.
+  const refreshedTimeRange = (range) => {
+    const preset = String(range?.preset || "").trim();
+    if (!preset || preset.startsWith("custom")) return cloneTimeRange(range);
+    const resolved = window.dashboardWidgetRuntime?.resolveTimeRangeConfig?.({ selectedPreset: preset });
+    if (!resolved?.start && !resolved?.end) return cloneTimeRange(range);
+    return cloneTimeRange({ ...range, start: resolved.start, end: resolved.end });
+  };
   const pageTimeRangeForLayout = (layoutKey = "builder") => {
     // Panel-internal widgets carry a nested layout key (e.g. "builder-trend")
     // while the timeframe publishes to the page key ("builder"). Walk up the
@@ -326,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let key = layoutKey;
     while (key) {
       const range = pageTimeframeState.get(key);
-      if (range) return cloneTimeRange(range);
+      if (range) return refreshedTimeRange(range);
       const idx = key.lastIndexOf("-");
       if (idx <= 0) break;
       key = key.slice(0, idx);
@@ -1673,15 +1684,16 @@ document.addEventListener("DOMContentLoaded", () => {
     panel.__activeExpansionSource = true;
   };
 
-  const relaxCollapsedExpansionDisplacement = (layout, collapsedPanel) => {
-    const baseline = layout?.__expansionBaselineSnapshot;
-    if (!baseline) return;
+  const relaxCollapsedExpansionDisplacement = (layout, collapsedPanel, { vacatedRows = 0 } = {}) => {
+    const baseline = layout?.__expansionBaselineSnapshot || null;
     const collapsedBounds = collapsedPanel?.isConnected ? gridBoundsForItem(collapsedPanel) : null;
+    const canDeltaRelax = Boolean(collapsedBounds && vacatedRows > 0);
+    if (!baseline && !canDeltaRelax) return;
     const candidates = globalGridItems(layout, { includePlaceholders: false, exclude: [collapsedPanel] })
-      .filter((item) => baseline.has(item))
+      .filter((item) => baseline?.has(item) || canDeltaRelax)
       .sort((a, b) => {
-        const aState = baseline.get(a);
-        const bState = baseline.get(b);
+        const aState = baseline?.get(a);
+        const bState = baseline?.get(b);
         const aRow = Number(aState?.gridRow) || gridBoundsForItem(a).row;
         const bRow = Number(bState?.gridRow) || gridBoundsForItem(b).row;
         const aCol = Number(aState?.gridCol) || gridBoundsForItem(a).col;
@@ -1691,21 +1703,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
     candidates.forEach((item) => {
       if (!item.isConnected) return;
-      const baselineState = baseline.get(item);
+      const current = gridBoundsForItem(item);
+      const baselineState = baseline?.get(item);
       const baselineRow = Number(baselineState?.gridRow);
       const baselineCol = Number(baselineState?.gridCol);
-      if (!Number.isFinite(baselineRow) || !Number.isFinite(baselineCol)) return;
-      const current = gridBoundsForItem(item);
-      if (current.row <= baselineRow) return;
-      if (current.col !== baselineCol) return;
+      let localBaselineRow = null;
+      if (Number.isFinite(baselineRow) && Number.isFinite(baselineCol)) {
+        if (current.row <= baselineRow) return;
+        if (current.col !== baselineCol) return;
+        const preserveSourceOrder = collapsedBounds &&
+          gridBoundsShareColumns(current, collapsedBounds) &&
+          current.row > collapsedBounds.row;
+        localBaselineRow = preserveSourceOrder
+          ? Math.max(baselineRow, collapsedBounds.bottom + 1)
+          : baselineRow;
+      } else if (canDeltaRelax &&
+        gridBoundsShareColumns(current, collapsedBounds) &&
+        current.row > collapsedBounds.row) {
+        // No expansion baseline for this item — the default markup and any
+        // saved/reloaded layout store positions as pushed down by the OPEN
+        // panel. Treat that displacement as temporary: when the panel
+        // collapses, items below it climb back by the rows it vacated.
+        localBaselineRow = Math.max(collapsedBounds.bottom + 1, current.row - vacatedRows);
+        if (localBaselineRow >= current.row) return;
+      } else {
+        return;
+      }
       const occupied = globalGridItems(layout, { includePlaceholders: false, exclude: [item] })
         .map((other) => ({ item: other, bounds: gridBoundsForItem(other) }));
-      const preserveSourceOrder = collapsedBounds &&
-        gridBoundsShareColumns(current, collapsedBounds) &&
-        current.row > collapsedBounds.row;
-      const localBaselineRow = preserveSourceOrder
-        ? Math.max(baselineRow, collapsedBounds.bottom + 1)
-        : baselineRow;
       const desired = boundsAtRow(current, localBaselineRow);
       const next = firstVerticalOpenRow(desired, occupied);
       if (next.row < current.row) applyGridItemPosition(item, current.col, next.row);

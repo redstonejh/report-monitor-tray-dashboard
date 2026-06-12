@@ -6,7 +6,10 @@ export const createLayoutSnapshotRuntime = ({
   gridItemSpan,
 }) => {
   const snapshotGridLayout = (layout) => new Map(
-    [...gridHostForLayout(layout).querySelectorAll(".widget-layout > .widget-card:not([hidden]), .panel-layout > .db-panel:not([hidden])")]
+    // Panel-internal grids must match too: without them a drag inside a panel
+    // snapshots an empty map, so displaced siblings were never restored when
+    // the drag preview moved away (displacement read as permanent).
+    [...gridHostForLayout(layout).querySelectorAll(".widget-layout > .widget-card:not([hidden]), .panel-internal-widget-grid > .widget-card:not([hidden]), .panel-layout > .db-panel:not([hidden])")]
       .filter((item) => gridHostForLayout(layout) === layout || !isPanelInternalGridItem(item))
       .map((item) => [item, {
         gridCol: item.dataset.gridCol,

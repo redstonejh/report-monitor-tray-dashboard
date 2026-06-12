@@ -190,6 +190,10 @@ export const bindPanelActionControls = ({
       ensureRenderedGridPosition(layout, panel);
       beginPanelExpansionSession(layout, panel);
     }
+    // Rows the panel gives back when collapsing — items sitting below climb up
+    // by this amount even when no expansion baseline exists (default markup or
+    // a layout restored from a save, where displacement was baked in).
+    const openRowSpan = Number(panel.dataset.gridRowSpan) || 1;
     const collapsed = panel.classList.toggle("db-panel-collapsed");
     if (collapsed) {
       if (panel.style.height) panel.dataset.savedHeight = String(parseFloat(panel.style.height));
@@ -207,7 +211,7 @@ export const bindPanelActionControls = ({
         panel.dataset.gridRowSpan = "1";
         panel.style.height = "";
         if (panel.dataset.gridCol && panel.dataset.gridRow) applyPanelGridPosition(panel, panel.dataset.gridCol, panel.dataset.gridRow);
-        relaxCollapsedExpansionDisplacement(layout, panel);
+        relaxCollapsedExpansionDisplacement(layout, panel, { vacatedRows: Math.max(0, openRowSpan - 1) });
         endPanelExpansionSession(layout, panel);
       } else {
         applyVerticalPanelExpansion(layout, panel);

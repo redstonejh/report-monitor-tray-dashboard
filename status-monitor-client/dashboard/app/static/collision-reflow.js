@@ -47,10 +47,12 @@
     const gridHostForLayout = (layout) => deps.gridHostForLayout(layout);
     const globalGridItems = (layout, options = {}) => deps.globalGridItems(layout, options);
     const visualGridOrder = (items, metrics = null) => deps.visualGridOrder(items, metrics);
-    const viewportRowFloorForLayout = (layout, metrics = null) => deps.viewportRowFloorForLayout?.(layout, metrics) || null;
     const rowLimitForOptions = (layout, metrics = null, options = {}) => {
+      // The viewport row floor used to be enforced here by default, which
+      // blocked dragging/reflowing objects below the visible viewport and
+      // caused interaction bugs. Only an explicit rowLimit is honoured now.
       if (Number.isFinite(options.rowLimit) && options.rowLimit > 0) return options.rowLimit;
-      return options.enforceViewportFloor === false ? null : viewportRowFloorForLayout(layout, metrics);
+      return null;
     };
 
     const boundsWithinRowFloor = (bounds, rowFloor = null) => (
@@ -352,7 +354,7 @@
     };
 
     const resolveActiveDropSlot = (layout, item, preferredTarget) => {
-      const rowLimit = viewportRowFloorForLayout(layout);
+      const rowLimit = null;
       const occupied = globalGridItems(layout, { includePlaceholders: false, exclude: [item] })
         .map((other) => ({ item: other, bounds: gridBoundsForItem(other) }));
       const target = preferredTarget || gridBoundsForItem(item);

@@ -126,6 +126,13 @@ export const createWidgetLayoutRuntime = (deps) => {
     const initWidget = (widget) => {
       if (widget.dataset.widgetInitialized === "true") return;
       widget.dataset.widgetInitialized = "true";
+      // <a>-based widget cards (stat cards) are natively draggable links: the
+      // browser's drag-and-drop hijacks the pointer stream (pointercancel)
+      // before the grid drag crosses its start threshold, so moving widgets
+      // inside panels never started. Kill native DnD for every widget card —
+      // this also covers images/links rendered inside widget bodies.
+      if (widget.tagName === "A") widget.draggable = false;
+      widget.addEventListener("dragstart", (event) => event.preventDefault());
       widgetRuntimeController.ensureTools(widget);
       widget.__saveWidgetLayout = () => saveWidgetLayouts(layout);
       delete widget.dataset.widgetRuntimeControlsBound;

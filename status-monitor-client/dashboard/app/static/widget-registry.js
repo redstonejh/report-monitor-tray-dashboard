@@ -116,6 +116,7 @@
   };
 
   const formatMetricValue = (value, format = "number") => {
+    if (format === "since") return formatSinceValue(value);
     const numeric = numberValue(value);
     if (numeric == null) return String(value ?? "");
     if (format === "currency") {
@@ -138,6 +139,123 @@
 
   const statLabelFor = (config) => config?.label || config?.title || "Stat";
 
+  // Humanized "time since" for stat cards whose value is an epoch-ms timestamp
+  // (e.g. the most recent failed ping). Two units max: "3d 4h", "5h 12m", "45s".
+  const formatSinceValue = (timestampMs) => {
+    const numeric = numberValue(timestampMs);
+    if (numeric == null || numeric <= 0) return "—";
+    const elapsed = Date.now() - numeric;
+    if (elapsed < 0) return "now";
+    const seconds = Math.floor(elapsed / 1000);
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (days > 0) return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+    if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    if (minutes > 0) return `${minutes}m`;
+    return `${seconds}s`;
+  };
+
+  // Scroll the history table to the ping checked at `checkedAt` and flash the
+  // same status-aware highlight the timeline uses (.ping-focus). Shared by the
+  // chart's ping click and the single-event stat cards (min/max/since-down).
+  // The row centres inside the table's OWN scroll well; the page only moves if
+  // needed to keep the graph and the table in the viewport together.
+  const focusHistoryRow = (checkedAt) => {
+    if (!checkedAt) return false;
+    const escaped = (window.CSS && CSS.escape) ? CSS.escape(checkedAt) : checkedAt;
+    const row = document.querySelector(`[data-widget-key="widget-history"] tbody tr[data-checked-at="${escaped}"]`);
+    if (!row) return false;
+    let scroller = row.parentElement;
+    while (scroller && scroller !== document.body && scroller.scrollHeight <= scroller.clientHeight + 4) {
+      scroller = scroller.parentElement;
+    }
+    if (scroller && scroller !== document.body) {
+      const rowTop = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+      scroller.scrollTo({
+        top: Math.max(0, rowTop - (scroller.clientHeight - row.offsetHeight) / 2),
+        behavior: "smooth",
+      });
+    }
+    const chartCard = [...document.querySelectorAll(".widget-card")].find((el) => typeof el.__focusChartPing === "function");
+    const tableCard = row.closest(".widget-card");
+    const rects = [chartCard, tableCard].filter(Boolean).map((el) => el.getBoundingClientRect());
+    if (rects.length) {
+      const top = Math.min(...rects.map((r) => r.top)) + window.scrollY - 12;
+      const bottom = Math.max(...rects.map((r) => r.bottom)) + window.scrollY + 12;
+      const outOfView = top < window.scrollY || bottom > window.scrollY + window.innerHeight;
+      if (outOfView) {
+        // Both fit → frame them together; otherwise anchor on the graph and
+        // let as much of the table in below it as the viewport allows.
+        const chartTop = (chartCard ? chartCard.getBoundingClientRect().top : rects[0].top) + window.scrollY - 12;
+        window.scrollTo({
+          top: Math.max(0, bottom - top <= window.innerHeight ? top : chartTop),
+          behavior: "smooth",
+        });
+      }
+    }
+    row.classList.add("ping-focus");
+    window.setTimeout(() => row.classList.remove("ping-focus"), 2400);
+    return true;
+  };
+
+  // Navigate the status timeline chart to one specific ping: drill to a window
+  // narrow enough that individual ping bars render, then flash/highlight the
+  // target bar. The chart mount registers __focusChartPing on its card.
+  const focusChartPing = (checkedAt) => {
+    if (!checkedAt) return false;
+    const card = [...document.querySelectorAll(".widget-card")]
+      .find((el) => typeof el.__focusChartPing === "function");
+    if (!card) return false;
+    card.__focusChartPing(checkedAt);
+    return true;
+  };
+
+  // A drag that ends over a widget still fires a click on pointer release —
+  // track the pointer's travel so drag releases never register as clicks.
+  let pointerDownAt = null;
+  document.addEventListener("pointerdown", (event) => {
+    pointerDownAt = { x: event.clientX, y: event.clientY };
+  }, true);
+  const wasDragGesture = (event) => Boolean(
+    event.detail > 0 && pointerDownAt &&
+    Math.hypot(event.clientX - pointerDownAt.x, event.clientY - pointerDownAt.y) > 6
+  );
+
+  // Single-event stat cards (min/max/since-down) carry the matching ping's
+  // timestamp on their value element; clicking the card jumps to that table row
+  // and navigates the timeline chart to the same ping. Count cards (Fails)
+  // cycle: first click is the most recent event, the next click the one before
+  // it, and so on.
+  document.addEventListener("click", (event) => {
+    if (wasDragGesture(event)) return;
+    if (document.body.classList.contains("panel-interaction-active")) return;
+    if (event.target?.closest?.(".widget-tools, .panel-tool-drawer, .widget-workbench-panel")) return;
+    const card = event.target?.closest?.(".widget-card");
+    if (!card) return;
+    const cycleEl = card.querySelector(":scope [data-focus-cycle]");
+    if (cycleEl) {
+      let list = [];
+      try { list = JSON.parse(cycleEl.dataset.focusCycle || "[]"); } catch {}
+      if (!list.length) return;
+      const key = list.join("|");
+      if (card.__focusCycleKey !== key) {
+        card.__focusCycleKey = key;
+        card.__focusCycleIndex = -1;
+      }
+      card.__focusCycleIndex = (card.__focusCycleIndex + 1) % list.length;
+      const stamp = list[card.__focusCycleIndex];
+      focusHistoryRow(stamp);
+      focusChartPing(stamp);
+      return;
+    }
+    const focusEl = card.querySelector(":scope [data-focus-checked-at]");
+    if (focusEl) {
+      focusHistoryRow(focusEl.dataset.focusCheckedAt);
+      focusChartPing(focusEl.dataset.focusCheckedAt);
+    }
+  });
+
   const displaySchemaFields = (data = null) => (
     Array.isArray(data?.schema?.fields)
       ? data.schema.fields.map((field) => field?.name || field).filter(Boolean)
@@ -150,7 +268,7 @@
     const safeCols = Number(cols) || 2;
     if (safeCols <= 2) return 3;
     if (safeCols <= 3) return 4;
-    return 6;
+    return 8;
   };
   const tableVisibleRowCount = (rows, limit) => {
     // Render up to the configured limit (the scroll container handles overflow)
@@ -267,16 +385,16 @@
     { id: "last_1_hour", label: "Last hour", buttonLabel: "1hr", defaultFilterId: "time-last-1-hour" },
     { id: "last_6_hours", label: "Last 6 hours", buttonLabel: "6hr", defaultFilterId: "time-last-6-hours" },
     { id: "last_1_day", label: "Last 24 hours", buttonLabel: "1d", defaultFilterId: "time-last-1-day" },
-    { id: "last_2_days", label: "Last 48 hours", buttonLabel: "2d", defaultFilterId: "time-last-2-days" },
+    { id: "last_2_days", label: "Last 48 hours", buttonLabel: "2d" },
     { id: "this_week", label: "This week" },
     { id: "last_week", label: "Last week" },
     { id: "this_month", label: "This month" },
     { id: "last_month", label: "Last month" },
     { id: "last_7_days", label: "Last 7 days", buttonLabel: "1w", defaultFilterId: "time-last-7-days" },
-    { id: "last_14_days", label: "Last 14 days", buttonLabel: "2w", defaultFilterId: "time-last-14-days" },
+    { id: "last_14_days", label: "Last 14 days", buttonLabel: "2w" },
     { id: "last_30_days", label: "Last 30 days", buttonLabel: "1m", defaultFilterId: "time-last-30-days" },
-    { id: "last_60_days", label: "Last 60 days", buttonLabel: "2m", defaultFilterId: "time-last-60-days" },
-    { id: "last_180_days", label: "Last 180 days", buttonLabel: "6m", defaultFilterId: "time-last-180-days" },
+    { id: "last_60_days", label: "Last 60 days", buttonLabel: "2m" },
+    { id: "last_180_days", label: "Last 180 days", buttonLabel: "6m" },
     { id: "last_365_days", label: "Last 365 days", buttonLabel: "1yr", defaultFilterId: "time-last-365-days" },
     { id: "month_to_date", label: "Month to date" },
     { id: "year_to_date", label: "Year to date" },
@@ -665,7 +783,7 @@
     },
   ]);
   const normalizeVisualWellTone = (value) => (
-    VISUAL_WELL_TONES.some((tone) => tone.value === value) ? value : "white"
+    VISUAL_WELL_TONES.some((tone) => tone.value === value) ? value : "dark"
   );
   const visualWellTone = (config = {}) => normalizeVisualWellTone(config.wellTone);
   const wellToneAttribute = (config = {}) => `data-well-tone="${escapeHtml(visualWellTone(config))}"`;
@@ -677,7 +795,7 @@
   const withWellToneFields = (fields = []) => (
     fields.some((field) => field?.key === "wellTone") ? fields : [...fields, visualWellToneField()]
   );
-  const withWellToneDefault = (config = {}) => ({ ...config, wellTone: "white" });
+  const withWellToneDefault = (config = {}) => ({ ...config, wellTone: "dark" });
   const visualWellToneField = () => ({
     key: "wellTone",
     label: "Well",
@@ -795,7 +913,13 @@
       backgroundColor: "transparent",
       color: colors,
       animation: true,
-      animationDuration: 220,
+      // Entrance: bars cascade in left-to-right; updates (drill in/out, level
+      // switches, timeframe filters) morph via universal transitions instead
+      // of redrawing cold.
+      animationDuration: 480,
+      animationEasing: "cubicOut",
+      animationDurationUpdate: 650,
+      animationEasingUpdate: "cubicInOut",
       textStyle: { color: axis.text, fontFamily: "inherit" },
       tooltip: { trigger: "item", confine: true },
       grid: { left: 28, right: 12, top: 14, bottom: 24, containLabel: true },
@@ -829,10 +953,14 @@
       // day / month. Clicking a bucket narrows the range and drops a level.
       let scoped = rows;
       let spanH;
+      let windowStartMs = NaN;
+      let windowEndMs = NaN;
       if (drilled) {
         const a = Date.parse(ds.drillStart), b = Date.parse(ds.drillEnd);
         scoped = rows.filter((r) => { const t = Date.parse(r?.checkedAt || r?.date); return Number.isFinite(t) && t >= a && t <= b; });
         spanH = (b - a) / 3600000;
+        windowStartMs = a;
+        windowEndMs = b;
       } else {
         const layoutKey = element?.closest?.("[data-widget-layout-key]")?.dataset?.widgetLayoutKey;
         const tf = (typeof window !== "undefined" && window.dashboardTimeframeRuntime?.activeRange?.(layoutKey)) || null;
@@ -840,33 +968,130 @@
         const a = bound(tf?.start, false), b = bound(tf?.end, true);
         if (Number.isFinite(a) && Number.isFinite(b)) {
           spanH = (b - a) / 3600000;
+          windowStartMs = a;
+          windowEndMs = b;
         } else {
           const times = scoped.map((r) => Date.parse(r?.checkedAt || r?.date)).filter(Number.isFinite);
           spanH = times.length ? (Math.max(...times) - Math.min(...times)) / 3600000 : 0;
         }
       }
-      const level = spanH <= 1.5 ? "ping" : spanH <= 50 ? "hour" : spanH <= 24 * 70 ? "day" : "month";
+      // Granularity: auto-derived from the window span, unless the user picked
+      // an explicit level from the chart's level strip (data-bucket-level).
+      const autoLevel = spanH <= 1.5 ? "ping" : spanH <= 50 ? "hour" : spanH <= 24 * 70 ? "day" : "month";
+      const level = ["month", "week", "day", "hour", "ping"].includes(ds.bucketLevel) ? ds.bucketLevel : autoLevel;
+      // Every depth renders ONE natural container with a fixed bar count:
+      // pings = the 60 minutes of one clock hour, hours = the 24 hours of one
+      // day, days = the 28–31 days of one month, weeks = the rolling 52
+      // weeks, months = the rolling 12 months. A drill window IS its
+      // container; top-level views anchor on the end of the timeframe
+      // (clamped to now). Data outside the container is not drawn, and slots
+      // without data render grey — so the bar count never wobbles.
+      const nowMs = Date.now();
+      let cStartMs;
+      let cEndMs;
+      if (drilled && Number.isFinite(windowStartMs) && Number.isFinite(windowEndMs)) {
+        cStartMs = windowStartMs;
+        cEndMs = windowEndMs;
+      } else {
+        const anchor = new Date(Math.min(Number.isFinite(windowEndMs) ? windowEndMs : nowMs, nowMs));
+        if (level === "ping") {
+          const h = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate(), anchor.getHours());
+          cStartMs = h.getTime();
+          cEndMs = h.getTime() + 3600000 - 1;
+        } else if (level === "hour") {
+          const d0 = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+          cStartMs = d0.getTime();
+          cEndMs = d0.getTime() + 86400000 - 1;
+        } else if (level === "day") {
+          cStartMs = new Date(anchor.getFullYear(), anchor.getMonth(), 1).getTime();
+          cEndMs = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1).getTime() - 1;
+        } else if (level === "week") {
+          const day0 = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+          const weekStart = day0.getTime() - (day0.getDay() * 86400000);
+          cStartMs = weekStart - (51 * 604800000);
+          cEndMs = weekStart + 604800000 - 1;
+        } else {
+          cStartMs = new Date(anchor.getFullYear(), anchor.getMonth() - 11, 1).getTime();
+          cEndMs = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1).getTime() - 1;
+        }
+      }
+      scoped = scoped.filter((r) => {
+        const t = Date.parse(r?.checkedAt || r?.date);
+        return Number.isFinite(t) && t >= cStartMs && t <= cEndMs;
+      });
       const bucketInfo = (iso) => {
         const d = new Date(iso);
-        if (level === "ping") return { key: String(iso), label: `${pad(d.getHours())}:${pad(d.getMinutes())}`, start: "", end: "" };
+        // Ping buckets key on the MINUTE so real pings and the fixed minute
+        // slots line up one-to-one.
+        if (level === "ping") { const m = Math.floor(d.getTime() / 60000) * 60000; const md = new Date(m); return { key: `p${m}`, label: `${pad(md.getHours())}:${pad(md.getMinutes())}`, start: "", end: "" }; }
         if (level === "hour") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()); return { key: `h${s.getTime()}`, label: `${pad(d.getHours())}:00`, start: s.toISOString(), end: new Date(s.getTime() + 3600000 - 1).toISOString() }; }
         if (level === "day") { const s = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return { key: `d${s.getTime()}`, label: `${MONTHS[d.getMonth()]} ${d.getDate()}`, start: s.toISOString(), end: new Date(s.getTime() + 86400000 - 1).toISOString() }; }
+        if (level === "week") { const day = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const s = new Date(day.getTime() - day.getDay() * 86400000); return { key: `w${s.getTime()}`, label: `${MONTHS[s.getMonth()]} ${s.getDate()}`, start: s.toISOString(), end: new Date(s.getTime() + (7 * 86400000) - 1).toISOString() }; }
         const s = new Date(d.getFullYear(), d.getMonth(), 1);
         return { key: `m${s.getTime()}`, label: MONTHS[d.getMonth()], start: s.toISOString(), end: new Date(new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime() - 1).toISOString() };
       };
+      // Three-level row condition: red is reserved for downtime (a failed
+      // ping); yellow flags a degraded ping (packet loss, or a latency spike
+      // judged against the broader baseline — the feed stamps rows with
+      // `level`); anything else is green.
+      const rowLevel = (r) => r?.level || (r?.status === "red" ? "red" : r?.status === "yellow" ? "yellow" : "green");
       const buckets = new Map();
       for (const r of scoped) {
         const t = Date.parse(r?.checkedAt || r?.date); if (!Number.isFinite(t)) continue;
         const info = bucketInfo(r.checkedAt || r.date);
         let bk = buckets.get(info.key);
-        if (!bk) { bk = { label: info.label, start: info.start, end: info.end, success: 0, fail: 0, total: 0, order: t, checkedAt: r.checkedAt || r.date, detail: r.detail || "" }; buckets.set(info.key, bk); }
-        if (r.status === "green") bk.success += 1; else bk.fail += 1;
+        if (!bk) { bk = { key: info.key, label: info.label, start: info.start, end: info.end, success: 0, down: 0, degraded: 0, total: 0, order: t, checkedAt: r.checkedAt || r.date, detail: r.detail || "" }; buckets.set(info.key, bk); }
+        const lvl = rowLevel(r);
+        if (lvl === "red") bk.down += 1; else if (lvl === "yellow") bk.degraded += 1; else bk.success += 1;
         bk.total += 1;
         if (t < bk.order) bk.order = t;
       }
+      // Fill the container with one slot per period — every minute / hour /
+      // day / week / month gets a bar, and slots without data render grey.
+      {
+        const STEPS = { ping: 60000, hour: 3600000, day: 86400000, week: 604800000 };
+        const SAFETY = 70; // never render an unbounded number of slots
+        const slotTimes = [];
+        if (level === "month") {
+          const start = new Date(cStartMs);
+          let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+          while (cursor.getTime() <= cEndMs && slotTimes.length < SAFETY) {
+            slotTimes.push(cursor.getTime());
+            cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+          }
+        } else {
+          const step = STEPS[level];
+          for (let t = cStartMs; t <= cEndMs && slotTimes.length < SAFETY; t += step) slotTimes.push(t);
+        }
+        slotTimes.forEach((slotMs) => {
+          const info = bucketInfo(new Date(slotMs).toISOString());
+          if (buckets.has(info.key)) return;
+          buckets.set(info.key, {
+            key: info.key,
+            label: info.label,
+            start: info.start,
+            end: info.end,
+            success: 0,
+            down: 0,
+            degraded: 0,
+            total: 0,
+            order: info.start ? Date.parse(info.start) : slotMs,
+            checkedAt: "",
+            detail: "",
+            empty: true,
+          });
+        });
+      }
       const ordered = [...buckets.values()].sort((a, b) => a.order - b.order);
       const isPing = level === "ping";
-      const colourFor = (bk) => (isPing ? (bk.fail ? "#e1857c" : "#6fc99a") : (!bk.fail ? "#6fc99a" : (!bk.success ? "#e1857c" : "#d4ab63")));
+      // A ping bar is a single condition: red only when that ping was down,
+      // amber when degraded, green otherwise. Buckets render as an HP bar
+      // instead — stacked green/amber/red segments proportional to the healthy,
+      // degraded, and down share of the bucket (97% healthy = 97% green with a
+      // 3% amber cap), so one bad ping no longer paints the whole bar.
+      const pingColour = (bk) => (bk.down ? "#e1857c" : bk.degraded ? "#d4ab63" : "#6fc99a");
+      // Surface the effective view for the chart's level strip.
+      if (card?.dataset) card.dataset.chartLevel = level;
       // Breadcrumb of the period currently in view (only while drilled in).
       const ctx = drilled ? new Date(ds.drillStart) : null;
       const contextLabel = ctx
@@ -874,26 +1099,89 @@
           : level === "hour" ? `${MONTHS[ctx.getMonth()]} ${ctx.getDate()}`
           : MONTHS[ctx.getMonth()])
         : "";
+      if (card?.dataset) card.dataset.chartContext = contextLabel;
       return {
         ...base,
-        graphic: drilled ? [
-          { type: "text", left: 10, top: 6, silent: true, style: { text: "‹ back", fill: axis.text, fontSize: 11, opacity: 0.6 } },
-          { type: "text", right: 12, top: 6, silent: true, style: { text: contextLabel, fill: axis.text, fontSize: 11, opacity: 0.85 } },
-        ] : undefined,
+        graphic: [],
         tooltip: {
           trigger: "item",
           confine: true,
           // Keep it terse: a ping is just its time + pass/fail; a bucket its health.
           formatter: (params) => {
             const d = params?.data; if (!d) return "";
-            if (d._ping) return `${d._label} · ${d._success ? "Pass" : "Fail"}`;
+            if (d._empty) return `${d._label} · no data`;
+            if (d._ping) return `${d._label} · ${d._down ? "Down" : d._degraded ? "Degraded" : "Pass"}`;
             const pct = d._total ? Math.round((d._success / d._total) * 100) : 0;
-            return `${d._label} · ${pct}% healthy`;
+            const bits = [`${pct}% healthy`];
+            if (d._degraded) bits.push(`${d._degraded} degraded`);
+            if (d._down) bits.push(`${d._down} down`);
+            return `${d._label} · ${bits.join(" · ")}`;
           },
         },
         xAxis: { type: "category", data: ordered.map((bk) => bk.label), axisLabel: { color: axis.text }, axisLine: { lineStyle: { color: axis.line } } },
         yAxis: { type: "value", show: false, min: 0, max: 100 },
-        series: [{ type: "bar", barCategoryGap: "16%", barMaxWidth: 40, cursor: "pointer", data: ordered.map((bk) => ({ value: 100, itemStyle: { color: colourFor(bk), borderRadius: 3 }, _ping: isPing, _start: bk.start, _end: bk.end, _checkedAt: bk.checkedAt, _detail: bk.detail, _success: bk.success, _total: bk.total, _label: bk.label })) }],
+        series: (() => {
+          const emphasis = { itemStyle: { shadowBlur: 16, shadowColor: "rgba(255, 255, 255, 0.85)", borderColor: "#ffffff", borderWidth: 2 } };
+          const bucketMeta = (bk) => ({ groupId: bk.key, _groupId: bk.key, _ping: isPing, _empty: !!bk.empty, _start: bk.start, _end: bk.end, _checkedAt: bk.checkedAt, _detail: bk.detail, _success: bk.success, _down: bk.down, _degraded: bk.degraded, _total: bk.total, _label: bk.label });
+          const EMPTY_GREY = "rgba(148, 163, 184, 0.26)";
+          // No entrance stagger here — drill navigation is choreographed by
+          // hand in the chart mount (directional exits, then a fan-out from
+          // the centred bar), so bars must never "wave in from the left".
+          const transitionProps = {
+            id: "",
+          };
+          if (isPing) {
+            return [{
+              ...transitionProps,
+              id: "pings",
+              type: "bar",
+              barCategoryGap: "16%",
+              barMaxWidth: 40,
+              cursor: "pointer",
+              emphasis,
+              data: ordered.map((bk) => ({ value: 100, itemStyle: { color: bk.empty ? EMPTY_GREY : pingColour(bk), borderRadius: 3 }, ...bucketMeta(bk) })),
+            }];
+          }
+          // HP-bar segments stack bottom-up: healthy green, degraded amber,
+          // down red — each proportional to its share of the bucket. Empty
+          // (no-data) slots render as a full-height translucent grey bar.
+          const hpSegment = (id, color, share) => ({
+            ...transitionProps,
+            id,
+            type: "bar",
+            stack: "hp",
+            barCategoryGap: "16%",
+            barMaxWidth: 40,
+            cursor: "pointer",
+            emphasis,
+            data: ordered.map((bk) => ({
+              value: bk.total ? Math.round((share(bk) / bk.total) * 1000) / 10 : 0,
+              itemStyle: { color, borderRadius: 2 },
+              ...bucketMeta(bk),
+            })),
+          });
+          const emptySegment = {
+            ...transitionProps,
+            id: "hp-empty",
+            type: "bar",
+            stack: "hp",
+            barCategoryGap: "16%",
+            barMaxWidth: 40,
+            cursor: "pointer",
+            emphasis,
+            data: ordered.map((bk) => ({
+              value: bk.empty ? 100 : 0,
+              itemStyle: { color: EMPTY_GREY, borderRadius: 2 },
+              ...bucketMeta(bk),
+            })),
+          };
+          return [
+            hpSegment("hp-ok", "#6fc99a", (bk) => bk.success),
+            hpSegment("hp-degraded", "#d4ab63", (bk) => bk.degraded),
+            hpSegment("hp-down", "#e1857c", (bk) => bk.down),
+            emptySegment,
+          ];
+        })(),
       };
     }
     if (["bar", "horizontal-bar", "grouped-bar", "stacked-bar", "lollipop"].includes(chartType)) {
@@ -1096,7 +1384,33 @@
     const target = contentRoot?.querySelector?.(".runtime-table-tanstack");
     if (!target) return null;
     const config = instance?.config || {};
-    const rows = widgetDataRows(instance?.data);
+    const rows = [...widgetDataRows(instance?.data)];
+    // Honour the configured sort (e.g. sortBy "checkedAt" desc so the newest
+    // ping renders at the top) — rows otherwise arrive in ingest order.
+    const sortBy = String(config.sortBy || "").trim();
+    if (sortBy) {
+      const direction = String(config.sortDirection || "asc").toLowerCase() === "desc" ? -1 : 1;
+      const sortValue = (row) => {
+        const raw = row?.[sortBy];
+        if (raw == null || raw === "") return null;
+        if (typeof raw === "number") return raw;
+        const text = String(raw);
+        const timestamp = /^\d{4}-\d{2}-\d{2}/.test(text) ? Date.parse(text) : NaN;
+        if (Number.isFinite(timestamp)) return timestamp;
+        const numeric = Number(text);
+        return Number.isFinite(numeric) ? numeric : text;
+      };
+      rows.sort((a, b) => {
+        const av = sortValue(a);
+        const bv = sortValue(b);
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1; // empty values sink to the bottom either way
+        if (bv == null) return -1;
+        if (av < bv) return -direction;
+        if (av > bv) return direction;
+        return 0;
+      });
+    }
     const configuredColumns = tableConfiguredColumns(config);
     const schemaFields = rows.length ? Object.keys(rows[0] || {}) : dataSchemaFields(instance?.data);
     const allFields = unique(configuredColumns.length ? configuredColumns : schemaFields.length ? schemaFields : [""]);
@@ -1159,8 +1473,22 @@
           // green/red on hover.
           const rowResult = row.original?.result;
           if (rowResult) tr.dataset.result = rowResult;
-          // Lets the status timeline scroll to and highlight a specific ping.
-          if (row.original?.checkedAt) tr.dataset.checkedAt = row.original.checkedAt;
+          // Criticality level drives the row highlight color (green / amber /
+          // red) — same three-level logic as the chart bars and stat cards.
+          const rowLevel = row.original?.level || (row.original?.status === "red" ? "red" : row.original?.status === "yellow" ? "yellow" : rowResult ? "green" : "");
+          if (rowLevel) tr.dataset.level = rowLevel;
+          // Lets the status timeline scroll to and highlight a specific ping —
+          // and clicking the row navigates the timeline chart to that ping.
+          if (row.original?.checkedAt) {
+            tr.dataset.checkedAt = row.original.checkedAt;
+            tr.style.cursor = "pointer";
+            tr.addEventListener("click", (event) => {
+              if (wasDragGesture(event)) return;
+              focusChartPing(tr.dataset.checkedAt);
+              tr.classList.add("ping-focus");
+              window.setTimeout(() => tr.classList.remove("ping-focus"), 2400);
+            });
+          }
           row.getVisibleCells().forEach((cell) => {
             const td = document.createElement("td");
             const value = String(cell.getValue() ?? "");
@@ -1275,7 +1603,13 @@
         if (disposed || !target.isConnected) return;
         const rows = widgetDataRows(instance?.data);
         chart = echarts.init(target, null, { renderer: "svg" });
-        const paint = () => chart.setOption(chartEchartsOption({ instance, definition: chartDefinition, rows, element: target }), true);
+        // Adaptive (status timeline) charts repaint with replaceMerge so the
+        // universal transition can morph the old bars into the new view —
+        // notMerge would tear the scene down and lose the animation.
+        let paint = () => chart.setOption(
+          chartEchartsOption({ instance, definition: chartDefinition, rows, element: target }),
+          config.adaptiveBucket ? { replaceMerge: ["series", "graphic"] } : true
+        );
         paint();
         // Fractal drill-down for the status timeline: clicking a bucket zooms in
         // one level (narrower range, finer granularity); clicking empty space
@@ -1284,44 +1618,267 @@
         // changes.
         if (config.adaptiveBucket) {
           const card = target.closest(".widget-card") || target;
+          // Granularity strip under the plot: the current viewable range on the
+          // right, explicit level selectors (months → pings) on the left. An
+          // explicit pick pins the bucket level; drilling re-enters auto mode.
+          const LEVELS = [
+            ["month", "Months"], ["week", "Weeks"], ["day", "Days"], ["hour", "Hours"], ["ping", "Pings"],
+          ];
+          const strip = document.createElement("div");
+          strip.className = "chart-level-strip";
+          strip.innerHTML = `<div class="chart-level-buttons">`
+            + `<button type="button" class="chart-level-btn chart-level-back" data-action="back">‹ Back</button>`
+            + LEVELS.map(([key, label]) => (
+              `<button type="button" class="chart-level-btn" data-level="${key}">${label}</button>`
+            )).join("")
+            + `</div>`;
+          target.insertAdjacentElement("afterend", strip);
+          const updateStrip = () => {
+            const effective = card.dataset.chartLevel || "";
+            strip.querySelectorAll(".chart-level-btn[data-level]").forEach((btn) => {
+              btn.classList.toggle("is-active", btn.dataset.level === effective);
+            });
+          };
+          const basePaint = paint;
+          paint = () => { basePaint(); updateStrip(); };
+          updateStrip();
+          strip.addEventListener("click", (event) => {
+            const btn = event.target?.closest?.(".chart-level-btn");
+            if (!btn) return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (btn.dataset.action === "back") {
+              // Pure layer-up: pings → hours → days → months. Never a history
+              // pop — any drill scope clears and the broad view paints at the
+              // parent depth. At months there is nowhere further up to go.
+              const PARENTS = { ping: "hour", hour: "day", day: "month", week: "month" };
+              const parent = PARENTS[card.dataset.chartLevel || ""];
+              if (!parent) return;
+              card.dataset.bucketLevel = parent;
+              delete card.dataset.drillStart;
+              delete card.dataset.drillEnd;
+              delete card.dataset.drillGroupId;
+              // The expanded bars sweep back in toward centre before the
+              // parent depth paints.
+              fanBackThen(paint);
+              return;
+            }
+            if (card.dataset.bucketLevel === btn.dataset.level) {
+              delete card.dataset.bucketLevel; // toggle back to auto
+            } else {
+              card.dataset.bucketLevel = btn.dataset.level;
+            }
+            // An explicit level resets any drill — the view returns to the
+            // selected timeframe at that granularity.
+            delete card.dataset.drillStart;
+            delete card.dataset.drillEnd;
+            delete card.dataset.drillGroupId;
+            paint();
+          });
+          // Walk every rendered bar element of every series and apply fn(el, barX, j).
+          const eachBarElement = (fn) => {
+            const model = chart.getModel?.();
+            if (!model) return false;
+            const seriesArr = chart.getOption()?.series || [];
+            for (let s = 0; s < seriesArr.length; s += 1) {
+              const data = model.getSeriesByIndex(s)?.getData?.();
+              if (!data?.getItemGraphicEl) continue;
+              const count = seriesArr[s].data?.length || 0;
+              for (let j = 0; j < count; j += 1) {
+                const el = data.getItemGraphicEl(j);
+                if (!el || typeof el.animateTo !== "function") continue;
+                const barX = chart.convertToPixel({ seriesIndex: s, dataIndex: j }, [j, 0])?.[0];
+                if (!Number.isFinite(barX)) continue;
+                fn(el, barX, j);
+              }
+            }
+            return true;
+          };
+          // Phase 2 of the drill: the freshly painted child bars start stacked
+          // at centre stage (where the clicked bar landed) and fan outward to
+          // their slots — inner bars settle first, the outermost last.
+          const fanChildrenFromCenter = () => {
+            try {
+              const cx = chart.getWidth() / 2;
+              eachBarElement((el, barX) => {
+                const fromDx = cx - barX;
+                el.x = fromDx;
+                el.animateTo(
+                  { x: 0 },
+                  { duration: 460, delay: Math.min(Math.abs(fromDx) * 0.35, 220), easing: "cubicOut" }
+                );
+              });
+            } catch {}
+          };
+          // Drill-in choreography, all animated by hand on the rendered bars:
+          // neighbours LEFT of the clicked bar slide off to the left, those on
+          // the RIGHT slide off to the right, the clicked bar glides to centre
+          // stage — then the drilled view paints with its child bars splitting
+          // out of that centre point, fanning left and right into place.
+          const fanOutInto = (groupId) => {
+            const finishPaint = () => {
+              if (disposed || !chart || chart.isDisposed?.()) return;
+              paint();
+              requestAnimationFrame(fanChildrenFromCenter);
+            };
+            try {
+              const seriesArr = chart.getOption()?.series || [];
+              const firstData = seriesArr[0]?.data || [];
+              const idx = firstData.findIndex((item) => item && item._groupId === groupId);
+              if (idx >= 0 && firstData.length > 1) {
+                const plotWidth = chart.getWidth();
+                const clickedX = chart.convertToPixel({ seriesIndex: 0, dataIndex: idx }, [idx, 0])?.[0] ?? plotWidth / 2;
+                const centerDx = (plotWidth / 2) - clickedX;
+                const moved = eachBarElement((el, barX, j) => {
+                  const dx = j === idx
+                    ? centerDx
+                    : j < idx
+                      ? -(barX + 90)            // exit stage left
+                      : (plotWidth - barX) + 90; // exit stage right
+                  el.animateTo({ x: (el.x || 0) + dx }, { duration: 320, easing: "cubicInOut" });
+                });
+                if (moved) {
+                  window.setTimeout(finishPaint, 340);
+                  return;
+                }
+              }
+            } catch {}
+            finishPaint();
+          };
+          // Going back up a level reverses the motion: the expanded bars sweep
+          // back IN toward centre stage, then the parent view paints.
+          const fanBackThen = (after) => {
+            try {
+              const cx = chart.getWidth() / 2;
+              const moved = eachBarElement((el, barX) => {
+                el.animateTo(
+                  { x: (el.x || 0) + (cx - barX) },
+                  { duration: 300, delay: Math.max(0, 120 - Math.abs(cx - barX) * 0.18), easing: "cubicIn" }
+                );
+              });
+              if (moved) {
+                window.setTimeout(() => { if (!disposed && chart && !chart.isDisposed?.()) after(); }, 330);
+                return;
+              }
+            } catch {}
+            after();
+          };
           chart.on("click", (params) => {
             const d = params?.data;
             if (!d) return;
             if (d._ping) {
               // Clicking a ping jumps to it in the table: scroll it into the
               // centre and flash a highlight.
-              if (!d._checkedAt) return;
-              const row = document.querySelector(`[data-widget-key="widget-history"] tbody tr[data-checked-at="${(window.CSS && CSS.escape) ? CSS.escape(d._checkedAt) : d._checkedAt}"]`);
-              if (row) {
-                row.scrollIntoView({ block: "center", behavior: "smooth" });
-                row.classList.add("ping-focus");
-                window.setTimeout(() => row.classList.remove("ping-focus"), 2400);
-              }
+              focusHistoryRow(d._checkedAt);
               return;
             }
             if (!d._start || !d._end) return; // a single ping with no range — nothing to drill
-            const stack = JSON.parse(card.dataset.drillStack || "[]");
-            stack.push({ start: card.dataset.drillStart || "", end: card.dataset.drillEnd || "" });
-            card.dataset.drillStack = JSON.stringify(stack);
             card.dataset.drillStart = d._start;
             card.dataset.drillEnd = d._end;
-            paint();
+            // The new view descends from the clicked bucket: the universal
+            // transition splits that bar into its children.
+            if (d._groupId) card.dataset.drillGroupId = d._groupId; else delete card.dataset.drillGroupId;
+            delete card.dataset.bucketLevel; // drilling resumes auto granularity
+            fanOutInto(d._groupId);
           });
-          chart.getZr().on("click", (event) => {
-            if (event.target) return; // a bar was clicked, not the background
-            if (!card.dataset.drillStart && !(card.dataset.drillStack && card.dataset.drillStack !== "[]")) return;
-            const stack = JSON.parse(card.dataset.drillStack || "[]");
-            const prev = stack.pop();
-            card.dataset.drillStack = JSON.stringify(stack);
-            if (prev && prev.start) {
-              card.dataset.drillStart = prev.start;
-              card.dataset.drillEnd = prev.end;
-            } else {
-              delete card.dataset.drillStart;
-              delete card.dataset.drillEnd;
+          // (Background clicks intentionally do nothing — stepping back up a
+          // level lives on the strip's "‹ Back" control.)
+          // Only one bar is ever lit — a new focus extinguishes the previous
+          // one immediately.
+          let activeFlash = null;
+          const clearFlash = () => {
+            if (!activeFlash) return;
+            window.clearTimeout(activeFlash.timer);
+            if (chart && !chart.isDisposed?.()) {
+              chart.dispatchAction({ type: "downplay", seriesIndex: 0 });
+              chart.dispatchAction({ type: "hideTip" });
             }
-            paint();
-          });
+            activeFlash = null;
+          };
+          const flashTarget = (targetMs, delay = 700) => {
+            const flash = { timer: 0 };
+            activeFlash = flash;
+            const targetMinute = Math.floor(targetMs / 60000);
+            flash.timer = window.setTimeout(() => {
+              if (disposed || !chart || chart.isDisposed?.() || activeFlash !== flash) return;
+              const seriesData = chart.getOption()?.series?.[0]?.data || [];
+              const dataIndex = seriesData.findIndex((d) => d && d._checkedAt && Math.floor(Date.parse(d._checkedAt) / 60000) === targetMinute);
+              if (dataIndex < 0) return;
+              chart.dispatchAction({ type: "downplay", seriesIndex: 0 });
+              chart.dispatchAction({ type: "highlight", seriesIndex: 0, dataIndex });
+              chart.dispatchAction({ type: "showTip", seriesIndex: 0, dataIndex });
+              flash.timer = window.setTimeout(() => {
+                if (disposed || !chart || chart.isDisposed?.() || activeFlash !== flash) return;
+                chart.dispatchAction({ type: "downplay", seriesIndex: 0, dataIndex });
+                chart.dispatchAction({ type: "hideTip" });
+                activeFlash = null;
+              }, 2400);
+            }, delay);
+          };
+          // Navigate-and-highlight for one ping (used by the stat cards and
+          // the table rows). The ping depth always shows the CLOCK HOUR
+          // containing the target — 60 fixed minute slots. If that hour is
+          // already on stage, nothing repaints (just the flash). If a
+          // different hour is showing, the strip sweeps back up one depth,
+          // paints the target day's hours, then fans into the right hour.
+          card.__focusChartPing = (checkedAt) => {
+            if (disposed || !chart || chart.isDisposed?.()) return;
+            const targetMs = Date.parse(checkedAt);
+            if (!Number.isFinite(targetMs)) return;
+            clearFlash();
+            const t = new Date(targetMs);
+            const hourStart = new Date(t.getFullYear(), t.getMonth(), t.getDate(), t.getHours());
+            const dayStart = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+            const hourGroup = `h${hourStart.getTime()}`;
+            const minuteKey = `p${Math.floor(targetMs / 60000) * 60000}`;
+            const applyHourDrill = () => {
+              card.dataset.drillStart = hourStart.toISOString();
+              card.dataset.drillEnd = new Date(hourStart.getTime() + 3600000 - 1).toISOString();
+              card.dataset.drillGroupId = hourGroup;
+              delete card.dataset.bucketLevel;
+            };
+            const stageData = chart.getOption()?.series?.[0]?.data || [];
+            const onStage = (groupId) => stageData.some((d) => d && d._groupId === groupId);
+            if (card.dataset.chartLevel === "ping") {
+              if (onStage(minuteKey)) {
+                // The right hour is already showing — just flash the bar.
+                flashTarget(targetMs, 80);
+                return;
+              }
+              // A different hour is showing: sweep back up a depth, paint the
+              // target day's hours, then fan into the correct hour.
+              fanBackThen(() => {
+                card.dataset.drillStart = dayStart.toISOString();
+                card.dataset.drillEnd = new Date(dayStart.getTime() + 86400000 - 1).toISOString();
+                delete card.dataset.drillGroupId;
+                delete card.dataset.bucketLevel;
+                paint();
+                window.setTimeout(() => {
+                  if (disposed || !chart || chart.isDisposed?.()) return;
+                  applyHourDrill();
+                  fanOutInto(hourGroup);
+                  flashTarget(targetMs, 1500);
+                }, 520);
+              });
+              return;
+            }
+            // Coarser depth: the bucket holding the target splits open into
+            // the target hour's ping strip.
+            const fromLevel = card.dataset.chartLevel || "";
+            const parentGroup = fromLevel === "hour" ? hourGroup
+              : fromLevel === "day" ? `d${dayStart.getTime()}`
+                : fromLevel === "week" ? `w${dayStart.getTime() - (dayStart.getDay() * 86400000)}`
+                  : fromLevel === "month" ? `m${new Date(t.getFullYear(), t.getMonth(), 1).getTime()}`
+                    : "";
+            applyHourDrill();
+            if (parentGroup && onStage(parentGroup)) {
+              fanOutInto(parentGroup);
+              flashTarget(targetMs, 1100);
+            } else {
+              paint();
+              flashTarget(targetMs, 700);
+            }
+          };
         }
         resizeObserver = new ResizeObserver(() => chart?.resize());
         resizeObserver.observe(target);
@@ -1334,6 +1891,8 @@
     return () => {
       disposed = true;
       resizeObserver?.disconnect();
+      const card = target.closest(".widget-card");
+      if (card && card.__focusChartPing) delete card.__focusChartPing;
       if (chart && !chart.isDisposed?.()) chart.dispose();
       chart = null;
     };
@@ -1626,11 +2185,17 @@
     const aggregate = aggregateValues(rawValues, metric);
     const fallback = Number.isFinite(Number(config.value)) ? Number(config.value) : 0;
     const total = aggregate == null ? fallback : aggregate;
+    // min/max aggregates correspond to one concrete ping — surface that row so
+    // the card can deep-link to it in the history table.
+    const matchedRow = (metric === "min" || metric === "max") && aggregate != null
+      ? rows.find((row) => numberValue(row?.[valueField] ?? row?.value) === aggregate) || null
+      : null;
     return {
       metric,
       valueField,
       rows,
       total,
+      matchedRow,
       metricContext: metric === "count" ? `${total} records` : `${metric} ${valueField || "value"}`,
     };
   };
@@ -1842,7 +2407,7 @@
           { key: "valueField", label: "Value field", type: "fieldPicker", affectsQuery: true },
           { key: "calculatedFields", label: "Calculated fields", type: "json", defaultValue: [], affectsQuery: true },
           { key: "equationFilters", label: "Equation filters", type: "json", defaultValue: [], affectsQuery: true },
-          { key: "format", label: "Format", type: "select", defaultValue: "number", options: ["number", "currency", "percent"] },
+          { key: "format", label: "Format", type: "select", defaultValue: "number", options: ["number", "currency", "percent", "since"] },
         ],
       }],
     },
@@ -1861,11 +2426,40 @@
     },
     renderContent: ({ instance }) => {
       const config = instance.config || {};
-      const { total } = statMetricContext({ instance });
+      const { metric, valueField, rows, total, matchedRow } = statMetricContext({ instance });
+      let focusAttr = matchedRow?.checkedAt
+        ? ` data-focus-checked-at="${escapeHtml(matchedRow.checkedAt)}" title="Jump to this ping in the table"`
+        : "";
+      if (!focusAttr && metric === "count" && rows.length) {
+        // Count cards (Fails) cycle through their events newest-first on click.
+        const stamps = rows.map((row) => row?.checkedAt).filter(Boolean).slice(-50).reverse();
+        if (stamps.length) {
+          focusAttr = ` data-focus-cycle="${escapeHtml(JSON.stringify(stamps))}" title="Click to step through these events, newest first"`;
+        }
+      }
+      // Average cards show a muted delta against the broader trend the feed
+      // supplies (e.g. "Δ+13" = thirteen over the all-history average); min and
+      // max cards show their distance from this window's own average ("+198 avg").
+      let deltaHtml = "";
+      const baseline = instance.data?.meta?.baselines?.[valueField];
+      const roundDelta = (delta) => (Math.abs(delta) >= 10 ? Math.round(delta) : Math.round(delta * 10) / 10);
+      if (metric === "avg" && rows.length && Number.isFinite(Number(baseline))) {
+        const rounded = roundDelta(total - Number(baseline));
+        const text = `Δ${rounded > 0 ? "+" : ""}${rounded}`;
+        deltaHtml = `<span class="stat-delta" title="vs the broader average (${escapeHtml(formatMetricValue(Number(baseline), config.format))})">${escapeHtml(text)}</span>`;
+      } else if ((metric === "min" || metric === "max") && rows.length && config.format !== "since") {
+        const values = rows.map((row) => numberValue(row?.[valueField] ?? row?.value)).filter((v) => v != null);
+        const windowAvg = values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
+        if (windowAvg != null) {
+          const rounded = roundDelta(total - windowAvg);
+          const text = `${rounded > 0 ? "+" : ""}${rounded} avg`;
+          deltaHtml = `<span class="stat-delta" title="vs this window's average (${escapeHtml(formatMetricValue(windowAvg, config.format))})">${escapeHtml(text)}</span>`;
+        }
+      }
       // Always include the label in the body: these cards render at "tiny"
       // density, which hides the shell header — without this they were bare
       // numbers with no indication of what they measure.
-      return `<span class="stat-val">${escapeHtml(formatMetricValue(total, config.format))}</span>`
+      return `<span class="stat-val"${focusAttr}>${escapeHtml(formatMetricValue(total, config.format))}${deltaHtml}</span>`
         + `<span class="stat-lbl">${escapeHtml(statLabelFor(config))}</span>`;
     },
   });

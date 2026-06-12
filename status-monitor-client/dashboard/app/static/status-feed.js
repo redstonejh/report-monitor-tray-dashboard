@@ -6,6 +6,8 @@
 // hydrates at DOMContentLoaded. The data runtime is created during boot, so
 // ingestion waits for window.dashboardWidgetDataRuntime to appear.
 
+import { applyPanelColor } from "./modules/panel-appearance-runtime.js";
+
 // Canonical status palette — kept identical to the tray popover (src/App.css)
 // so green / amber / red read the same on both surfaces.
 const STATUS_COLORS = {
@@ -363,12 +365,20 @@ const formatDay = (iso) => {
 const historyRow = (entry) => ({
   date: entry.checkedAt,
   checkedAt: entry.checkedAt,
+  // Epoch ms so "max(checkedAtMs)" finds the most recent event numerically
+  // (drives the "Since down" card via the stat widget's `since` format).
+  checkedAtMs: Number.isFinite(Date.parse(entry.checkedAt)) ? Date.parse(entry.checkedAt) : null,
   checked: formatChecked(entry.checkedAt),
   day: formatDay(entry.checkedAt),
   status: entry.status,
   // A ping is binary: it passed (healthy) or it did not.
   result: entry.status === "green" ? "Pass" : "Fail",
   machine: entry.machine || "",
+  // Display columns for the history table: host IP, latency, and packet loss
+  // broken out of the old combined "detail" string.
+  ip: entry.host || "",
+  ping: entry.latencyMs != null && entry.status !== "red" ? `${entry.latencyMs} ms` : "—",
+  loss: entry.packetLossPct != null && entry.status !== "red" ? `${entry.packetLossPct}%` : "—",
   // Numeric latency (ms) for the stat cards; null/undefined for down pings.
   latencyMs: entry.latencyMs ?? null,
   packetLossPct: entry.packetLossPct ?? null,
@@ -416,6 +426,150 @@ function rowsForActive() {
   return (companyState.pingsById.get(companyState.active) || []).map(historyRow);
 }
 
+// ─── Adaptive card status colors ────────────────────────────────────────────
+// Stat cards tint green/yellow/red through the existing per-object recolor
+// system (applyPanelColor + the preset palette colors), with thresholds derived
+// from the link's own baseline rather than fixed numbers: a circuit that always
+// runs 80ms stays green at 90ms, while a 5ms link spiking to 90ms reads red.
+// Cards the user explicitly recolored (panelColorUser) are left alone.
+
+const ADAPTIVE_STATUS_COLORS = { green: "#16a34a", yellow: "#ca8a04", red: "#dc2626" };
+
+const median = (values) => {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+const average = (values) => (values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null);
+
+// Mirror the widget runtime's timeframe scoping so a card's color judges the
+// same rows its number aggregates.
+const timeframeScopedRows = (rows) => {
+  const range = window.dashboardTimeframeRuntime?.activeRange?.("builder");
+  if (!range?.start && !range?.end) return rows;
+  const bound = (value, dayEnd) => {
+    if (!value) return dayEnd ? Infinity : -Infinity;
+    return String(value).includes("T")
+      ? Date.parse(value)
+      : Date.parse(`${value}T${dayEnd ? "23:59:59.999" : "00:00:00"}`);
+  };
+  const start = bound(range.start, false);
+  const end = bound(range.end, true);
+  if (!Number.isFinite(start) && !Number.isFinite(end)) return rows;
+  return rows.filter((row) => row.checkedAtMs == null || (row.checkedAtMs >= start && row.checkedAtMs <= end));
+};
+
+function applyAdaptiveCardColors(allRows = rowsForActive()) {
+  const broader = allRows || [];
+  const rows = timeframeScopedRows(broader);
+  const lastRow = rows[rows.length - 1] || null;
+  const downNow = lastRow?.status === "red";
+
+  // Each card's own aggregate over the SELECTED window is judged against the
+  // broader trend (every buffered ping for this company), so "high for this
+  // link" is relative — a steady 80ms link reads green at 90ms while a 5ms
+  // link spiking to 90ms reads red, and a max far above the average goes
+  // yellow even when the average itself looks fine.
+  const windowLat = rows.map((r) => r.latencyMs).filter((v) => v != null);
+  const broadLat = broader.map((r) => r.latencyMs).filter((v) => v != null);
+  const windowLoss = rows.map((r) => r.packetLossPct).filter((v) => v != null);
+  const broadLoss = broader.map((r) => r.packetLossPct).filter((v) => v != null);
+  const fails = rows.filter((r) => r.status === "red");
+  const total = rows.length;
+
+  const wAvg = average(windowLat);
+  const bAvg = average(broadLat) ?? wAvg;
+  const wMin = windowLat.length ? Math.min(...windowLat) : null;
+  const bMin = broadLat.length ? Math.min(...broadLat) : wMin;
+  const wMax = windowLat.length ? Math.max(...windowLat) : null;
+  const wLossAvg = average(windowLoss);
+  const bLossAvg = average(broadLoss) ?? 0;
+  const wLossMin = windowLoss.length ? Math.min(...windowLoss) : null;
+  const wLossMax = windowLoss.length ? Math.max(...windowLoss) : null;
+  const lastFailMs = fails.length ? fails[fails.length - 1].checkedAtMs : null;
+  const sinceFailMs = lastFailMs != null ? Date.now() - lastFailMs : null;
+  const uptimePct = total ? (rows.filter((r) => r.up).length / total) * 100 : null;
+  const failRate = total ? (fails.length / total) * 100 : null;
+
+  const latencyAvgStatus = wAvg == null || bAvg == null ? null
+    : wAvg <= bAvg * 1.35 + 8 ? "green"
+      : wAvg <= bAvg * 2.2 + 25 ? "yellow"
+        : "red";
+  const lossAvgStatus = wLossAvg == null ? null
+    : wLossAvg <= Math.max(0.5, bLossAvg * 1.5 + 0.5) ? "green"
+      : wLossAvg <= Math.max(5, bLossAvg * 3 + 2) ? "yellow"
+        : "red";
+
+  const statuses = {
+    // Window average vs the broader average trend.
+    "latency-avg": latencyAvgStatus,
+    // Window floor vs the broader floor: the whole link got slower if even the
+    // best-case ping rises well above the usual minimum.
+    "latency-min": wMin == null || bMin == null ? null
+      : wMin <= bMin * 1.6 + 8 ? "green"
+        : wMin <= bMin * 3 + 30 ? "yellow"
+          : "red",
+    // Window peak vs the window's own average (with broader-average slack):
+    // a max far above the typical ping reads yellow, extreme spikes red.
+    "latency-max": wMax == null || wAvg == null ? null
+      : wMax <= Math.max(wAvg * 1.8 + 15, bAvg * 2 + 20) ? "green"
+        : wMax <= Math.max(wAvg * 6 + 60, bAvg * 8 + 80) ? "yellow"
+          : "red",
+    "loss-avg": lossAvgStatus,
+    // Any persistent floor of packet loss is trouble.
+    "loss-min": wLossMin == null ? null
+      : wLossMin <= 0.5 ? "green" : wLossMin <= 2 ? "yellow" : "red",
+    "loss-max": wLossMax == null ? null
+      : wLossMax <= Math.max(1, bLossAvg * 2 + 1) ? "green"
+        : wLossMax <= 10 ? "yellow"
+          : "red",
+    uptime: uptimePct == null ? null
+      : uptimePct >= 99.5 ? "green" : uptimePct >= 97 ? "yellow" : "red",
+    // Any fail in the window is a red card — failures are never "a little bad".
+    fails: failRate == null ? null
+      : (downNow || fails.length > 0) ? "red" : "green",
+    sincedown: total === 0 ? null
+      : downNow ? "red"
+        : sinceFailMs == null || sinceFailMs >= 4 * 3600000 ? "green"
+          : sinceFailMs >= 30 * 60000 ? "yellow"
+            : "red",
+  };
+  // Back-compat for configs saved before the per-card modes existed.
+  statuses.latency = latencyAvgStatus;
+  statuses.loss = lossAvgStatus;
+
+  document.querySelectorAll('.widget-card[data-widget-type="tracker"], .widget-card[data-widget-definition="stat"]').forEach((card) => {
+    let mode = "";
+    let metric = "";
+    try {
+      const cfg = JSON.parse(card.dataset.widgetConfig || "{}") || {};
+      mode = cfg.statusMode || "";
+      metric = cfg.metric || "";
+    } catch {}
+    // Generic legacy modes ("latency"/"loss" from configs saved before the
+    // per-card modes existed) resolve to the card's own metric, so a max card
+    // is judged as a max, not as an average.
+    if ((mode === "latency" || mode === "loss") && ["avg", "min", "max"].includes(metric)) {
+      mode = `${mode}-${metric}`;
+    }
+    if (!mode || !(mode in statuses)) return;
+    if (card.dataset.panelColorUser === "true") return; // user picked a color — keep it
+    const status = statuses[mode];
+    if (!status) {
+      if (card.dataset.adaptiveStatus) {
+        delete card.dataset.adaptiveStatus;
+        applyPanelColor(card, null);
+      }
+      return;
+    }
+    if (card.dataset.adaptiveStatus === status) return;
+    card.dataset.adaptiveStatus = status;
+    applyPanelColor(card, ADAPTIVE_STATUS_COLORS[status]);
+  });
+}
+
 // Feed the active company's pings to the metric cards (configured in the markup)
 // + the standalone timeline/table. The runtime aggregates over the
 // timeframe-filtered rows, so every number tracks the selected time range.
@@ -427,18 +581,42 @@ function publish() {
   // no latency and would otherwise skew avg/min toward 0.
   const latencyRows = rows.filter((r) => r.latencyMs != null);
   const failRows = rows.filter((r) => r.status === "red");
+  // Stamp each ping with a three-level condition for the timeline chart:
+  // red strictly for downtime, yellow for degraded (packet loss, or latency
+  // far above this link's broader average), green otherwise. Each row also
+  // carries its delta vs the broader averages for the table's Δ columns.
+  const baselineAvg = average(latencyRows.map((r) => r.latencyMs));
+  const baselineLossAvg = average(latencyRows.map((r) => r.packetLossPct).filter((v) => v != null));
+  const signed = (value) => (value > 0 ? `+${value}` : `${value}`);
+  rows.forEach((r) => {
+    r.level = r.status === "red" ? "red"
+      : (r.status === "yellow"
+        || Number(r.packetLossPct) > 0
+        || (baselineAvg != null && r.latencyMs != null && r.latencyMs > Math.max(baselineAvg * 2.2 + 25, 40))) ? "yellow"
+        : "green";
+    r["Δ ping"] = r.latencyMs != null && baselineAvg != null
+      ? signed(Math.round(r.latencyMs - baselineAvg)) : "—";
+    r["Δ loss"] = r.packetLossPct != null && baselineLossAvg != null
+      ? signed(Math.round((r.packetLossPct - baselineLossAvg) * 10) / 10) : "—";
+  });
+  // Broader-trend baselines for the avg stat cards' muted "+13"-style deltas.
+  const baselineMeta = { baselines: { latencyMs: baselineAvg, packetLossPct: baselineLossAvg } };
   dataRuntime.ingest({
     default: { rows }, // standalone timeline + table
     types: { status: { rows: rows.length ? [rows[rows.length - 1]] : [currentStatusRow()] } },
     widgets: {
-      "widget-uptime": { rows },              // Uptime %   = avg(up)
-      "widget-avgms": { rows: latencyRows },  // Avg ms     = avg(latencyMs)
-      "widget-minms": { rows: latencyRows },  // Min ms     = min(latencyMs)
-      "widget-maxms": { rows: latencyRows },  // Max ms     = max(latencyMs)
-      "widget-loss": { rows: latencyRows },   // Pkt loss % = avg(packetLossPct)
-      "widget-fails": { rows: failRows },     // Fails      = count(down)
+      "widget-uptime": { rows },                // Uptime %   = avg(up)
+      "widget-avgms": { rows: latencyRows, meta: baselineMeta },  // Avg ms = avg(latencyMs) + Δ vs broader
+      "widget-minms": { rows: latencyRows },    // Min ms     = min(latencyMs)
+      "widget-maxms": { rows: latencyRows },    // Max ms     = max(latencyMs)
+      "widget-loss": { rows: latencyRows, meta: baselineMeta },   // Avg loss % = avg(packetLossPct) + Δ vs broader
+      "widget-lossmin": { rows: latencyRows },  // Min loss % = min(packetLossPct)
+      "widget-lossmax": { rows: latencyRows },  // Max loss % = max(packetLossPct)
+      "widget-fails": { rows: failRows },       // Fails      = count(down)
+      "widget-sincedown": { rows: failRows },   // Since down = max(checkedAtMs) of fails
     },
   });
+  applyAdaptiveCardColors(rows);
 }
 
 let publishTimer = null;
@@ -637,6 +815,10 @@ async function startFeed() {
     e.preventDefault();
     setActiveCompany(all[next].id);
   });
+
+  // Re-judge the adaptive card colors whenever the timeframe selection changes
+  // (the widget numbers re-render through the runtime; colors follow here).
+  window.dashboardTimeframeRuntime?.subscribe?.(() => applyAdaptiveCardColors());
 
   bridge.onConnection((cs) => { state.connection = cs; updateStatusIndicator(); });
   bridge.onStatus((payload) => { state.status = payload; updateStatusIndicator(); });

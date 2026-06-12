@@ -387,7 +387,6 @@
       const result = deps.commitActiveDropSlot(targetLayout, clone, targetCell || deps.gridBoundsForItem(clone, metrics), {
         fallbackToNearestOpenSlot: true,
         metrics,
-        rowLimit: deps.viewportRowFloorForLayout?.(targetLayout, metrics),
       });
       if (!result?.bounds) {
         clone.remove();
