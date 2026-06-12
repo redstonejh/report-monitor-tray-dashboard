@@ -614,10 +614,16 @@ async function loadCompanyHistory(id) {
 }
 
 // Slide the dashboard content in from the direction of travel (1 = next/right,
-// -1 = prev/left) for a little swipe between companies.
+// -1 = prev/left) for a little swipe between companies. Rapid stepping (held
+// arrow key) skips the slide — restarting a full-grid animation every key
+// repeat is what tanked the frame rate.
+let lastSwitchAnimAt = 0;
 function animateCompanySwitch(dir) {
   const grid = document.querySelector(".dashboard-layout-grid");
   if (!grid || !dir) return;
+  const now = performance.now();
+  if (now - lastSwitchAnimAt < 320) return;
+  lastSwitchAnimAt = now;
   const cls = dir < 0 ? "company-switch-prev" : "company-switch-next";
   grid.classList.remove("company-switch-prev", "company-switch-next");
   void grid.offsetWidth; // restart the animation
@@ -634,7 +640,9 @@ async function setActiveCompany(id) {
   companyState.active = id;
   renderCompanyTabs();
   if (!(companyState.pingsById.get(id) || []).length) await loadCompanyHistory(id);
-  publish();
+  // Debounced: stepping quickly through companies coalesces into one final
+  // data publish instead of re-rendering every widget per key repeat.
+  publishSoon();
   animateCompanySwitch(dir);
 }
 
@@ -652,8 +660,8 @@ function injectCompanyCss() {
   // controls use. No underline, no accent hue. The "…" overflow stays as a
   // text control opening a glass menu.
   style.textContent = `
-  .company-tab-bar{ display:flex; align-items:flex-start; justify-content:center; gap:clamp(10px,2vw,20px); width:min(100%, 1100px); max-width:100%; margin:4px auto 0; box-sizing:border-box; padding:0 6px; }
-  .company-tab-scroller{ display:flex; align-items:flex-start; justify-content:center; min-width:0; }
+  .company-tab-bar{ display:flex; align-items:flex-start; justify-content:center; gap:14px; width:min(100%, 1100px); max-width:100%; margin:6px auto 0; box-sizing:border-box; padding:0 6px; overflow:hidden; }
+  .company-tab-scroller{ display:inline-flex; align-items:flex-start; min-width:0; transform:translateX(0); transition:transform .3s cubic-bezier(.25,.8,.3,1); will-change:transform; }
   .company-tab{
     flex:0 0 auto;
     appearance:none !important; -webkit-appearance:none !important;
@@ -661,28 +669,26 @@ function injectCompanyCss() {
     border:0 !important; background:transparent !important; background-color:transparent !important;
     box-shadow:none !important; outline:0 !important; filter:none !important;
     min-height:0 !important; padding:0 2px !important; border-radius:0 !important;
-    margin:0 clamp(8px,1.4vw,16px);
+    margin:0 clamp(8px,1.2vw,14px);
     font:inherit; font-weight:650; line-height:1.15; letter-spacing:.01em;
     color:rgba(255,255,255,0.46);
     text-shadow:var(--dashboard-custom-text-shadow);
     text-decoration:none !important;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     cursor:pointer;
-    /* The rolling-hill motion: every property of the hierarchy eases on one
-       long, soft curve, and the outer tiers trail the centre slightly so a
-       quick run across companies reads as a wave passing over the row. */
+    /* Only composited properties animate (position, colour, opacity) — sizes
+       and widths snap instantly, so rapid switching never thrashes layout.
+       The smooth motion comes from each tab gliding to its tier height while
+       the whole row glides horizontally to centre the selection. */
     transition:
-      color .38s cubic-bezier(.25,.8,.25,1),
-      font-size .38s cubic-bezier(.25,.8,.25,1),
-      transform .38s cubic-bezier(.25,.8,.25,1),
-      max-width .38s cubic-bezier(.25,.8,.25,1),
-      margin .38s cubic-bezier(.25,.8,.25,1),
-      opacity .3s ease;
+      color .26s ease,
+      transform .26s cubic-bezier(.25,.8,.3,1),
+      opacity .22s ease;
   }
-  .company-tab.tier-0{ font-size:26px; color:#ffffff; transform:translateY(0); max-width:300px; transition-delay:0ms; }
-  .company-tab.tier-1{ font-size:17px; color:rgba(255,255,255,0.52); transform:translateY(12px); max-width:140px; transition-delay:45ms; }
-  .company-tab.tier-2{ font-size:14px; color:rgba(255,255,255,0.36); transform:translateY(20px); max-width:100px; transition-delay:90ms; }
-  .company-tab.tier-off{ font-size:12px; color:rgba(255,255,255,0); transform:translateY(26px); max-width:0; margin:0; padding:0 !important; opacity:0; pointer-events:none; transition-delay:120ms; }
+  .company-tab.tier-0{ font-size:24px; color:#ffffff; transform:translateY(0); max-width:320px; }
+  .company-tab.tier-1{ font-size:16px; color:rgba(255,255,255,0.52); transform:translateY(6px); max-width:130px; }
+  .company-tab.tier-2{ font-size:13px; color:rgba(255,255,255,0.36); transform:translateY(10px); max-width:95px; }
+  .company-tab.tier-off{ font-size:13px; color:rgba(255,255,255,0); transform:translateY(10px); max-width:0; margin:0; padding:0 !important; opacity:0; pointer-events:none; }
   .company-tab:hover, .company-tab:focus-visible{ color:rgba(255,255,255,0.9); }
   .company-tab.tier-0:hover{ color:#ffffff; }
   .company-tab.is-offline{ opacity:.4; }
@@ -693,8 +699,8 @@ function injectCompanyCss() {
     appearance:none !important; -webkit-appearance:none !important;
     border:0 !important; background:transparent !important; box-shadow:none !important;
     filter:none !important; min-height:0 !important; padding:0 4px !important;
-    color:rgba(255,255,255,0.36); font:inherit; font-size:15px; font-weight:650; line-height:1.15;
-    transform:translateY(20px);
+    color:rgba(255,255,255,0.36); font:inherit; font-size:14px; font-weight:650; line-height:1.15;
+    transform:translateY(10px);
     text-shadow:var(--dashboard-custom-text-shadow);
     cursor:pointer; transition:color .18s ease;
   }
@@ -828,6 +834,32 @@ function renderCompanyTabs() {
     if (scroller.children[index] !== b) scroller.insertBefore(b, scroller.children[index] || null);
   });
   while (scroller.children.length > all.length) scroller.lastChild.remove();
+  // True centring: sizes snap instantly, so the active tab's final geometry is
+  // measurable right away — glide the whole row (one composited translateX)
+  // until the selected tab's centre sits exactly on the bar's centre. The
+  // shift is clamped so the row never detaches from the bar at the periphery.
+  requestAnimationFrame(() => {
+    if (!scroller.isConnected) return;
+    const activeEl = tabsById.get(companyState.active);
+    if (!activeEl || activeEl.classList.contains("tier-off")) return;
+    // Compensate with the LIVE transform (the row may be mid-glide when
+    // stepping quickly), so the measured natural geometry is always exact.
+    let liveShift = 0;
+    try { liveShift = new DOMMatrixReadOnly(getComputedStyle(scroller).transform).m41 || 0; } catch {}
+    const barRect = bar.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    const tabRect = activeEl.getBoundingClientRect();
+    const naturalTabCenter = (tabRect.left + tabRect.width / 2) - liveShift;
+    let shift = (barRect.left + barRect.width / 2) - naturalTabCenter;
+    const naturalLeft = scrollerRect.left - liveShift;
+    const naturalRight = scrollerRect.right - liveShift;
+    if (naturalRight - naturalLeft < barRect.width - 12) {
+      const minShift = (barRect.left + 6) - naturalLeft;
+      const maxShift = (barRect.right - 6) - naturalRight;
+      shift = Math.min(Math.max(shift, Math.min(minShift, maxShift)), Math.max(minShift, maxShift));
+    }
+    scroller.style.transform = `translateX(${Math.round(shift)}px)`;
+  });
 }
 
 async function startFeed() {

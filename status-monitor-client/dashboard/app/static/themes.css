@@ -5324,9 +5324,9 @@ body.workspace-page-swipe-dragging{
   -webkit-app-region: no-drag;
 }
 /* Left cluster: sits beside the account button (which auth-ui pins at the
-   far left corner). */
+   far left corner) with the same pitch the right-corner buttons render at. */
 .window-control-cluster.window-control-cluster-left{
-  inset: 12px auto auto 55px;
+  inset: 12px auto auto 67px;
 }
 .window-glass-control{
   position: relative;
