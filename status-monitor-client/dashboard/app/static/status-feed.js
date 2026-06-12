@@ -664,21 +664,67 @@ function injectCompanyCss() {
   if (companyCssInjected) return;
   companyCssInjected = true;
   const style = document.createElement("style");
-  // Company tabs are the unchanged .workspace-tab. Only a fixed window of them is
-  // shown at once; a "…" on each end opens the rest. The base <button> blue
-  // background/shadow is explicitly removed from the "…" controls.
+  // Company tabs are pure text in a stepped hierarchy — the active company is
+  // the largest, highest, and white with its full name; its neighbours step
+  // down in size, position, and brightness (grey, truncated) on each side,
+  // exactly the unselected-grey / selected-white language the timeframe
+  // controls use. No underline, no accent hue. The "…" overflow stays as a
+  // text control opening a glass menu.
   style.textContent = `
-  .company-tab-bar{ display:flex; align-items:center; justify-content:center; gap:clamp(10px,2.4vw,24px); width:min(100%, 1000px); max-width:100%; margin:2px auto 0; box-sizing:border-box; padding:0 6px; }
-  .company-tab-scroller{ display:flex; align-items:center; justify-content:center; gap:clamp(14px,3.5vw,38px); min-width:0; }
-  .company-tab-scroller .workspace-tab{ flex:0 0 auto; --tab-accent:#edf2f8; }
-  .company-tab-scroller .workspace-tab.is-offline{ --tab-accent:#8a8f98; opacity:.5; }
-  .company-overflow-item.is-offline{ color:rgba(138,143,152,0.85); }
-  .company-overflow{ flex:0 0 auto; appearance:none; -webkit-appearance:none; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:#edf2f8; opacity:0.5; font-size:clamp(18px,2.5vw,27px); line-height:1; padding:0 4px; cursor:pointer; }
-  .company-overflow:hover{ opacity:1; }
+  .company-tab-bar{ display:flex; align-items:flex-start; justify-content:center; gap:clamp(10px,2vw,20px); width:min(100%, 1100px); max-width:100%; margin:4px auto 0; box-sizing:border-box; padding:0 6px; }
+  .company-tab-scroller{ display:flex; align-items:flex-start; justify-content:center; gap:clamp(14px,2.8vw,32px); min-width:0; }
+  .company-tab{
+    flex:0 0 auto;
+    appearance:none !important; -webkit-appearance:none !important;
+    display:inline-block !important;
+    border:0 !important; background:transparent !important; background-color:transparent !important;
+    box-shadow:none !important; outline:0 !important; filter:none !important;
+    min-height:0 !important; padding:0 2px !important; border-radius:0 !important;
+    font:inherit; font-weight:650; line-height:1.15; letter-spacing:.01em;
+    color:rgba(255,255,255,0.46);
+    text-shadow:var(--dashboard-custom-text-shadow);
+    text-decoration:none !important;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    cursor:pointer;
+    transition:color .18s ease, font-size .18s ease, transform .18s ease, max-width .18s ease, opacity .18s ease;
+  }
+  .company-tab.tier-0{ font-size:26px; color:#ffffff; transform:translateY(0); max-width:none; }
+  .company-tab.tier-1{ font-size:17px; color:rgba(255,255,255,0.52); transform:translateY(7px); max-width:140px; }
+  .company-tab.tier-2{ font-size:14px; color:rgba(255,255,255,0.36); transform:translateY(11px); max-width:100px; }
+  .company-tab:hover, .company-tab:focus-visible{ color:rgba(255,255,255,0.9); }
+  .company-tab.tier-0:hover{ color:#ffffff; }
+  .company-tab.is-offline{ opacity:.4; }
+  .company-overflow-item.is-offline{ color:rgba(255,255,255,0.4); }
+  .company-overflow{
+    flex:0 0 auto; align-self:flex-start;
+    appearance:none !important; -webkit-appearance:none !important;
+    border:0 !important; background:transparent !important; box-shadow:none !important;
+    filter:none !important; min-height:0 !important; padding:0 4px !important;
+    color:rgba(255,255,255,0.36); font:inherit; font-size:15px; font-weight:650; line-height:1.15;
+    transform:translateY(11px);
+    text-shadow:var(--dashboard-custom-text-shadow);
+    cursor:pointer; transition:color .18s ease;
+  }
+  .company-overflow:hover{ color:rgba(255,255,255,0.9); background:transparent !important; }
   .company-overflow[hidden]{ display:none !important; }
-  .company-overflow-menu{ position:fixed; z-index:9999; max-height:62vh; overflow-y:auto; background:rgba(28,30,38,0.96); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:6px; box-shadow:0 12px 40px rgba(0,0,0,0.45); display:flex; flex-direction:column; gap:2px; min-width:200px; }
-  .company-overflow-item{ display:block; appearance:none; -webkit-appearance:none; padding:8px 12px; border:0 !important; background:transparent !important; box-shadow:none !important; filter:none !important; min-height:0 !important; color:rgba(255,255,255,0.85); font:inherit; font-size:0.95rem; text-align:left; border-radius:6px; cursor:pointer; white-space:nowrap; }
-  .company-overflow-item:hover{ background:rgba(255,255,255,0.1) !important; color:#fff; }
+  .company-overflow-menu{
+    position:fixed; z-index:9999; max-height:62vh; overflow-y:auto;
+    background:linear-gradient(180deg, rgba(22,26,36,0.62), rgba(12,16,24,0.55));
+    -webkit-backdrop-filter:blur(26px) saturate(140%); backdrop-filter:blur(26px) saturate(140%);
+    border:1px solid rgba(255,255,255,0.22); border-radius:14px; padding:8px 6px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.24), 0 18px 42px rgba(0,0,0,0.4);
+    display:flex; flex-direction:column; gap:2px; min-width:210px;
+  }
+  .company-overflow-item{
+    display:block; appearance:none !important; -webkit-appearance:none !important;
+    padding:7px 12px !important; border:0 !important; background:transparent !important;
+    box-shadow:none !important; filter:none !important; min-height:0 !important;
+    color:rgba(255,255,255,0.6); font:inherit; font-size:0.95rem; font-weight:600;
+    text-shadow:var(--dashboard-custom-text-shadow);
+    text-align:left; border-radius:8px; cursor:pointer; white-space:nowrap;
+    transition:color .14s ease;
+  }
+  .company-overflow-item:hover{ background:transparent !important; color:#ffffff; }
   @keyframes company-slide-next{ from{ transform:translateX(30px); opacity:.25; } to{ transform:translateX(0); opacity:1; } }
   @keyframes company-slide-prev{ from{ transform:translateX(-30px); opacity:.25; } to{ transform:translateX(0); opacity:1; } }
   .dashboard-layout-grid.company-switch-next{ animation:company-slide-next 260ms cubic-bezier(.22,1,.36,1); }
@@ -725,7 +771,8 @@ function openOverflowMenu(side, anchor) {
   setTimeout(() => document.addEventListener("click", onDocClickForMenu, true), 0);
 }
 // Only a window of tabs is shown at once; the rest live behind the "…" menus.
-const VISIBLE_COMPANY_TABS = 4;
+// Five visible = the active company centred with two stepped tiers per side.
+const VISIBLE_COMPANY_TABS = 5;
 
 function renderCompanyTabs() {
   injectCompanyCss();
@@ -747,8 +794,8 @@ function renderCompanyTabs() {
   const n = all.length;
   let active = all.findIndex((c) => c.id === companyState.active);
   if (active < 0) active = 0;
-  // Window of VISIBLE tabs, keeping the active one in view (second slot).
-  const start = Math.min(Math.max(0, active - 1), Math.max(0, n - VISIBLE_COMPANY_TABS));
+  // Window of VISIBLE tabs centred on the active company where possible.
+  const start = Math.min(Math.max(0, active - 2), Math.max(0, n - VISIBLE_COMPANY_TABS));
   const end = Math.min(n, start + VISIBLE_COMPANY_TABS);
   bar._leftHidden = all.slice(0, start).map((c) => c.id);
   bar._rightHidden = all.slice(end).map((c) => c.id);
@@ -756,22 +803,23 @@ function renderCompanyTabs() {
   bar.querySelector(".company-overflow-right").hidden = end >= n;
   const scroller = bar.querySelector(".company-tab-scroller");
   scroller.innerHTML = "";
-  for (const co of all.slice(start, end)) {
+  all.slice(start, end).forEach((co, offset) => {
+    const index = start + offset;
     const isActive = co.id === companyState.active;
+    // Visual hierarchy: tier 0 = active (largest, highest, white, full name);
+    // tiers 1 and 2 step down in size, position, and brightness, truncated.
+    const tier = Math.min(Math.abs(index - active), 2);
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "workspace-tab" + (co.online === false ? " is-offline" : ""); // reuse the existing tab styling
+    b.className = `company-tab tier-${tier}` + (co.online === false ? " is-offline" : "");
     b.dataset.companyId = co.id;
     b.setAttribute("aria-pressed", String(isActive));
     b.setAttribute("tabindex", isActive ? "0" : "-1");
     b.title = co.online === false ? `${co.label} — offline` : co.label; // full name on hover
-    const label = document.createElement("span");
-    label.className = "workspace-tab-label";
-    label.textContent = conciseLabel(co.label);
-    b.appendChild(label);
+    b.textContent = conciseLabel(co.label);
     b.addEventListener("click", () => setActiveCompany(co.id));
     scroller.appendChild(b);
-  }
+  });
 }
 
 async function startFeed() {
