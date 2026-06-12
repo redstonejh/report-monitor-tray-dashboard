@@ -69,30 +69,11 @@ function pokeGlass() {
 
 let indicatorEls = null;
 
+// The top-right status dot was retired — the stat cards, chart, and table
+// carry the condition now. The indicator is never created; the update path
+// below no-ops without elements.
 function ensureStatusIndicator() {
-  if (indicatorEls && document.body.contains(indicatorEls.cluster)) return indicatorEls;
-  const cluster = document.createElement("div");
-  cluster.className = "status-indicator-cluster";
-
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "window-glass-control status-indicator-control";
-  button.setAttribute("aria-label", "Monitor status");
-
-  const popover = document.createElement("div");
-  popover.className = "status-detail-popover";
-  popover.setAttribute("role", "status");
-
-  cluster.append(button, popover);
-  document.body.appendChild(cluster);
-
-  cluster.addEventListener("pointerenter", pokeGlass);
-  cluster.addEventListener("pointerleave", pokeGlass);
-  button.addEventListener("focus", pokeGlass);
-  button.addEventListener("blur", pokeGlass);
-
-  indicatorEls = { cluster, button, popover };
-  return indicatorEls;
+  return null;
 }
 
 function updateStatusIndicator() {

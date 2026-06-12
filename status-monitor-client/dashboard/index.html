@@ -63,11 +63,16 @@
   <main class="page">
 
 <div class="app-window-drag-region" aria-hidden="true"></div>
+<!-- Top-left: the account button (injected by auth-ui.js, leftmost) and the
+     dashboard-controls gear beside it. Top-right: minimize, refresh, close —
+     close anchored furthest right. -->
+<div class="window-control-cluster window-control-cluster-left" aria-label="Dashboard controls">
+  <button class="window-glass-control control-bar-gear" type="button" aria-label="Toggle dashboard controls" aria-expanded="false" aria-controls="dashboard-control-bar" title="Dashboard controls"></button>
+</div>
 <div class="window-control-cluster" aria-label="Window controls">
   <button class="window-glass-control window-minimize-control" type="button" aria-label="Minimize app" title="Minimize app"></button>
-  <button class="window-glass-control window-close-control" type="button" aria-label="Close app" title="Close app"></button>
   <button class="window-glass-control window-refresh-control" type="button" aria-label="Reload dashboard" title="Reload dashboard"></button>
-  <button class="window-glass-control control-bar-gear" type="button" aria-label="Toggle dashboard controls" aria-expanded="false" aria-controls="dashboard-control-bar" title="Dashboard controls"></button>
+  <button class="window-glass-control window-close-control" type="button" aria-label="Close app" title="Close app"></button>
 </div>
 <header class="app-nav workspace-chrome floating-control-bar" id="dashboard-control-bar" data-floating-control-bar aria-hidden="true">
   <div class="control-bar-drag-handle" aria-hidden="true"></div>

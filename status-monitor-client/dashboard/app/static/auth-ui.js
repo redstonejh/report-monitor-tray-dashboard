@@ -305,8 +305,9 @@
       .auth-error { font-size: 12px; color: #ff9b9b; }
 
       .auth-profile-cluster {
-        position: fixed; inset: 12px 67px auto auto;
+        position: fixed; inset: 12px auto auto 14px;
         z-index: calc(var(--z-menu-overlay, 2600) + 21);
+        -webkit-app-region: no-drag;
       }
       .auth-profile-button::before {
         content: ""; width: 17px; height: 17px; background: currentColor;
@@ -314,7 +315,7 @@
         mask: url("${USER_ICON}") center / contain no-repeat;
       }
       .auth-profile-menu {
-        position: absolute; top: calc(100% + 8px); right: 0; width: 220px;
+        position: absolute; top: calc(100% + 8px); left: 0; width: 220px;
         display: none; flex-direction: column; gap: 2px; padding: 8px; border-radius: 14px;
       }
       .auth-profile-cluster.open .auth-profile-menu { display: flex; }

@@ -5316,12 +5316,17 @@ body.workspace-page-swipe-dragging{
 }
 .window-control-cluster{
   position: fixed;
-  inset: 12px auto auto 14px;
+  inset: 12px 14px auto auto;
   z-index: calc(var(--z-menu-overlay, 2600) + 20);
   display: inline-flex;
   align-items: center;
   gap: 7px;
   -webkit-app-region: no-drag;
+}
+/* Left cluster: sits beside the account button (which auth-ui pins at the
+   far left corner). */
+.window-control-cluster.window-control-cluster-left{
+  inset: 12px auto auto 55px;
 }
 .window-glass-control{
   position: relative;
