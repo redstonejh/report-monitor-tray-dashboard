@@ -1,5 +1,22 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SettingOutlined, ArrowLeftOutlined, UpOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
+import { SettingOutlined, ArrowLeftOutlined, CloseOutlined, UserOutlined } from '@ant-design/icons';
+
+// The same account glyph the dashboard's profile button uses (auth-ui.js).
+export const AccountGlyph = () => (
+  <svg
+    className="topbar-avatar-glyph"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </svg>
+);
 import StatusPanel from './components/StatusPanel';
 import Settings from './components/Settings';
 import SignIn from './components/SignIn';
@@ -38,7 +55,6 @@ export default function App() {
   const accent = fullyAuthed ? resolveAccent(connectionState, status) : 'neutral';
   const isExpanded = popoverMode === 'expanded';
 
-  const openDashboard = () => window.electron?.openDashboard?.();
   const handlePointerEnter = () => window.electron?.pointerEntered?.();
   const handlePointerLeave = () => window.electron?.pointerLeft?.();
   const pinPopover = () => window.electron?.pinPopover?.();
@@ -120,26 +136,15 @@ export default function App() {
 
       {isExpanded && (
         <header className="topbar">
-          {fullyAuthed && (
-            <button
-              className="icon-btn open-dash"
-              onClick={openDashboard}
-              title="Open dashboard"
-              aria-label="Open dashboard"
-            >
-              <UpOutlined className="chev" />
-              <span className="open-dash-label">Dashboard</span>
-            </button>
-          )}
           <div className="topbar-spacer" />
           {fullyAuthed && (
             <button
               className="icon-btn profile-btn"
               onClick={() => setView(view === 'profile' ? 'status' : 'profile')}
-              title="Account"
+              title={`Account — ${user.username}`}
               aria-label="Account"
             >
-              <span className="topbar-avatar">{(user.username[0] || '?').toUpperCase()}</span>
+              <span className="topbar-avatar"><AccountGlyph /></span>
             </button>
           )}
           {fullyAuthed && (

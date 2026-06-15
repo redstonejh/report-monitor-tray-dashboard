@@ -1173,6 +1173,54 @@ ipcMain.handle('dashboard:open', () => {
   return { ok: true };
 });
 
+// ── Tray pie ──────────────────────────────────────────────────────────────
+// Per-company condition mix over the past 24 hours for the popover's pie:
+// how many pings were healthy / degraded / down. "Degraded" mirrors the
+// dashboard's logic — packet loss, or latency far above the company's own
+// average.
+ipcMain.handle('companies:pie', () => {
+  const dayAgo = Date.now() - 86400000;
+  return companyList().map((co) => {
+    const entry = companies.get(co.id);
+    const pings = (entry?.pings || []).filter((p) => {
+      const t = Date.parse(p.checkedAt);
+      return Number.isFinite(t) && t > dayAgo;
+    });
+    const latencies = pings.filter((p) => p.latencyMs != null).map((p) => p.latencyMs);
+    const avg = latencies.length ? latencies.reduce((sum, v) => sum + v, 0) / latencies.length : null;
+    let healthy = 0;
+    let degraded = 0;
+    let down = 0;
+    for (const p of pings) {
+      if (p.status === 'red') down += 1;
+      else if (p.status === 'yellow' || (avg != null && p.latencyMs != null && p.latencyMs > Math.max(avg * 2.2 + 25, 40))) degraded += 1;
+      else healthy += 1;
+    }
+    return { id: co.id, label: co.label, online: co.online, healthy, degraded, down, total: pings.length };
+  });
+});
+
+// Open the dashboard focused on one company (a clicked pie slice). If the
+// window already exists the company is pushed live; a freshly created window
+// pulls the pending focus once its feed boots.
+let pendingCompanyFocus = null;
+ipcMain.handle('dashboard:open-company', (_e, companyId) => {
+  pendingCompanyFocus = String(companyId || '') || null;
+  const existing = dashboardWindow && !dashboardWindow.isDestroyed();
+  openDashboardWindow();
+  if (existing && pendingCompanyFocus) {
+    dashboardWindow.webContents.send('dashboard:set-company', pendingCompanyFocus);
+    pendingCompanyFocus = null;
+  }
+  return { ok: true };
+});
+
+ipcMain.handle('company:focus:consume', () => {
+  const value = pendingCompanyFocus;
+  pendingCompanyFocus = null;
+  return value;
+});
+
 ipcMain.handle('dashboard:close', () => {
   if (dashboardWindow && !dashboardWindow.isDestroyed()) dashboardWindow.close();
   return { ok: true };

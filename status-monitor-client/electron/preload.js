@@ -21,6 +21,11 @@ contextBridge.exposeInMainWorld('electron', {
   // Open the expanded dashboard window owned by the main process
   openDashboard: () => ipcRenderer.invoke('dashboard:open'),
 
+  // Tray pie: per-company past-24h condition mix, and slice click-through that
+  // opens the dashboard on that company's tab.
+  getCompaniesPie: () => ipcRenderer.invoke('companies:pie'),
+  openCompany: (companyId) => ipcRenderer.invoke('dashboard:open-company', companyId),
+
   // Current dashboard background environment (tone colors + optional photo)
   // used by the popover's liquid-glass WebGL backdrop.
   getDashboardBackground: () => ipcRenderer.invoke('dashboard:background'),

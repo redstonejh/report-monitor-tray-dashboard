@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld('dashboard', {
   getCompanies: () => ipcRenderer.invoke('companies:get'),
   getCompanyHistory: (companyId, limit) => ipcRenderer.invoke('company:history', { companyId, limit }),
   onCheck: (cb) => ipcRenderer.on('mqtt:check', (_e, payload) => cb(payload)),
+  // Tray pie click-through: a pending company focus pulled at boot, plus live
+  // pushes when the window is already open.
+  consumeCompanyFocus: () => ipcRenderer.invoke('company:focus:consume'),
+  onSetCompany: (cb) => ipcRenderer.on('dashboard:set-company', (_e, companyId) => cb(companyId)),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),

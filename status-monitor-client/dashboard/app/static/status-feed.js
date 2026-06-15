@@ -886,6 +886,14 @@ async function startFeed() {
   renderCompanyTabs();
   publish();
 
+  // Tray pie click-through: land on the company whose slice was clicked
+  // (pulled when this window boots; pushed live when it is already open).
+  try {
+    const focus = await bridge.consumeCompanyFocus?.();
+    if (focus && companyState.companies.some((c) => c.id === focus)) await setActiveCompany(focus);
+  } catch {}
+  bridge.onSetCompany?.((companyId) => { if (companyId) setActiveCompany(companyId); });
+
   // ← / → flip between companies (skip while typing or with a menu/modifier).
   document.addEventListener("keydown", (e) => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
