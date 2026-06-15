@@ -659,10 +659,30 @@
     }
   };
 
+  const detachObservers = () => {
+    resizeObserver?.disconnect();
+    mutationObserver?.disconnect();
+    resizeObserver = null;
+    mutationObserver = null;
+    if (scrollHandler) { window.removeEventListener("scroll", scrollHandler); scrollHandler = null; }
+    if (resizeHandler) { window.removeEventListener("resize", resizeHandler); resizeHandler = null; }
+  };
+
+  // User preference (persisted): the liquid-glass effect defaults ON — only an
+  // explicit "off" disables it.
+  const GLASS_PREF_KEY = "dashboard-webgl-glass";
+  const glassPrefEnabled = () => {
+    try { return localStorage.getItem(GLASS_PREF_KEY) !== "off"; } catch { return true; }
+  };
+  const setGlassPref = (on) => {
+    try { localStorage.setItem(GLASS_PREF_KEY, on ? "on" : "off"); } catch {}
+  };
+
   const enable = () => {
     if (active) return;
     if (!ensureCanvas()) return;
     active = true;
+    if (canvas) canvas.style.display = ""; // un-hide if a prior disable() hid it
     document.body.classList.add("webgl-glass-on");
     loadBackgroundImage();
     syncSize();
@@ -674,6 +694,18 @@
     markDirty();
   };
 
+  // Real teardown: drop the glass body class (CSS falls back to the plain
+  // surfaces), stop the render loop, detach observers, and hide the canvas so
+  // no GPU work happens while the effect is off.
+  const disable = () => {
+    active = false;
+    document.body.classList.remove("webgl-glass-on");
+    detachObservers();
+    if (rafHandle) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+    pendingFrame = false;
+    if (canvas) canvas.style.display = "none";
+  };
+
   const reconcile = () => {
     if (!active) enable();
     else {
@@ -681,6 +713,25 @@
       rasterizeBackdropTexture();
       markDirty();
     }
+  };
+
+  // The menu toggle (background popover) reflects and drives the effect state.
+  const syncGlassToggleButton = () => {
+    const btn = document.querySelector(".glass-fx-toggle");
+    if (!btn) return;
+    btn.classList.toggle("is-on", active);
+    btn.setAttribute("aria-pressed", String(active));
+  };
+  const wireGlassToggleButton = () => {
+    const btn = document.querySelector(".glass-fx-toggle");
+    if (!btn || btn.dataset.glassWired === "true") return;
+    btn.dataset.glassWired = "true";
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      window.LiquidGlassWebGL.toggle();
+    });
+    syncGlassToggleButton();
   };
 
   const logDiagnostics = () => {
@@ -726,10 +777,27 @@
 
   window.LiquidGlassWebGL = {
     enable: () => {
+      setGlassPref(true);
       reconcile();
+      syncGlassToggleButton();
     },
     disable: () => {
-      reconcile();
+      setGlassPref(false);
+      disable();
+      syncGlassToggleButton();
+    },
+    setEnabled: (on) => {
+      const want = !!on;
+      setGlassPref(want);
+      if (want) reconcile(); else disable();
+      syncGlassToggleButton();
+    },
+    toggle: () => {
+      const next = !active;
+      setGlassPref(next);
+      if (next) reconcile(); else disable();
+      syncGlassToggleButton();
+      return next;
     },
     // debug(0|false) = off, debug(1|true) = mask overlay, debug(2) = UV displacement field
     debug: (mode = 1) => {
@@ -755,11 +823,14 @@
     isActive: () => active,
   };
 
+  const init = () => {
+    if (glassPrefEnabled()) reconcile();
+    else disable();
+    wireGlassToggleButton();
+  };
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => {
-      reconcile();
-    });
+    document.addEventListener("DOMContentLoaded", init);
   } else {
-    reconcile();
+    init();
   }
 })();
