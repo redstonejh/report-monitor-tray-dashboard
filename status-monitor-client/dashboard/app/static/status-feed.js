@@ -660,7 +660,12 @@ function injectCompanyCss() {
   // controls use. No underline, no accent hue. The "…" overflow stays as a
   // text control opening a glass menu.
   style.textContent = `
-  .company-tab-bar{ display:flex; align-items:flex-start; justify-content:center; gap:14px; width:min(100%, 1100px); max-width:100%; margin:6px auto 0; box-sizing:border-box; padding:0 6px; overflow:hidden; }
+  .company-tab-bar{ display:flex; align-items:flex-start; justify-content:center; gap:8px; width:min(100%, 1100px); max-width:100%; margin:6px auto 0; box-sizing:border-box; padding:0 6px 4px; }
+  /* The gliding tab row lives in its own clipped viewport BETWEEN the two "…"
+     controls, so the centring translateX can never slide a tab over a trigger
+     and steal its clicks (that overlap is what made the "…" need several
+     tries). The buttons sit outside the viewport and stay fully hittable. */
+  .company-tab-viewport{ flex:1 1 auto; min-width:0; display:flex; justify-content:center; overflow:hidden; }
   .company-tab-scroller{ display:inline-flex; align-items:flex-start; min-width:0; transform:translateX(0); transition:transform .3s cubic-bezier(.25,.8,.3,1); will-change:transform; }
   .company-tab{
     flex:0 0 auto;
@@ -695,12 +700,12 @@ function injectCompanyCss() {
   .company-tab.tier-off.is-offline{ opacity:0; }
   .company-overflow-item.is-offline{ color:rgba(255,255,255,0.4); }
   .company-overflow{
-    flex:0 0 auto; align-self:flex-start;
+    flex:0 0 auto; align-self:flex-start; position:relative; z-index:1;
     appearance:none !important; -webkit-appearance:none !important;
     border:0 !important; background:transparent !important; box-shadow:none !important;
-    filter:none !important; min-height:0 !important; padding:0 4px !important;
+    filter:none !important; min-height:0 !important; padding:2px 6px !important;
     color:rgba(255,255,255,0.36); font:inherit; font-size:14px; font-weight:650; line-height:1.15;
-    transform:translateY(10px);
+    transform:translateY(8px);
     text-shadow:var(--dashboard-custom-text-shadow);
     cursor:pointer; transition:color .18s ease;
   }
@@ -733,20 +738,35 @@ function injectCompanyCss() {
 }
 
 let companyMenuOpen = null;
+let companyMenuSide = null;
 function closeOverflowMenu() {
   companyMenuOpen?.remove();
   companyMenuOpen = null;
-  document.removeEventListener("click", onDocClickForMenu, true);
+  companyMenuSide = null;
 }
-function onDocClickForMenu(e) {
-  if (companyMenuOpen && !companyMenuOpen.contains(e.target) && !e.target.closest(".company-overflow")) closeOverflowMenu();
+// Outside-dismiss is registered ONCE for the lifetime of the page and acts only
+// when a menu is open. Using pointerdown (which fires before the click that
+// opened the menu can ever reach this listener) and keying purely off
+// companyMenuOpen avoids the add/remove + setTimeout race that made the "…"
+// occasionally need several clicks: the old toggle guard could go stale, so a
+// click would silently "close" an already-gone menu instead of opening one.
+function onDocPointerForMenu(e) {
+  if (!companyMenuOpen) return;
+  if (companyMenuOpen.contains(e.target)) return;      // inside the menu — let the item handle it
+  if (e.target.closest?.(".company-overflow")) return; // the trigger toggles itself on click
+  closeOverflowMenu();
 }
+document.addEventListener("pointerdown", onDocPointerForMenu, true);
 function offscreenCompanies(side) {
   const bar = document.querySelector(".company-tab-bar"); if (!bar) return [];
   return (side === "left" ? bar._leftHidden : bar._rightHidden) || [];
 }
 function openOverflowMenu(side, anchor) {
-  if (companyMenuOpen) { closeOverflowMenu(); return; }
+  // Clicking the same side's "…" again closes it; clicking the other side's
+  // swaps to that menu.
+  const sameSideOpen = companyMenuOpen && companyMenuSide === side;
+  closeOverflowMenu();
+  if (sameSideOpen) return;
   const ids = offscreenCompanies(side);
   if (!ids.length) return;
   const menu = document.createElement("div");
@@ -767,7 +787,7 @@ function openOverflowMenu(side, anchor) {
   if (side === "left") menu.style.left = `${Math.round(r.left)}px`;
   else menu.style.right = `${Math.round(window.innerWidth - r.right)}px`;
   companyMenuOpen = menu;
-  setTimeout(() => document.addEventListener("click", onDocClickForMenu, true), 0);
+  companyMenuSide = side;
 }
 // Only a window of tabs is shown at once; the rest live behind the "…" menus.
 // Five visible = the active company centred with two stepped tiers per side.
@@ -783,11 +803,11 @@ function renderCompanyTabs() {
     bar.className = "company-tab-bar";
     bar.setAttribute("aria-label", "Companies");
     bar.innerHTML = '<button class="company-overflow company-overflow-left" type="button" aria-label="More companies (left)" hidden>…</button>'
-      + '<div class="company-tab-scroller"></div>'
+      + '<div class="company-tab-viewport"><div class="company-tab-scroller"></div></div>'
       + '<button class="company-overflow company-overflow-right" type="button" aria-label="More companies (right)" hidden>…</button>';
     (wsBar?.parentElement || document.querySelector(".page") || document.body).insertBefore(bar, wsBar || null);
-    bar.querySelector(".company-overflow-left").addEventListener("click", (e) => openOverflowMenu("left", e.currentTarget));
-    bar.querySelector(".company-overflow-right").addEventListener("click", (e) => openOverflowMenu("right", e.currentTarget));
+    bar.querySelector(".company-overflow-left").addEventListener("click", (e) => { e.stopPropagation(); openOverflowMenu("left", e.currentTarget); });
+    bar.querySelector(".company-overflow-right").addEventListener("click", (e) => { e.stopPropagation(); openOverflowMenu("right", e.currentTarget); });
   }
   const all = companyState.companies;
   const n = all.length;
@@ -835,27 +855,28 @@ function renderCompanyTabs() {
   });
   while (scroller.children.length > all.length) scroller.lastChild.remove();
   // True centring: sizes snap instantly, so the active tab's final geometry is
-  // measurable right away — glide the whole row (one composited translateX)
-  // until the selected tab's centre sits exactly on the bar's centre. The
-  // shift is clamped so the row never detaches from the bar at the periphery.
+  // measurable right away — glide the row (one composited translateX) until the
+  // selected tab's centre sits exactly on the VIEWPORT centre. The shift is
+  // clamped so the row never detaches from the viewport at the periphery.
   requestAnimationFrame(() => {
     if (!scroller.isConnected) return;
+    const viewport = scroller.parentElement; // .company-tab-viewport
     const activeEl = tabsById.get(companyState.active);
-    if (!activeEl || activeEl.classList.contains("tier-off")) return;
+    if (!viewport || !activeEl || activeEl.classList.contains("tier-off")) return;
     // Compensate with the LIVE transform (the row may be mid-glide when
     // stepping quickly), so the measured natural geometry is always exact.
     let liveShift = 0;
     try { liveShift = new DOMMatrixReadOnly(getComputedStyle(scroller).transform).m41 || 0; } catch {}
-    const barRect = bar.getBoundingClientRect();
+    const viewRect = viewport.getBoundingClientRect();
     const scrollerRect = scroller.getBoundingClientRect();
     const tabRect = activeEl.getBoundingClientRect();
     const naturalTabCenter = (tabRect.left + tabRect.width / 2) - liveShift;
-    let shift = (barRect.left + barRect.width / 2) - naturalTabCenter;
+    let shift = (viewRect.left + viewRect.width / 2) - naturalTabCenter;
     const naturalLeft = scrollerRect.left - liveShift;
     const naturalRight = scrollerRect.right - liveShift;
-    if (naturalRight - naturalLeft < barRect.width - 12) {
-      const minShift = (barRect.left + 6) - naturalLeft;
-      const maxShift = (barRect.right - 6) - naturalRight;
+    if (naturalRight - naturalLeft < viewRect.width - 12) {
+      const minShift = (viewRect.left + 6) - naturalLeft;
+      const maxShift = (viewRect.right - 6) - naturalRight;
       shift = Math.min(Math.max(shift, Math.min(minShift, maxShift)), Math.max(minShift, maxShift));
     }
     scroller.style.transform = `translateX(${Math.round(shift)}px)`;
