@@ -737,22 +737,26 @@ function injectCompanyCss() {
   document.head.appendChild(style);
 }
 
-let companyMenuOpen = null;
-let companyMenuSide = null;
-function closeOverflowMenu() {
-  companyMenuOpen?.remove();
-  companyMenuOpen = null;
-  companyMenuSide = null;
+// The overflow menu keeps NO module state — the DOM is the single source of
+// truth (there is at most one .company-overflow-menu on the body). The old
+// design tracked open/side in module globals that could desync from the DOM
+// (e.g. closed by a path that didn't reset them), after which the "same side"
+// guard would silently swallow the next open and the "…" appeared dead — the
+// "stops working after switching" symptom. Deriving everything from the DOM
+// makes that impossible.
+function currentOverflowMenu() {
+  return document.querySelector(".company-overflow-menu");
 }
-// Outside-dismiss is registered ONCE for the lifetime of the page and acts only
-// when a menu is open. Using pointerdown (which fires before the click that
-// opened the menu can ever reach this listener) and keying purely off
-// companyMenuOpen avoids the add/remove + setTimeout race that made the "…"
-// occasionally need several clicks: the old toggle guard could go stale, so a
-// click would silently "close" an already-gone menu instead of opening one.
+function closeOverflowMenu() {
+  document.querySelectorAll(".company-overflow-menu").forEach((m) => m.remove());
+}
+// Outside-dismiss is registered ONCE for the page lifetime; pointerdown fires
+// before the click that opens a menu can reach it, so it never closes the menu
+// it is about to open.
 function onDocPointerForMenu(e) {
-  if (!companyMenuOpen) return;
-  if (companyMenuOpen.contains(e.target)) return;      // inside the menu — let the item handle it
+  const menu = currentOverflowMenu();
+  if (!menu) return;
+  if (menu.contains(e.target)) return;                 // inside the menu — let the item handle it
   if (e.target.closest?.(".company-overflow")) return; // the trigger toggles itself on click
   closeOverflowMenu();
 }
@@ -762,15 +766,16 @@ function offscreenCompanies(side) {
   return (side === "left" ? bar._leftHidden : bar._rightHidden) || [];
 }
 function openOverflowMenu(side, anchor) {
-  // Clicking the same side's "…" again closes it; clicking the other side's
-  // swaps to that menu.
-  const sameSideOpen = companyMenuOpen && companyMenuSide === side;
+  // Re-clicking the side that's already open closes it; otherwise open fresh.
+  const existing = currentOverflowMenu();
+  const sameSideOpen = existing && existing.dataset.side === side;
   closeOverflowMenu();
   if (sameSideOpen) return;
   const ids = offscreenCompanies(side);
   if (!ids.length) return;
   const menu = document.createElement("div");
   menu.className = "company-overflow-menu";
+  menu.dataset.side = side;
   for (const id of ids) {
     const co = companyState.companies.find((c) => c.id === id); if (!co) continue;
     const item = document.createElement("button");
@@ -786,8 +791,6 @@ function openOverflowMenu(side, anchor) {
   menu.style.top = `${Math.round(r.bottom + 4)}px`;
   if (side === "left") menu.style.left = `${Math.round(r.left)}px`;
   else menu.style.right = `${Math.round(window.innerWidth - r.right)}px`;
-  companyMenuOpen = menu;
-  companyMenuSide = side;
 }
 // Only a window of tabs is shown at once; the rest live behind the "…" menus.
 // Five visible = the active company centred with two stepped tiers per side.
@@ -825,6 +828,15 @@ function renderCompanyTabs() {
   // ANIMATE — the hierarchy rolls across the row like a wave instead of
   // snapping, even when flipping through companies quickly.
   const scroller = bar.querySelector(".company-tab-scroller");
+  // Safety net: if an older bar (scroller directly in the bar, no clipping
+  // viewport) is still mounted from a prior version, wrap it now so the
+  // gliding row can't slide over the "…" triggers and steal their clicks.
+  if (scroller && !scroller.parentElement.classList.contains("company-tab-viewport")) {
+    const vp = document.createElement("div");
+    vp.className = "company-tab-viewport";
+    scroller.parentElement.insertBefore(vp, scroller);
+    vp.appendChild(scroller);
+  }
   if (!scroller._tabsById) scroller._tabsById = new Map();
   const tabsById = scroller._tabsById;
   for (const [id, el] of [...tabsById]) {
@@ -922,7 +934,7 @@ async function startFeed() {
     const t = e.target;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable
       || (t.closest && t.closest('[contenteditable="true"], [data-inline-text-editing="true"]')))) return;
-    if (companyMenuOpen) return;
+    if (currentOverflowMenu()) return;
     const all = companyState.companies;
     if (!all.length) return;
     let i = all.findIndex((c) => c.id === companyState.active);
