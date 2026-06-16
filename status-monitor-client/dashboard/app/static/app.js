@@ -2780,6 +2780,170 @@ document.addEventListener("DOMContentLoaded", () => {
     WORKSPACE_OBJECT_TYPES,
     workspaceTabsRuntime,
   });
+  // ── Per-viewer redundancy panels (status feed) ──────────────────────────────
+  // status-feed.js drives this to render REAL, fully-functional builder panels
+  // (drag / resize / collapse / rename / colour / delete) — one per monitoring
+  // viewer of a redundant circuit — each holding a real table widget fed by its
+  // data-widget-key. Built with the exact pipeline the "Add panel/widget"
+  // actions use, so they behave identically to user-created panels.
+  {
+    const VIEWER_LAYOUT_KEY = "builder";
+    const slugViewer = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "v";
+    const viewerLayout = () => document.querySelector(`.panel-layout[data-layout-key="${VIEWER_LAYOUT_KEY}"]`);
+    const generatedPanels = (layout) => [...layout.querySelectorAll(':scope > .db-panel[data-status-feed-generated="true"]')];
+
+    // Height (grid rows) of every viewer panel — Grayson Fiber's saved layout
+    // (4) plus exactly one grid cell taller, uniform across all tabs.
+    const PANEL_ROW_SPAN = 5;
+    const TABLE_COLUMNS = ["checked", "result", "ping (ms)", "loss (%)"];
+
+    // Where to place N viewer panels across the 6-col grid (each spans 2). The
+    // fill order CENTRES them — 1 → middle; 2 → left + middle; 3 → left + middle
+    // + right (Grayson Fiber is the source of truth). 4+ wrap left→right.
+    const viewerColumns = (n) => n === 1 ? [3] : n === 2 ? [1, 3] : n === 3 ? [1, 3, 5]
+      : Array.from({ length: n }, (_, i) => 1 + (i % 3) * 2);
+    // The grid row immediately beneath the status chart (builder-chart) — so the
+    // viewer panels always start right under the graph.
+    const chartBottomRow = () => {
+      const chart = document.querySelector('.widget-layout[data-widget-layout-key="builder-chart"] > .widget-card');
+      const r = Number(chart?.dataset.gridRow); const s = Number(chart?.dataset.gridRowSpan);
+      return (Number.isFinite(r) ? r : 2) + (Number.isFinite(s) ? s : 3);
+    };
+    const positionViewerPanel = (panel, col, row) => {
+      // Expanded + the same height (row-span) as every other viewer panel — a
+      // collapsed panel would otherwise sit at 1 row (just its header).
+      panel.classList.remove("db-panel-collapsed");
+      panel.style.removeProperty("grid-row");
+      panel.dataset.gridRowSpan = String(PANEL_ROW_SPAN);
+      panelRuntime.applyPanelSpan(panel, 2);
+      panelRuntime.applyPanelGridPosition(panel, col, row);
+    };
+
+    // `info` = { name, ip, slug }. Creates a real builder panel + table widget at
+    // grid (col, row).
+    const addViewerPanel = (layout, companyId, info, col, row) => {
+      const vslug = info.slug;
+      const title = info.ip ? `${info.name} - ${info.ip}` : info.name;
+      const panel = createCustomPanel({
+        key: `vp-${companyId}-${vslug}`,
+        title,
+        color: "",
+        span: 2,
+        workspaceObjectType: WORKSPACE_OBJECT_TYPES.panel,
+        dashboardObjectKind: "panel",
+        regionRole: "container",
+      });
+      panel.dataset.statusFeedGenerated = "true";
+      panel.dataset.companyId = companyId;
+      panel.dataset.viewerSlug = vslug;
+      panel.dataset.gridRowSpan = String(PANEL_ROW_SPAN);
+      panelRuntime.applyPanelSpan(panel, 2);
+      applyPanelColor(panel, null);
+      applyPanelTitleColor(panel, "");
+      const target = { ...panelAddTarget(layout, panel), col, row };
+      panelRuntime.applyPanelGridPosition(panel, col, row);
+      animatePanelReflow(layout, () => {
+        layout.appendChild(panel);
+        commitInsertedGridItemWithVerticalPushdown(layout, panel, target);
+        syncWorkspaceRegions(layout);
+      });
+      layout.__initPanel?.(panel);
+      positionViewerPanel(panel, col, row);
+
+      // Real table widget inside the panel's internal grid (created by __initPanel),
+      // sized to fill the panel.
+      const grid = panel.querySelector(":scope > .db-panel-body > .panel-internal-widget-grid");
+      if (grid) {
+        // The widget fills the panel's internal width (span 6) — this also lifts
+        // the table's visible-column cap to 8, so all of checked/result/ping/loss
+        // show regardless of how narrow (equal) the panel itself is.
+        const widget = createCustomWidget({
+          key: `vt-${companyId}-${vslug}`,
+          title,
+          span: 6,
+          rowSpan: PANEL_ROW_SPAN,
+          type: "table",
+          runtimeType: "table",
+          widgetLayer: "presentation",
+          workspaceObjectType: WORKSPACE_OBJECT_TYPES.widget,
+          dashboardObjectKind: "table",
+          regionRole: "content",
+          config: JSON.stringify({ title, columns: TABLE_COLUMNS, sortBy: "checkedAt", sortDirection: "desc", limit: 2000 }),
+        });
+        widgetRuntimeController.ensureTools(widget, "");
+        widgetRuntimeController.applySpan(widget, 6);
+        const wt = visibleRegionInsertionTarget(grid, widget);
+        if (wt) widgetRuntimeController.applyGridPosition(widget, wt.col, wt.row, PANEL_ROW_SPAN);
+        animateWidgetReflow(grid, () => {
+          grid.appendChild(widget);
+          if (wt) commitInsertedGridItemWithVerticalPushdown(grid, widget, wt);
+          syncWorkspaceRegions(layout);
+        });
+        grid.__initWidget?.(widget);
+      }
+      // The panel was created empty; now that it holds a widget, clear the
+      // "Empty panel — drop widgets here" placeholder.
+      updatePanelChildEmptyState?.(panel);
+    };
+
+    // Refresh an EXISTING panel's title + table columns to the current format
+    // (panels persist across reloads, so a panel saved by an older build must be
+    // migrated in place rather than left with stale title/columns).
+    const updateViewerPanel = (panel, info) => {
+      const title = info.ip ? `${info.name} - ${info.ip}` : info.name;
+      const titleEl = panel.querySelector(":scope > .db-panel-hd .db-panel-title");
+      if (titleEl && titleEl.textContent !== title) titleEl.textContent = title;
+      panel.dataset.defaultTitle = title;
+      const widget = panel.querySelector(".panel-internal-widget-grid > .widget-card[data-widget-runtime-type='table']");
+      if (widget) {
+        let cfg = {};
+        try { cfg = JSON.parse(widget.dataset.widgetConfig || "{}"); } catch {}
+        if (JSON.stringify(cfg.columns || []) !== JSON.stringify(TABLE_COLUMNS) || cfg.title !== title) {
+          widgetRuntimeController.setConfig(widget, { ...cfg, title, columns: TABLE_COLUMNS });
+        }
+        // span 6 lifts the table's visible-column cap so all 4 columns render.
+        if (widget.dataset.currentSpan !== "6") widgetRuntimeController.applySpan(widget, 6);
+      }
+    };
+
+    window.dashboardViewerPanels = {
+      // Render one panel per viewer for `companyId`, placed immediately beneath
+      // the chart and centred per count (1 → middle, 2 → left+middle, 3 → all).
+      // Panels for other companies are hidden (never destroyed). Existing panels
+      // are migrated + repositioned to the source-of-truth layout each call
+      // (skipped only while the user is actively dragging/resizing).
+      // `viewers` = [{ name, ip }] in display order. Pass [] to hide all.
+      sync(companyId, viewers) {
+        const layout = viewerLayout();
+        if (!layout) return;
+        const ordered = (viewers || []).map((v) => ({ ...v, slug: slugViewer(v.name) }));
+        const wanted = new Map(ordered.map((v) => [v.slug, v]));
+        for (const p of generatedPanels(layout)) {
+          p.hidden = !(p.dataset.companyId === companyId && wanted.has(p.dataset.viewerSlug));
+        }
+        const cols = viewerColumns(ordered.length);
+        const baseRow = chartBottomRow();
+        const dragging = document.body.classList.contains("panel-interaction-active")
+          || document.body.classList.contains("panel-resize-active");
+        ordered.forEach((info, i) => {
+          const col = cols[i] ?? (1 + (i % 3) * 2);
+          const row = baseRow + Math.floor(i / 3) * (PANEL_ROW_SPAN + 1);
+          let panel = generatedPanels(layout).find((p) => p.dataset.companyId === companyId && p.dataset.viewerSlug === info.slug);
+          if (!panel) {
+            try { addViewerPanel(layout, companyId, info, col, row); } catch (err) { console.warn("[viewer-panel] add failed", err); }
+          } else if (!dragging) {
+            updateViewerPanel(panel, info);
+            positionViewerPanel(panel, col, row);
+          }
+        });
+      },
+      teardown() {
+        const layout = viewerLayout();
+        if (layout) generatedPanels(layout).forEach((p) => { p.hidden = true; });
+      },
+    };
+  }
+
   initializeHistoryResetRuntime({
     restoreLayoutUndo,
     restoreLayoutRedo,

@@ -222,13 +222,77 @@ function rememberCompany(co) {
   saveRosterSoon();
 }
 
+// The vantage point a check pings FROM, parsed from its label "(from X)".
+// Checks without the suffix (e.g. local LAN checks) are each their own viewer.
+function viewerFromMachine(machine) {
+  const m = String(machine || '').match(/\(from ([^)]*)\)/i);
+  return (m && m[1].trim()) || String(machine || 'primary');
+}
+
+// A circuit watched from several vantage points ("viewers") is a redundancy
+// group: a single viewer reporting down usually means THAT viewer's path is
+// broken, not the target. So the worst status is derived by quorum — red only
+// when >=50% of the viewers are down; a minority outage or any degraded viewer
+// is amber. Single-viewer targets (incl. local checks) keep red-on-any-down.
 function companyWorst(entry) {
-  let worst = 'green';
+  const byViewer = new Map();
+  const worse = { green: 0, yellow: 1, red: 2 };
   for (const ping of entry.lastByCheck.values()) {
-    if (ping.status === 'red') return 'red';
-    if (ping.status === 'yellow') worst = 'yellow';
+    const v = viewerFromMachine(ping.machine);
+    const cur = byViewer.get(v);
+    if (cur == null || worse[ping.status] > worse[cur]) byViewer.set(v, ping.status);
   }
-  return worst;
+  const statuses = [...byViewer.values()];
+  if (!statuses.length) return 'green';
+  const fails = statuses.filter((s) => s === 'red').length;
+  if (fails / statuses.length >= 0.5) return 'red';
+  if (fails > 0 || statuses.some((s) => s === 'yellow')) return 'yellow';
+  return 'green';
+}
+
+// ── Viewer source IPs ─────────────────────────────────────────────────────────
+// The connection check carries only the TARGET host, not each viewer's own IP.
+// But every viewer location (Vance, STL, Grayson, Biztech…) is itself a tracked
+// WAN circuit, so its IP is the host of that circuit. Build the lookup as
+// connection checks stream in.
+const connectionHostByToken = new Map(); // "vance" -> "207.242.49.34" (fiber preferred)
+const viewerAgent = new Map();           // "Eureka NOC" -> "<proj>/<sys>"
+const agentViewerNames = new Map();      // "<proj>/<sys>" -> Set("Eureka NOC","Biztech NOC")
+
+function locationToken(s) {
+  return String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)[0] || '';
+}
+function recordViewerLocation(payload, system) {
+  // Target circuit's location → its own host (the location's IP). Prefer a
+  // "fiber" circuit's host when a location has several circuits.
+  const circuit = String(payload.subjectLabel || payload.label || '').replace(/\s*\(from [^)]*\)\s*/i, '').trim();
+  const ctoken = locationToken(circuit);
+  if (ctoken && payload.host && (!connectionHostByToken.has(ctoken) || /fiber/i.test(circuit))) {
+    connectionHostByToken.set(ctoken, payload.host);
+  }
+  // The viewer (vantage) name + the agent that publishes it.
+  const m = String(payload.label || '').match(/\(from ([^)]*)\)/i);
+  const viewer = m && m[1].trim();
+  if (viewer && system) {
+    viewerAgent.set(viewer, system);
+    let names = agentViewerNames.get(system);
+    if (!names) { names = new Set(); agentViewerNames.set(system, names); }
+    names.add(viewer);
+  }
+}
+function viewerIp(name) {
+  const direct = connectionHostByToken.get(locationToken(name));
+  if (direct) return direct;
+  // The same agent can be labelled differently elsewhere (e.g. "Eureka NOC" is
+  // the same agent as "Biztech NOC") — try the agent's other location names.
+  const agent = viewerAgent.get(name);
+  if (agent) {
+    for (const alt of agentViewerNames.get(agent) || []) {
+      const ip = connectionHostByToken.get(locationToken(alt));
+      if (ip) return ip;
+    }
+  }
+  return '';
 }
 
 function companyOnline(entry) {
@@ -335,6 +399,7 @@ function connectMqtt() {
       system = `${parts[0]}/${parts[1]}`;               // <proj>/<sys>/checks/<id>
     } else if (parts[0] === 'connections' && parts.length >= 5) {
       system = `${parts[2]}/${parts[3]}`;               // connections/<subject>/<proj>/<sys>/<id>
+      recordViewerLocation(payload, system);
     } else {
       return; // ignore legacy <proj>/<sys>/status and anything else
     }
@@ -432,14 +497,8 @@ function updateTray(status) {
   const signedIn = !!auth.currentUser();
   const effective = signedIn ? status : 'grey';
   tray.setImage(icons[effective] || icons.grey);
-  // A hover tooltip summarizes the fleet — and is the reliable fallback when the
-  // hover popover can't show (e.g. the icon is in the Windows overflow flyout).
-  let tip = 'Status Monitor';
-  if (signedIn) {
-    if (currentConnectionState !== 'live') tip += ` — ${statusLabel(currentConnectionState)}`;
-    else if (currentStatus?.detail) tip += ` — ${currentStatus.detail}`;
-  }
-  tray.setToolTip(tip);
+  // No OS tooltip at all on the tray icon (hovering opens the popover instead).
+  tray.setToolTip('');
 }
 
 // ─── Main window ──────────────────────────────────────────────────────────────
@@ -926,8 +985,10 @@ app.whenReady().then(() => {
     // icon lives in the overflow flyout instead of the visible taskbar.
     tray.on('mouse-enter', () => {
       pointerInTray = true;
+      // Hovering opens the full popover (the fleet pie) directly — no peek
+      // "all good" checkmark step. Unpinned so leaving the icon/popover hides it.
       if (!mainWindow || !mainWindow.isVisible() || !popoverPinned) {
-        showPeekWindow();
+        showExpandedWindow(false);
       }
     });
 
@@ -960,6 +1021,16 @@ ipcMain.handle('status:get', () => statusSnapshot());
 
 // Multi-company API for the dashboard tabs.
 ipcMain.handle('companies:get', () => companyList());
+
+// viewer name → its source IP (derived from each location's own circuit).
+ipcMain.handle('viewers:ips', () => {
+  const out = {};
+  for (const name of viewerAgent.keys()) {
+    const ip = viewerIp(name);
+    if (ip) out[name] = ip;
+  }
+  return out;
+});
 
 ipcMain.handle('company:history', (_e, payload = {}) => {
   const entry = companies.get(payload.companyId);
@@ -1178,6 +1249,41 @@ ipcMain.handle('dashboard:open', () => {
 // how many pings were healthy / degraded / down. "Degraded" mirrors the
 // dashboard's logic — packet loss, or latency far above the company's own
 // average.
+// Derived consensus mix for a circuit: combine its viewers per minute bucket
+// (red >=50% of viewers down; else amber if any viewer down or degraded; else
+// green) and tally the buckets. The pie's radial thirds + counts read this, so
+// a single viewer's bad path can't paint the whole circuit red.
+function consensusCounts(pings) {
+  const latencies = pings.filter((p) => p.latencyMs != null).map((p) => p.latencyMs);
+  const avg = latencies.length ? latencies.reduce((s, v) => s + v, 0) / latencies.length : null;
+  const levelOf = (p) => p.status === 'red' ? 'red'
+    : (p.status === 'yellow' || (avg != null && p.latencyMs != null && p.latencyMs > Math.max(avg * 2.2 + 25, 40))) ? 'yellow'
+      : 'green';
+  const worse = { green: 0, yellow: 1, red: 2 };
+  const totalViewers = new Set(pings.map((p) => viewerFromMachine(p.machine))).size || 1;
+  const buckets = new Map(); // minuteMs -> Map<viewer, worstLevel>
+  for (const p of pings) {
+    const t = Date.parse(p.checkedAt);
+    if (!Number.isFinite(t)) continue;
+    const ms = Math.floor(t / 60000) * 60000;
+    let votes = buckets.get(ms);
+    if (!votes) { votes = new Map(); buckets.set(ms, votes); }
+    const v = viewerFromMachine(p.machine);
+    const lvl = levelOf(p);
+    const prev = votes.get(v);
+    if (prev == null || worse[lvl] > worse[prev]) votes.set(v, lvl);
+  }
+  let healthy = 0, degraded = 0, down = 0;
+  for (const votes of buckets.values()) {
+    const vals = [...votes.values()];
+    const fails = vals.filter((x) => x === 'red').length;
+    if (fails / totalViewers >= 0.5) down += 1;
+    else if (fails > 0 || vals.some((x) => x === 'yellow')) degraded += 1;
+    else healthy += 1;
+  }
+  return { healthy, degraded, down, total: buckets.size, viewers: totalViewers };
+}
+
 ipcMain.handle('companies:pie', () => {
   const dayAgo = Date.now() - 86400000;
   return companyList().map((co) => {
@@ -1186,17 +1292,8 @@ ipcMain.handle('companies:pie', () => {
       const t = Date.parse(p.checkedAt);
       return Number.isFinite(t) && t > dayAgo;
     });
-    const latencies = pings.filter((p) => p.latencyMs != null).map((p) => p.latencyMs);
-    const avg = latencies.length ? latencies.reduce((sum, v) => sum + v, 0) / latencies.length : null;
-    let healthy = 0;
-    let degraded = 0;
-    let down = 0;
-    for (const p of pings) {
-      if (p.status === 'red') down += 1;
-      else if (p.status === 'yellow' || (avg != null && p.latencyMs != null && p.latencyMs > Math.max(avg * 2.2 + 25, 40))) degraded += 1;
-      else healthy += 1;
-    }
-    return { id: co.id, label: co.label, online: co.online, healthy, degraded, down, total: pings.length };
+    const c = consensusCounts(pings);
+    return { id: co.id, label: co.label, online: co.online, healthy: c.healthy, degraded: c.degraded, down: c.down, total: c.total, viewers: c.viewers };
   });
 });
 

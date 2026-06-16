@@ -18,6 +18,23 @@ export const AccountGlyph = () => (
   </svg>
 );
 import StatusPanel from './components/StatusPanel';
+
+// Suppress native (OS) tooltips: strip `title` attributes (and SVG <title>)
+// from whatever the cursor moves onto and its ancestors, before the hover delay
+// can pop the Windows tooltip. Installed once for the popover window.
+if (typeof document !== 'undefined' && !window.__nativeTooltipsSuppressed) {
+  window.__nativeTooltipsSuppressed = true;
+  document.addEventListener('pointerover', (event) => {
+    let el = event.target;
+    while (el && el.nodeType === 1) {
+      if (typeof el.hasAttribute === 'function' && el.hasAttribute('title')) el.removeAttribute('title');
+      if (el.namespaceURI === 'http://www.w3.org/2000/svg' && typeof el.querySelector === 'function') {
+        el.querySelector(':scope > title')?.remove();
+      }
+      el = el.parentElement;
+    }
+  }, true);
+}
 import Settings from './components/Settings';
 import SignIn from './components/SignIn';
 import SetPassword from './components/SetPassword';

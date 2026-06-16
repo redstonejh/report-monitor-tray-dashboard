@@ -85,61 +85,67 @@ function FleetPie() {
   const span = n ? 360 / n : 360;
 
   const hoveredCo = companies.find((c) => c.id === hovered) || null;
-  const troubled = companies.filter((c) => c.down > 0).length;
-  const watch = companies.filter((c) => c.down === 0 && c.degraded > 0).length;
-  const summaryTitle = !n ? 'Connecting'
-    : troubled ? `${troubled} down`
-      : watch ? `${watch} to watch`
-        : 'All good';
-  const summarySub = n ? `${n} clients · 24h` : '';
 
-  const centerTitle = hoveredCo ? conciseLabel(hoveredCo.label) : summaryTitle;
-  const centerSub = hoveredCo
-    ? (hoveredCo.total
-      ? `${Math.round((hoveredCo.healthy / hoveredCo.total) * 100)}% healthy · 24h`
-      : 'no data · 24h')
-    : summarySub;
+  // The centre hole shows the hovered circuit's name, or a prompt when nothing
+  // is hovered. Hover is cleared only when the cursor leaves the WHOLE pie (see
+  // the wrapper's onMouseLeave), so crossing the gap between two slices glides
+  // from one name straight to the next instead of flashing the prompt.
+  const centerTitle = hoveredCo ? conciseLabel(hoveredCo.label) : 'Click any slice';
   const centerAccent = hoveredCo
     ? (hoveredCo.down ? 'red' : hoveredCo.degraded ? 'amber' : hoveredCo.total ? 'green' : 'neutral')
-    : (troubled ? 'red' : watch ? 'amber' : n ? 'green' : 'neutral');
+    : 'neutral';
 
   return (
-    <div className="fleet-pie-wrap">
-      <svg className="fleet-pie" viewBox="0 0 220 220" role="img" aria-label="Client health, past 24 hours">
+    <div className="fleet-pie-wrap" onMouseLeave={() => setHovered(null)}>
+      <svg className="fleet-pie" viewBox="0 0 220 220" role="img" aria-label="Client health, past 24 hours (derived consensus)">
         {companies.map((co, index) => {
           const a0 = index * span + GAP / 2;
           const a1 = (index + 1) * span - GAP / 2;
           if (a1 <= a0) return null;
+          // Fixed thirds (not proportional): green fills the ring by default; a
+          // 1/3-deep band is ADDED for degraded and/or down — inner green, then
+          // amber, then red on the rim — so a single derived bad bucket reads as
+          // a full legible band, never an invisible sliver. The count of derived
+          // degraded / down buckets is printed INSIDE its band.
           const segments = [];
           if (!co.total) {
             segments.push({ key: 'empty', r0: R0, r1: R1, color: PIE_EMPTY });
           } else {
             const depth = R1 - R0;
-            const hEnd = R0 + depth * (co.healthy / co.total);
-            const dEnd = hEnd + depth * (co.degraded / co.total);
-            if (co.healthy) segments.push({ key: 'healthy', r0: R0, r1: hEnd, color: PIE_COLORS.healthy });
-            if (co.degraded) segments.push({ key: 'degraded', r0: hEnd, r1: dEnd, color: PIE_COLORS.degraded });
-            if (co.down) segments.push({ key: 'down', r0: dEnd, r1: R1, color: PIE_COLORS.down });
+            const third = depth / 3;
+            const alerts = (co.degraded > 0 ? 1 : 0) + (co.down > 0 ? 1 : 0);
+            const greenEnd = R0 + depth - alerts * third;
+            segments.push({ key: 'healthy', r0: R0, r1: greenEnd, color: PIE_COLORS.healthy });
+            let edge = greenEnd;
+            if (co.degraded > 0) { segments.push({ key: 'degraded', r0: edge, r1: edge + third, color: PIE_COLORS.degraded, count: co.degraded }); edge += third; }
+            if (co.down > 0) { segments.push({ key: 'down', r0: edge, r1: R1, color: PIE_COLORS.down, count: co.down }); }
           }
+          const mid = (a0 + a1) / 2;
           return (
             <g
               key={co.id}
-              className={`fleet-slice${hovered && hovered !== co.id ? ' dimmed' : ''}${co.online === false ? ' offline' : ''}`}
+              className={`fleet-slice${co.online === false ? ' offline' : ''}`}
               onMouseEnter={() => setHovered(co.id)}
-              onMouseLeave={() => setHovered((h) => (h === co.id ? null : h))}
               onClick={() => window.electron?.openCompany?.(co.id)}
             >
-              <title>{`${co.label} — ${co.total ? `${co.healthy} healthy · ${co.degraded} degraded · ${co.down} down` : 'no data'} (24h)`}</title>
               {segments.map((seg) => (
                 <path key={seg.key} d={ringSlicePath(CX, CY, seg.r0, seg.r1, a0, a1)} fill={seg.color} />
               ))}
+              {segments.filter((seg) => seg.count != null).map((seg) => {
+                const [tx, ty] = polar(CX, CY, (seg.r0 + seg.r1) / 2, mid);
+                return (
+                  <text key={`${seg.key}-n`} className="fleet-slice-count"
+                    x={tx.toFixed(1)} y={ty.toFixed(1)} textAnchor="middle" dominantBaseline="central">
+                    {seg.count}
+                  </text>
+                );
+              })}
             </g>
           );
         })}
       </svg>
       <div className={`fleet-center ${centerAccent}`}>
-        <span className="fleet-center-title">{centerTitle}</span>
-        {centerSub && <span className="fleet-center-sub">{centerSub}</span>}
+        {centerTitle && <span className="fleet-center-title">{centerTitle}</span>}
       </div>
     </div>
   );

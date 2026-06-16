@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('dashboard', {
   // per-company pings as they arrive.
   getCompanies: () => ipcRenderer.invoke('companies:get'),
   getCompanyHistory: (companyId, limit) => ipcRenderer.invoke('company:history', { companyId, limit }),
+  // Source IP per monitoring viewer (each location is itself a tracked circuit).
+  getViewerIps: () => ipcRenderer.invoke('viewers:ips'),
   onCheck: (cb) => ipcRenderer.on('mqtt:check', (_e, payload) => cb(payload)),
   // Tray pie click-through: a pending company focus pulled at boot, plus live
   // pushes when the window is already open.

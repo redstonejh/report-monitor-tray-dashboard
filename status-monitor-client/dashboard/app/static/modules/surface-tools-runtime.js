@@ -157,10 +157,25 @@ export function initializeSurfaceToolsRuntime({
   };
   const surfaceResponseTargetFromEvent = (event) => {
     if (isDashboardInteractionActive()) return null;
+    // A panel keeps ONE stable surface response across its whole interior: while
+    // the cursor is anywhere inside the panel — header, body, a contained widget
+    // or its well — the PANEL stays the response target, so the panel's hover
+    // highlight never flashes off as the cursor crosses between the body and an
+    // internal widget. (Standalone widgets, outside any panel, keep their own
+    // response via the logic below.)
+    const panel = event.target?.closest?.(".panel-layout > .db-panel:not(.workspace-divider)");
+    if (panel) {
+      if (!panel.isConnected) return null;
+      if (
+        panel.classList.contains("db-panel-dragging") ||
+        panel.classList.contains("dashboard-active-resize") ||
+        panel.classList.contains("dashboard-resize-source")
+      ) return null;
+      return panel;
+    }
     const target = event.target?.closest?.(surfaceResponseSelector);
     if (!target || !target.isConnected) return null;
     if (target.classList.contains("widget-card") && event.target !== target) return null;
-    if (target.classList.contains("db-panel") && event.target?.closest?.(".panel-internal-widget-grid > .widget-card")) return null;
     const controlTarget = event.target?.closest?.(surfaceResponseControlSelector);
     if (controlTarget && controlTarget !== target) return null;
     if (

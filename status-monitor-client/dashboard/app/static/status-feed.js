@@ -407,6 +407,83 @@ function rowsForActive() {
   return (companyState.pingsById.get(companyState.active) || []).map(historyRow);
 }
 
+// ─── Viewer redundancy / consensus ────────────────────────────────────────────
+// A WAN circuit can be watched from several vantage points ("viewers"), encoded
+// in the check label as "(from X)" — e.g. "Grayson Fiber (from STL)". When a
+// target is watched by >1 viewer the GRAPHS (bar chart + donut) show a DERIVED
+// consensus condition rather than any single viewer's pings, while each viewer
+// keeps its own table panel.
+
+// Each viewer's source IP is derived in the main process from that location's
+// own tracked circuit (window.dashboard.getViewerIps → viewer name → IP), kept
+// in `viewerIpMap`. VIEWER_IPS is an optional manual OVERRIDE (exact "(from X)"
+// name → IP) for anything the derivation can't resolve.
+const VIEWER_IPS = {};
+let viewerIpMap = {};
+
+// Pull the vantage-point name out of a check label; "(from Eureka NOC)" → "Eureka NOC".
+function viewerOf(machine) {
+  const m = String(machine || "").match(/\(from ([^)]*)\)/i);
+  return (m && m[1].trim()) || "Primary";
+}
+function viewerSlug(name) {
+  return String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "primary";
+}
+// Distinct viewer names present in a row set, in first-seen order.
+function viewersIn(rows) {
+  const seen = [];
+  for (const r of rows) { const v = viewerOf(r.machine); if (!seen.includes(v)) seen.push(v); }
+  return seen;
+}
+
+// Combine every viewer's pings into one consensus row per minute bucket:
+//   RED    if >=50% of the target's viewers report a failure (down),
+//   YELLOW if (not red and) any viewer is down OR degraded — a minority outage
+//          or any packet loss is a discrepancy worth surfacing, not green,
+//   GREEN  otherwise.
+// Returns rows in the same shape historyRow() produces (status + level) so the
+// chart + donut consume them unchanged. Minute buckets match the chart's finest
+// (ping) granularity, so consensus aligns with the bar chart one-to-one.
+function deriveConsensusRows(rows, targetLabel) {
+  const totalViewers = viewersIn(rows).length || 1;
+  const worse = { green: 0, yellow: 1, red: 2 };
+  const levelOf = (r) => r.level || (r.status === "red" ? "red" : r.status === "yellow" ? "yellow" : "green");
+  // bucketMs -> Map<viewer, worstLevelThatMinute>
+  const buckets = new Map();
+  for (const r of rows) {
+    const t = Date.parse(r.checkedAt);
+    if (!Number.isFinite(t)) continue;
+    const ms = Math.floor(t / 60000) * 60000;
+    let votes = buckets.get(ms);
+    if (!votes) { votes = new Map(); buckets.set(ms, votes); }
+    const viewer = viewerOf(r.machine);
+    const lvl = levelOf(r);
+    const prev = votes.get(viewer);
+    if (prev == null || worse[lvl] > worse[prev]) votes.set(viewer, lvl);
+  }
+  const out = [];
+  for (const ms of [...buckets.keys()].sort((a, b) => a - b)) {
+    const votes = [...buckets.get(ms).values()];
+    const fails = votes.filter((v) => v === "red").length;
+    const status = (fails / totalViewers) >= 0.5 ? "red"
+      : (fails > 0 || votes.some((v) => v === "yellow")) ? "yellow"
+        : "green";
+    const row = historyRow({
+      checkedAt: new Date(ms).toISOString(),
+      status,
+      machine: targetLabel || "",
+      // Consensus has no single latency/loss — leave them null so nothing reads
+      // a misleading number from one viewer.
+      latencyMs: null,
+      packetLossPct: null,
+      up: status === "red" ? 0 : 1,
+    });
+    row.level = status;
+    out.push(row);
+  }
+  return out;
+}
+
 // ─── Adaptive card status colors ────────────────────────────────────────────
 // Stat cards tint green/yellow/red through the existing per-object recolor
 // system (applyPanelColor + the preset palette colors), with thresholds derived
@@ -551,6 +628,16 @@ function applyAdaptiveCardColors(allRows = rowsForActive()) {
   });
 }
 
+// ── Per-viewer panels (redundancy) ────────────────────────────────────────────
+// For a multi-viewer target, each viewer gets its OWN real builder panel (drag /
+// resize / collapse / rename / colour / delete) holding a real table widget,
+// created through the dashboard's actual panel/widget pipeline
+// (window.dashboardViewerPanels, defined in app.js). publish() feeds each table
+// by its data-widget-key "vt-<companyId>-<slug>". Pass [] to tear them down.
+function renderViewerTablePanels(companyId, viewers) {
+  window.dashboardViewerPanels?.sync(companyId, viewers);
+}
+
 // Feed the active company's pings to the metric cards (configured in the markup)
 // + the standalone timeline/table. The runtime aggregates over the
 // timeframe-filtered rows, so every number tracks the selected time range.
@@ -582,20 +669,73 @@ function publish() {
   });
   // Broader-trend baselines for the avg stat cards' muted "+13"-style deltas.
   const baselineMeta = { baselines: { latencyMs: baselineAvg, packetLossPct: baselineLossAvg } };
+
+  // Redundancy: when this target is watched by >1 viewer, the GRAPHS (bar chart
+  // + donut, fed via `default`) show a derived consensus condition, and each
+  // viewer gets its own table panel. Single-viewer targets behave as before.
+  const viewers = viewersIn(rows);
+  const multi = viewers.length > 1;
+  const activeCo = companyState.companies.find((c) => c.id === companyState.active);
+  const targetLabel = activeCo ? conciseLabel(activeCo.label) : "";
+  const defaultRows = multi ? deriveConsensusRows(rows, targetLabel) : rows;
+
+  // Metrics panel title reflects the active tab: "Metrics for <company> - <ip>".
+  // The IP is the circuit's own target host (same across its viewers).
+  const metricsTitle = document.querySelector('.db-panel[data-panel-key="builder-metrics"] > .db-panel-hd > .db-panel-title');
+  if (metricsTitle) {
+    const host = rows.length ? (rows[rows.length - 1].ip || "") : "";
+    const next = targetLabel
+      ? (host ? `Metrics for ${targetLabel} - ${host}` : `Metrics for ${targetLabel}`)
+      : "Metrics";
+    if (metricsTitle.textContent !== next) metricsTitle.textContent = next;
+  }
+
+  // Stat cards stay a per-company aggregate over every viewer's pings (unchanged).
+  const widgets = {
+    "widget-uptime": { rows },                // Uptime %   = avg(up)
+    "widget-avgms": { rows: latencyRows, meta: baselineMeta },  // Avg ms = avg(latencyMs) + Δ vs broader
+    "widget-minms": { rows: latencyRows },    // Min ms     = min(latencyMs)
+    "widget-maxms": { rows: latencyRows },    // Max ms     = max(latencyMs)
+    "widget-loss": { rows: latencyRows, meta: baselineMeta },   // Avg loss % = avg(packetLossPct) + Δ vs broader
+    "widget-lossmin": { rows: latencyRows },  // Min loss % = min(packetLossPct)
+    "widget-lossmax": { rows: latencyRows },  // Max loss % = max(packetLossPct)
+    "widget-fails": { rows: failRows },       // Fails      = count(down)
+    "widget-sincedown": { rows: failRows },   // Since down = max(checkedAtMs) of fails
+  };
+
+  // EVERY tab (1, 2, or 3+ viewers) shows its viewers as panels beneath the
+  // chart — Grayson Fiber is the source of truth — so the single default table
+  // is always hidden when there's at least one viewer.
+  const hasViewers = viewers.length >= 1;
+  const defaultTable = document.querySelector('.widget-layout[data-widget-layout-key="builder-table"]');
+  if (defaultTable) defaultTable.style.display = hasViewers ? "none" : "";
+
+  // Per-viewer table rows: value + signed delta vs THAT viewer's own average,
+  // e.g. ping "31 (+1)" / "200 (+192)", loss "0 (+0)" — "ms"/"%" live in the
+  // column headers ("ping (ms)" / "loss (%)"). The title carries the viewer's
+  // own (source) IP (derived in main.js); VIEWER_IPS is a manual override.
+  const viewerInfos = viewers.map((name) => ({ name, ip: VIEWER_IPS[name] || viewerIpMap[name] || "" }));
+  renderViewerTablePanels(companyState.active, hasViewers ? viewerInfos : []);
+  if (hasViewers) {
+    for (const viewer of viewers) {
+      const vrows = rows.filter((r) => viewerOf(r.machine) === viewer);
+      const vAvg = average(vrows.map((r) => r.latencyMs).filter((v) => v != null));
+      const vLossAvg = average(vrows.map((r) => r.packetLossPct).filter((v) => v != null));
+      const tableRows = vrows.map((r) => ({
+        ...r,
+        "ping (ms)": (r.latencyMs != null && r.status !== "red")
+          ? `${r.latencyMs} (${signed(Math.round(r.latencyMs - (vAvg ?? r.latencyMs)))})` : "—",
+        "loss (%)": (r.packetLossPct != null && r.status !== "red")
+          ? `${r.packetLossPct} (${signed(Math.round((r.packetLossPct - (vLossAvg ?? r.packetLossPct)) * 10) / 10)})` : "—",
+      }));
+      widgets[`vt-${companyState.active}-${viewerSlug(viewer)}`] = { rows: tableRows };
+    }
+  }
+
   dataRuntime.ingest({
-    default: { rows }, // standalone timeline + table
+    default: { rows: defaultRows },   // bar chart + donut (consensus when redundant)
     types: { status: { rows: rows.length ? [rows[rows.length - 1]] : [currentStatusRow()] } },
-    widgets: {
-      "widget-uptime": { rows },                // Uptime %   = avg(up)
-      "widget-avgms": { rows: latencyRows, meta: baselineMeta },  // Avg ms = avg(latencyMs) + Δ vs broader
-      "widget-minms": { rows: latencyRows },    // Min ms     = min(latencyMs)
-      "widget-maxms": { rows: latencyRows },    // Max ms     = max(latencyMs)
-      "widget-loss": { rows: latencyRows, meta: baselineMeta },   // Avg loss % = avg(packetLossPct) + Δ vs broader
-      "widget-lossmin": { rows: latencyRows },  // Min loss % = min(packetLossPct)
-      "widget-lossmax": { rows: latencyRows },  // Max loss % = max(packetLossPct)
-      "widget-fails": { rows: failRows },       // Fails      = count(down)
-      "widget-sincedown": { rows: failRows },   // Since down = max(checkedAtMs) of fails
-    },
+    widgets,
   });
   applyAdaptiveCardColors(rows);
 }
@@ -638,6 +778,9 @@ async function setActiveCompany(id) {
   const to = all.findIndex((c) => c.id === id);
   const dir = (from < 0 || to < 0) ? 1 : Math.sign(to - from);
   companyState.active = id;
+  // Clear the previous company's transient viewer panels immediately so they
+  // never linger over the new tab while its history loads; publish() rebuilds.
+  renderViewerTablePanels(id, []);
   renderCompanyTabs();
   if (!(companyState.pingsById.get(id) || []).length) await loadCompanyHistory(id);
   // Debounced: stepping quickly through companies coalesces into one final
@@ -910,6 +1053,7 @@ async function startFeed() {
     const list = await bridge.getCompanies?.();
     if (Array.isArray(list)) companyState.companies = list;
   } catch {}
+  try { viewerIpMap = (await bridge.getViewerIps?.()) || {}; } catch {}
   if (companyState.companies.length) {
     // Default to a live company so the dashboard opens on real data, not an offline tab.
     companyState.active = companyState.active
@@ -960,12 +1104,14 @@ async function startFeed() {
     publishSoon();
   });
 
-  // Refresh the company list + per-tab statuses every 30s.
+  // Refresh the company list + per-tab statuses + viewer IPs every 30s (the IP
+  // map fills in as connection circuits for each location stream in).
   setInterval(async () => {
     try {
       const list = await bridge.getCompanies?.();
       if (Array.isArray(list) && list.length) { companyState.companies = list; renderCompanyTabs(); }
     } catch {}
+    try { const m = await bridge.getViewerIps?.(); if (m && Object.keys(m).length) { viewerIpMap = m; publishSoon(); } } catch {}
   }, 30000);
 }
 
@@ -1007,6 +1153,24 @@ function mirrorBackgroundPreference() {
     attributeFilter: ["data-background"],
   });
 }
+
+// Suppress native (OS) tooltips everywhere: as the cursor moves onto anything,
+// strip the `title` attribute (and any SVG <title>) from it and its ancestors
+// before the ~0.5s hover delay can pop the Windows tooltip. Covers static markup
+// (panel tool buttons, etc.) and dynamic content (table cells, tabs).
+function suppressNativeTooltips() {
+  document.addEventListener("pointerover", (event) => {
+    let el = event.target;
+    while (el && el.nodeType === 1) {
+      if (typeof el.hasAttribute === "function" && el.hasAttribute("title")) el.removeAttribute("title");
+      if (el.namespaceURI === "http://www.w3.org/2000/svg" && typeof el.querySelector === "function") {
+        el.querySelector(":scope > title")?.remove();
+      }
+      el = el.parentElement;
+    }
+  }, true);
+}
+suppressNativeTooltips();
 
 seedChartDefaults();
 injectStatusIndicatorStyles();
