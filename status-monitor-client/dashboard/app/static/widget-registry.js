@@ -1402,9 +1402,32 @@
     return tanstackTableLoadPromise;
   };
 
+  // Remembers each table widget's scroll offset across re-renders. Status data
+  // ingests on every ping, which tears the whole table down and rebuilds it —
+  // without this the well would snap back to the top each time, yanking the user
+  // out of wherever they'd scrolled. Module-scoped so it survives the rebuild.
+  const tableScrollMemory = new Map();
+  const findTableScroller = (el) => {
+    let node = el;
+    while (node && node !== document.body) {
+      const cs = getComputedStyle(node);
+      if ((cs.overflowY === "auto" || cs.overflowY === "scroll") && node.scrollHeight > node.clientHeight + 1) return node;
+      node = node.parentElement;
+    }
+    return null;
+  };
   const mountTableBodyRenderer = ({ contentRoot, instance }) => {
     const target = contentRoot?.querySelector?.(".runtime-table-tanstack");
     if (!target) return null;
+    // Scroll-preservation bookkeeping (see tableScrollMemory above). memKey is
+    // read now (target is live); scroller/handler are wired once the table is
+    // built and read back in dispose so teardown can save the offset and detach
+    // BEFORE clearing — clearing collapses the scroll height and would otherwise
+    // fire a scroll-to-0 that clobbers the saved position.
+    const memWidgetEl = target.closest(".widget-card");
+    const memKey = memWidgetEl?.getAttribute("data-widget-key") || "";
+    let scroller = null;
+    let scrollHandler = null;
     const config = instance?.config || {};
     const rows = [...widgetDataRows(instance?.data)];
     // Honour the configured sort (e.g. sortBy "checkedAt" desc so the newest
@@ -1522,6 +1545,17 @@
         });
         tableEl.appendChild(tbody);
         target.appendChild(tableEl);
+        // Restore (and keep tracking) the scroll position so per-ping rebuilds
+        // don't reset where the user is in the table.
+        if (memKey) {
+          scroller = findTableScroller(target);
+          if (scroller) {
+            const saved = tableScrollMemory.get(memKey);
+            if (saved) scroller.scrollTop = saved;
+            scrollHandler = () => tableScrollMemory.set(memKey, scroller.scrollTop);
+            scroller.addEventListener("scroll", scrollHandler, { passive: true });
+          }
+        }
       })
       .catch((error) => {
         if (disposed || !target.isConnected) return;
@@ -1529,6 +1563,13 @@
       });
     return () => {
       disposed = true;
+      // Save the latest offset and detach BEFORE clearing, so the teardown's
+      // scroll-to-0 can't overwrite the remembered position.
+      if (memKey && scroller) {
+        tableScrollMemory.set(memKey, scroller.scrollTop);
+        if (scrollHandler) scroller.removeEventListener("scroll", scrollHandler);
+        scrollHandler = null;
+      }
       if (target.isConnected) target.innerHTML = "";
     };
   };

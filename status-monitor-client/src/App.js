@@ -77,6 +77,13 @@ export default function App() {
   const pinPopover = () => window.electron?.pinPopover?.();
   const hidePopover = () => window.electron?.hidePopover?.();
 
+  // Windows paints a native OS acrylic backdrop (real blur of the apps behind
+  // the popover). DWM rounds the window at its own radius, so square the panel
+  // corners to match (no corner leak); the panel keeps the widget-well tint.
+  useEffect(() => {
+    if (window.electron?.platform === 'win32') document.body.classList.add('win-acrylic');
+  }, []);
+
   // Load initial state from main process
   useEffect(() => {
     window.electron?.getStatus().then(({ status, connectionState }) => {

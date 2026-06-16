@@ -536,13 +536,18 @@ function createWindow() {
     opts.vibrancy = 'under-window';
     opts.visualEffectState = 'active';
   } else if (process.platform === 'win32') {
-    // Windows (10 & 11): stay per-pixel transparent (transparent:true above) so
-    // the CSS-rounded .panel defines the real visible shape. We deliberately do
-    // NOT set backgroundMaterial:'acrylic' or any opaque backgroundColor — both
-    // fill the full window *rectangle*, which shows as a grey rectangle behind
-    // the panel's rounded corners. On Win10 there is no OS blur, so the .panel's
-    // own rgba(24,26,32,0.82) frosted fill is the legible surface (CSS only —
-    // never a window/body fill).
+    // Windows 11: real OS acrylic so DWM blurs the desktop / other app windows
+    // BEHIND the popover. backgroundMaterial requires a NON-transparent window,
+    // so transparent is flipped off; backgroundColor #00000000 = pure acrylic
+    // with no fill, and the .panel paints the widget-well tint on top. DWM rounds
+    // the frameless window at its native radius (the .panel is squared to match
+    // under body.win-acrylic so no corner leaks).
+    opts.transparent = false;
+    opts.backgroundColor = '#00000000';
+    opts.backgroundMaterial = 'acrylic';
+    // DWM backdrop effects (acrylic/mica) need the window to keep WS_THICKFRAME —
+    // a frameless window with thickFrame:false won't render the acrylic at all.
+    opts.thickFrame = true;
   } else {
     // Linux / other: stay transparent too. An opaque window backgroundColor
     // ('#141414') was the grey rectangle here — the .panel's CSS rgba fill is
@@ -551,6 +556,10 @@ function createWindow() {
   }
 
   mainWindow = new BrowserWindow(opts);
+  if (process.platform === 'win32' && typeof mainWindow.setBackgroundMaterial === 'function') {
+    // Some Electron builds only apply acrylic when set after construction.
+    try { mainWindow.setBackgroundMaterial('acrylic'); } catch { /* older Electron: no-op */ }
+  }
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   mainWindow.setIgnoreMouseEvents(false);
@@ -842,7 +851,11 @@ function showPeekWindow() {
 
 function showExpandedWindow(pinned = false) {
   pointerInPopover = false;
-  showPopover('expanded', pinned, pinned);
+  // Always focus (2nd arg) so Windows renders the OS acrylic backdrop — an
+  // unfocused window (showInactive) falls back to a flat, non-blurred fill, which
+  // is why hover used to look non-acrylic. `pinned` still controls whether the
+  // popover stays open after the pointer leaves the tray/popover.
+  showPopover('expanded', true, pinned);
 }
 
 // ─── Dashboard window ───────────────────────────────────────────────────────

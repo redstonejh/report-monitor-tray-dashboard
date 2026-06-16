@@ -2,6 +2,10 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
+  // Host platform — Windows uses a native OS acrylic window, so the renderer
+  // squares the panel corners to match DWM's rounding (body.win-acrylic).
+  platform: process.platform,
+
   // Receive live status pushes from main process (MQTT → IPC → renderer)
   onStatus: (cb) => ipcRenderer.on('mqtt:status', (_e, payload) => cb(payload)),
 
