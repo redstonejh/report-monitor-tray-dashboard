@@ -1,6 +1,6 @@
 {
   "name": "status-monitor-client",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "System-tray client for a generic status monitor",
   "main": ".vite/build/main.js",
   "private": true,

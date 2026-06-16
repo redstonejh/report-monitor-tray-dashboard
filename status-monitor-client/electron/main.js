@@ -229,12 +229,62 @@ function viewerFromMachine(machine) {
   return (m && m[1].trim()) || String(machine || 'primary');
 }
 
+// Derive each minute's consensus level from a circuit's ping history: bucket by
+// minute, take each viewer's worst level that minute, then RED when >=50% of the
+// viewers are down, YELLOW for any down/degraded, else GREEN — the same derived
+// criticality the dashboard timeline shows. Returns levels oldest -> newest.
+function derivedMinuteLevels(pings) {
+  if (!pings || !pings.length) return [];
+  const latencies = pings.filter((p) => p.latencyMs != null).map((p) => p.latencyMs);
+  const avg = latencies.length ? latencies.reduce((s, v) => s + v, 0) / latencies.length : null;
+  const levelOf = (p) => p.status === 'red' ? 'red'
+    : (p.status === 'yellow' || (avg != null && p.latencyMs != null && p.latencyMs > Math.max(avg * 2.2 + 25, 40))) ? 'yellow'
+      : 'green';
+  const worse = { green: 0, yellow: 1, red: 2 };
+  const totalViewers = new Set(pings.map((p) => viewerFromMachine(p.machine))).size || 1;
+  const buckets = new Map(); // minuteMs -> Map<viewer, worstLevel>
+  for (const p of pings) {
+    const t = Date.parse(p.checkedAt);
+    if (!Number.isFinite(t)) continue;
+    const ms = Math.floor(t / 60000) * 60000;
+    let votes = buckets.get(ms);
+    if (!votes) { votes = new Map(); buckets.set(ms, votes); }
+    const v = viewerFromMachine(p.machine);
+    const lvl = levelOf(p);
+    const prev = votes.get(v);
+    if (prev == null || worse[lvl] > worse[prev]) votes.set(v, lvl);
+  }
+  return [...buckets.entries()].sort((a, b) => a[0] - b[0]).map(([ms, votes]) => {
+    const vals = [...votes.values()];
+    const fails = vals.filter((x) => x === 'red').length;
+    const level = fails / totalViewers >= 0.5 ? 'red'
+      : (fails > 0 || vals.some((x) => x === 'yellow')) ? 'yellow' : 'green';
+    return { ms, level };
+  });
+}
+
+// Consecutive derived-down minute buckets at the END of the history (the current
+// run). >= CRITICAL_DOWN_STREAK is a confirmed, sustained outage — the single
+// rule that turns the tray icon red and auto-highlights the pie slice.
+const CRITICAL_DOWN_STREAK = 4;
+function trailingDownStreak(pings) {
+  const levels = derivedMinuteLevels(pings);
+  let streak = 0;
+  for (let i = levels.length - 1; i >= 0 && levels[i].level === 'red'; i--) streak += 1;
+  return streak;
+}
+function isCriticalStreak(pings) {
+  return trailingDownStreak(pings) >= CRITICAL_DOWN_STREAK;
+}
+
 // A circuit watched from several vantage points ("viewers") is a redundancy
 // group: a single viewer reporting down usually means THAT viewer's path is
-// broken, not the target. So the worst status is derived by quorum — red only
-// when >=50% of the viewers are down; a minority outage or any degraded viewer
-// is amber. Single-viewer targets (incl. local checks) keep red-on-any-down.
+// broken, not the target — so criticality is derived by >=50% quorum per minute.
+// RED is reserved for a SUSTAINED outage: >=4 consecutive derived-down minute
+// buckets (the current run). A shorter dip or any degraded viewer is AMBER, so a
+// single blip never reds the fleet; red means a confirmed, ongoing outage.
 function companyWorst(entry) {
+  if (isCriticalStreak(entry.pings || [])) return 'red';
   const byViewer = new Map();
   const worse = { green: 0, yellow: 1, red: 2 };
   for (const ping of entry.lastByCheck.values()) {
@@ -244,9 +294,8 @@ function companyWorst(entry) {
   }
   const statuses = [...byViewer.values()];
   if (!statuses.length) return 'green';
-  const fails = statuses.filter((s) => s === 'red').length;
-  if (fails / statuses.length >= 0.5) return 'red';
-  if (fails > 0 || statuses.some((s) => s === 'yellow')) return 'yellow';
+  // Not yet a confirmed outage — any current down or degraded viewer is amber.
+  if (statuses.some((s) => s === 'red' || s === 'yellow')) return 'yellow';
   return 'green';
 }
 
@@ -725,6 +774,13 @@ function trayBoundsAreUsable(trayBounds, cursorPoint) {
 }
 
 function capturePopoverAnchor() {
+  // Once the popover is open with an anchor, keep it FIXED for the whole visible
+  // session — any stray re-anchor (e.g. a resize-driven reposition reading the
+  // live cursor) would make the window trail the mouse. The anchor is cleared on
+  // hide (resetToHoverBaseline), so the next open captures fresh.
+  if (capturedAnchorPoint && mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+    return capturedAnchorPoint;
+  }
   const trayBounds = tray.getBounds();
   const cursorPoint = screen.getCursorScreenPoint();
   const hasUsableTrayBounds = trayBoundsAreUsable(trayBounds, cursorPoint);
@@ -998,9 +1054,13 @@ app.whenReady().then(() => {
     // icon lives in the overflow flyout instead of the visible taskbar.
     tray.on('mouse-enter', () => {
       pointerInTray = true;
-      // Hovering opens the full popover (the fleet pie) directly — no peek
-      // "all good" checkmark step. Unpinned so leaving the icon/popover hides it.
-      if (!mainWindow || !mainWindow.isVisible() || !popoverPinned) {
+      // Windows fires mouse-enter repeatedly as the cursor moves over the icon.
+      // Only OPEN (and anchor) the popover when it isn't already showing — re-
+      // showing on every event re-ran positionWindow, so the window trailed the
+      // cursor before the hide grace elapsed. While it's already open we just
+      // keep it open (cancel any pending hide) without re-anchoring it.
+      cancelHideTimer();
+      if (!mainWindow || !mainWindow.isVisible()) {
         showExpandedWindow(false);
       }
     });
@@ -1094,10 +1154,15 @@ ipcMain.handle('window:resize-content', (e, size = {}) => {
   const measuredHeight = Number.isFinite(parsedHeight)
     ? parsedHeight
     : targetHeightForMode(popoverMode);
-  const targetHeight = targetHeightForMode(popoverMode);
+  // Size the expanded window to its MEASURED content — do NOT floor it at the
+  // donut's height. Shorter views (profile/settings) used to be forced to the
+  // full expanded height, and since the panel is bottom-anchored that left an
+  // empty strip above them — now visible as bare acrylic (it was transparent
+  // before the OS-acrylic window). The donut's content already exceeds the floor,
+  // so it is unaffected.
   const height = popoverMode === 'peek'
     ? POPOVER_PEEK_HEIGHT
-    : Math.min(Math.max(measuredHeight, targetHeight, POPOVER_MIN_HEIGHT), maxPopoverHeight());
+    : Math.min(Math.max(measuredHeight, POPOVER_MIN_HEIGHT), maxPopoverHeight());
 
   applyPopoverBounds(height, popoverPinned);
   return { ok: true, width: POPOVER_WIDTH, height };
@@ -1267,34 +1332,15 @@ ipcMain.handle('dashboard:open', () => {
 // green) and tally the buckets. The pie's radial thirds + counts read this, so
 // a single viewer's bad path can't paint the whole circuit red.
 function consensusCounts(pings) {
-  const latencies = pings.filter((p) => p.latencyMs != null).map((p) => p.latencyMs);
-  const avg = latencies.length ? latencies.reduce((s, v) => s + v, 0) / latencies.length : null;
-  const levelOf = (p) => p.status === 'red' ? 'red'
-    : (p.status === 'yellow' || (avg != null && p.latencyMs != null && p.latencyMs > Math.max(avg * 2.2 + 25, 40))) ? 'yellow'
-      : 'green';
-  const worse = { green: 0, yellow: 1, red: 2 };
-  const totalViewers = new Set(pings.map((p) => viewerFromMachine(p.machine))).size || 1;
-  const buckets = new Map(); // minuteMs -> Map<viewer, worstLevel>
-  for (const p of pings) {
-    const t = Date.parse(p.checkedAt);
-    if (!Number.isFinite(t)) continue;
-    const ms = Math.floor(t / 60000) * 60000;
-    let votes = buckets.get(ms);
-    if (!votes) { votes = new Map(); buckets.set(ms, votes); }
-    const v = viewerFromMachine(p.machine);
-    const lvl = levelOf(p);
-    const prev = votes.get(v);
-    if (prev == null || worse[lvl] > worse[prev]) votes.set(v, lvl);
-  }
+  const levels = derivedMinuteLevels(pings);
   let healthy = 0, degraded = 0, down = 0;
-  for (const votes of buckets.values()) {
-    const vals = [...votes.values()];
-    const fails = vals.filter((x) => x === 'red').length;
-    if (fails / totalViewers >= 0.5) down += 1;
-    else if (fails > 0 || vals.some((x) => x === 'yellow')) degraded += 1;
+  for (const { level } of levels) {
+    if (level === 'red') down += 1;
+    else if (level === 'yellow') degraded += 1;
     else healthy += 1;
   }
-  return { healthy, degraded, down, total: buckets.size, viewers: totalViewers };
+  const viewers = new Set(pings.map((p) => viewerFromMachine(p.machine))).size || 1;
+  return { healthy, degraded, down, total: levels.length, viewers };
 }
 
 ipcMain.handle('companies:pie', () => {
@@ -1306,7 +1352,9 @@ ipcMain.handle('companies:pie', () => {
       return Number.isFinite(t) && t > dayAgo;
     });
     const c = consensusCounts(pings);
-    return { id: co.id, label: co.label, online: co.online, healthy: c.healthy, degraded: c.degraded, down: c.down, total: c.total, viewers: c.viewers };
+    // critical = a SUSTAINED outage right now (>=4 derived-down buckets in a row);
+    // the pie auto-highlights these slices red without needing a hover.
+    return { id: co.id, label: co.label, online: co.online, healthy: c.healthy, degraded: c.degraded, down: c.down, total: c.total, viewers: c.viewers, critical: co.online && isCriticalStreak(pings) };
   });
 });
 

@@ -843,16 +843,17 @@ function injectCompanyCss() {
   .company-tab.tier-off.is-offline{ opacity:0; }
   .company-overflow-item.is-offline{ color:rgba(255,255,255,0.4); }
   .company-overflow{
-    flex:0 0 auto; align-self:flex-start; position:relative; z-index:1;
+    flex:0 0 auto; align-self:flex-start; position:relative; z-index:2;
     appearance:none !important; -webkit-appearance:none !important;
     border:0 !important; background:transparent !important; box-shadow:none !important;
-    filter:none !important; min-height:0 !important; padding:2px 6px !important;
-    color:rgba(255,255,255,0.36); font:inherit; font-size:14px; font-weight:650; line-height:1.15;
-    transform:translateY(8px);
+    outline:0 !important;
+    filter:none !important; min-height:0 !important; padding:8px 16px !important;
+    color:rgba(255,255,255,0.55); font:inherit; font-size:22px; font-weight:700; line-height:1;
+    transform:translateY(4px);
     text-shadow:var(--dashboard-custom-text-shadow);
     cursor:pointer; transition:color .18s ease;
   }
-  .company-overflow:hover{ color:rgba(255,255,255,0.9); background:transparent !important; }
+  .company-overflow:hover, .company-overflow:focus-visible{ color:#ffffff; background:transparent !important; }
   .company-overflow[hidden]{ display:none !important; }
   .company-overflow-menu{
     position:fixed; z-index:9999; max-height:62vh; overflow-y:auto;
@@ -865,7 +866,7 @@ function injectCompanyCss() {
   .company-overflow-item{
     display:block; appearance:none !important; -webkit-appearance:none !important;
     padding:7px 12px !important; border:0 !important; background:transparent !important;
-    box-shadow:none !important; filter:none !important; min-height:0 !important;
+    box-shadow:none !important; outline:0 !important; filter:none !important; min-height:0 !important;
     color:rgba(255,255,255,0.6); font:inherit; font-size:0.95rem; font-weight:600;
     text-shadow:var(--dashboard-custom-text-shadow);
     text-align:left; border-radius:8px; cursor:pointer; white-space:nowrap;

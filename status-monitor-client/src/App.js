@@ -52,6 +52,7 @@ export function resolveAccent(connectionState, status) {
 
 export default function App() {
   const [view, setView] = useState('status'); // 'status' | 'settings'
+  const [fleetQuery, setFleetQuery] = useState(''); // type-ahead filter for the fleet pie
   const [revealing, setRevealing] = useState(false);
   const [anchorEdge, setAnchorEdge] = useState('bottom');
   const setStatus = useStatusStore((s) => s.setStatus);
@@ -160,6 +161,28 @@ export default function App() {
 
       {isExpanded && (
         <header className="topbar">
+          {fullyAuthed && view === 'status' && (
+            <input
+              className="fleet-search"
+              type="text"
+              value={fleetQuery}
+              onChange={(e) => setFleetQuery(e.target.value)}
+              placeholder="Search…"
+              aria-label="Search companies"
+              spellCheck={false}
+              autoComplete="off"
+            />
+          )}
+          {fullyAuthed && view === 'profile' && (
+            <button
+              className="icon-btn"
+              onClick={() => setView('status')}
+              title="Back"
+              aria-label="Back to status"
+            >
+              <ArrowLeftOutlined />
+            </button>
+          )}
           <div className="topbar-spacer" />
           {fullyAuthed && (
             <button
@@ -203,7 +226,7 @@ export default function App() {
               ? <SetPassword />
               : <SignIn onSignedIn={() => setView('status')} />)
           : !isExpanded || view === 'status'
-            ? <StatusPanel mode={popoverMode} />
+            ? <StatusPanel mode={popoverMode} fleetQuery={fleetQuery} />
             : view === 'profile'
               ? <Profile onSignedOut={() => setView('status')} />
               : <Settings onSaved={() => setView('status')} />}

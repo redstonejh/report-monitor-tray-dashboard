@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useStatusStore, useSettingsStore } from '../store';
 
 // One ring, one word. The status condition is the content — everything else is
@@ -60,7 +60,7 @@ const conciseLabel = (s) => String(s || '')
   .replace(/\s+/g, ' ')
   .trim() || String(s || '');
 
-function FleetPie() {
+function FleetPie({ query = '' }) {
   const [companies, setCompanies] = useState([]);
   const [hovered, setHovered] = useState(null);
 
@@ -84,15 +84,28 @@ function FleetPie() {
   const GAP = n > 1 ? Math.min(2.4, 120 / Math.max(n, 1)) : 0;
   const span = n ? 360 / n : 360;
 
-  const hoveredCo = companies.find((c) => c.id === hovered) || null;
+  // Type-ahead: as letters are typed in the search box, progressively highlight
+  // the first company whose name STARTS with them (Windows desktop style); fall
+  // back to a substring match so mid-word typing still finds something.
+  const q = query.trim().toLowerCase();
+  const matchId = useMemo(() => {
+    if (!q) return null;
+    const named = companies.map((c) => ({ id: c.id, name: conciseLabel(c.label).toLowerCase() }));
+    return (named.find((c) => c.name.startsWith(q)) || named.find((c) => c.name.includes(q)) || {}).id || null;
+  }, [q, companies]);
 
-  // The centre hole shows the hovered circuit's name, or a prompt when nothing
-  // is hovered. Hover is cleared only when the cursor leaves the WHOLE pie (see
-  // the wrapper's onMouseLeave), so crossing the gap between two slices glides
-  // from one name straight to the next instead of flashing the prompt.
-  const centerTitle = hoveredCo ? conciseLabel(hoveredCo.label) : 'Click any slice';
-  const centerAccent = hoveredCo
-    ? (hoveredCo.down ? 'red' : hoveredCo.degraded ? 'amber' : hoveredCo.total ? 'green' : 'neutral')
+  // Hover wins for instant feedback; otherwise the search match drives the
+  // highlight + centre name.
+  const highlightId = hovered || matchId;
+  const highlightCo = companies.find((c) => c.id === highlightId) || null;
+
+  // The centre hole shows the highlighted circuit's name, a "no match" note while
+  // searching with no hit, or the default prompt. Hover is cleared only when the
+  // cursor leaves the WHOLE pie (see the wrapper's onMouseLeave), so crossing the
+  // gap between two slices glides from one name straight to the next.
+  const centerTitle = highlightCo ? conciseLabel(highlightCo.label) : (q ? 'No match' : 'Click any slice');
+  const centerAccent = highlightCo
+    ? (highlightCo.down ? 'red' : highlightCo.degraded ? 'amber' : highlightCo.total ? 'green' : 'neutral')
     : 'neutral';
 
   return (
@@ -124,7 +137,7 @@ function FleetPie() {
           return (
             <g
               key={co.id}
-              className={`fleet-slice${co.online === false ? ' offline' : ''}`}
+              className={`fleet-slice${co.online === false ? ' offline' : ''}${co.critical ? ' is-critical' : ''}${co.id === highlightId ? ' is-match' : ''}`}
               onMouseEnter={() => setHovered(co.id)}
               onClick={() => window.electron?.openCompany?.(co.id)}
             >
@@ -151,7 +164,7 @@ function FleetPie() {
   );
 }
 
-export default function StatusPanel({ mode = 'expanded' }) {
+export default function StatusPanel({ mode = 'expanded', fleetQuery = '' }) {
   const { status, detail, checkedAt, connectionState } = useStatusStore();
   const { projectId } = useSettingsStore();
 
@@ -205,7 +218,7 @@ export default function StatusPanel({ mode = 'expanded' }) {
 
   return (
     <div className="status-hero neutral">
-      <FleetPie />
+      <FleetPie query={fleetQuery} />
     </div>
   );
 }

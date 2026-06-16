@@ -134,6 +134,28 @@ body.win-acrylic .panel.peek { border-radius: 0; }
 }
 .topbar-spacer { flex: 1; }
 
+/* Top-left type-ahead search: filtering letters progressively highlight the
+   matching company slice in the fleet pie (Windows desktop type-ahead style). */
+.fleet-search {
+  -webkit-app-region: no-drag;
+  height: 28px;
+  width: 136px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: none !important;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.fleet-search::placeholder { color: rgba(255, 255, 255, 0.42); }
+.fleet-search:focus {
+  border-color: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.10);
+}
+
 .icon-btn {
   -webkit-app-region: no-drag;
   display: inline-flex;
@@ -209,7 +231,16 @@ body.win-acrylic .panel.peek { border-radius: 0; }
 .fleet-slice { cursor: pointer; transition: opacity 0.18s ease, filter 0.18s ease; }
 /* Hover highlight identical to the dashboard bar chart's ECharts emphasis:
    white 2px border + a 16px white glow (shadowBlur 16, rgba(255,255,255,0.85)). */
-.fleet-slice:hover path {
+/* Auto-highlight (no hover needed): a circuit in a SUSTAINED outage — 4+ derived
+   fails in a row — glows red, the exact same treatment as the white hover ring
+   but in red. Declared before the hover/match rule so hovering still wins. */
+.fleet-slice.is-critical path {
+  stroke: #ff5b52;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 16px rgba(255, 91, 82, 0.9));
+}
+.fleet-slice:hover path,
+.fleet-slice.is-match path {
   stroke: #ffffff;
   stroke-width: 2;
   filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.85));
