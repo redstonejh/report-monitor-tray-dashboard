@@ -163,30 +163,48 @@
   // needed to keep the graph and the table in the viewport together.
   const focusHistoryRow = (checkedAt) => {
     if (!checkedAt) return false;
-    const escaped = (window.CSS && CSS.escape) ? CSS.escape(checkedAt) : checkedAt;
-    const row = document.querySelector(`[data-widget-key="widget-history"] tbody tr[data-checked-at="${escaped}"]`);
-    if (!row) return false;
-    let scroller = row.parentElement;
-    while (scroller && scroller !== document.body && scroller.scrollHeight <= scroller.clientHeight + 4) {
-      scroller = scroller.parentElement;
+    // Match across EVERY table on the page — the default history table AND each
+    // per-viewer table. The chart can show consensus pings keyed to the minute
+    // while viewer rows carry the exact ping time, so match by minute (with an
+    // exact-timestamp fast path).
+    const ms = Date.parse(checkedAt);
+    const targetMinute = Number.isFinite(ms) ? Math.floor(ms / 60000) : null;
+    const allRows = [...document.querySelectorAll('.widget-card[data-widget-runtime-type="table"] tbody tr[data-checked-at]')];
+    const matches = allRows.filter((tr) => {
+      if (tr.offsetParent === null) return false; // skip rows in hidden panels (other tabs)
+      if (tr.dataset.checkedAt === checkedAt) return true;
+      if (targetMinute == null) return false;
+      const t = Date.parse(tr.dataset.checkedAt);
+      return Number.isFinite(t) && Math.floor(t / 60000) === targetMinute;
+    });
+    if (!matches.length) return false;
+    // Scroll each table's own well to its matching row, and flash every match.
+    const scrolled = new Set();
+    for (const row of matches) {
+      let scroller = row.parentElement;
+      while (scroller && scroller !== document.body && scroller.scrollHeight <= scroller.clientHeight + 4) {
+        scroller = scroller.parentElement;
+      }
+      if (scroller && scroller !== document.body && !scrolled.has(scroller)) {
+        scrolled.add(scroller);
+        const rowTop = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+        scroller.scrollTo({
+          top: Math.max(0, rowTop - (scroller.clientHeight - row.offsetHeight) / 2),
+          behavior: "smooth",
+        });
+      }
+      row.classList.add("ping-focus");
+      window.setTimeout(() => row.classList.remove("ping-focus"), 2400);
     }
-    if (scroller && scroller !== document.body) {
-      const rowTop = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
-      scroller.scrollTo({
-        top: Math.max(0, rowTop - (scroller.clientHeight - row.offsetHeight) / 2),
-        behavior: "smooth",
-      });
-    }
+    // Keep the graph and the (first) table framed in the viewport together.
     const chartCard = [...document.querySelectorAll(".widget-card")].find((el) => typeof el.__focusChartPing === "function");
-    const tableCard = row.closest(".widget-card");
+    const tableCard = matches[0].closest(".widget-card");
     const rects = [chartCard, tableCard].filter(Boolean).map((el) => el.getBoundingClientRect());
     if (rects.length) {
       const top = Math.min(...rects.map((r) => r.top)) + window.scrollY - 12;
       const bottom = Math.max(...rects.map((r) => r.bottom)) + window.scrollY + 12;
       const outOfView = top < window.scrollY || bottom > window.scrollY + window.innerHeight;
       if (outOfView) {
-        // Both fit → frame them together; otherwise anchor on the graph and
-        // let as much of the table in below it as the viewport allows.
         const chartTop = (chartCard ? chartCard.getBoundingClientRect().top : rects[0].top) + window.scrollY - 12;
         window.scrollTo({
           top: Math.max(0, bottom - top <= window.innerHeight ? top : chartTop),
@@ -194,8 +212,6 @@
         });
       }
     }
-    row.classList.add("ping-focus");
-    window.setTimeout(() => row.classList.remove("ping-focus"), 2400);
     return true;
   };
 
