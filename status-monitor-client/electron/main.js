@@ -184,6 +184,7 @@ function ingestCheck(payload, system) {
   entry.pings.push(ping);
   if (entry.pings.length > MAX_PINGS_PER_COMPANY) entry.pings.splice(0, entry.pings.length - MAX_PINGS_PER_COMPANY);
   if (ping.checkedAt) lastCheckedAt = ping.checkedAt;
+  savePingsSoon(); // debounced persist so history survives a restart
   return { companyId: co.id, ping };
 }
 
@@ -220,6 +221,63 @@ function rememberCompany(co) {
     known.lastSeen = Date.now();
   }
   saveRosterSoon();
+}
+
+// ── Ping persistence ──────────────────────────────────────────────────────────
+// entry.pings is the per-company ping history that drives the charts/tables and
+// the 4-in-a-row criticality. It lives only in memory, so without this it rebuilds
+// from scratch (empty) after every restart. Persist it to disk — debounced while
+// running, flushed synchronously on quit — and reload it on startup so history
+// survives a restart. Capped to the last PERSIST_WINDOW_MS (the window the UI
+// actually derives over) so the file stays small.
+const PERSIST_WINDOW_MS = 24 * 60 * 60 * 1000;
+function pingsCacheFile() {
+  return path.join(app.getPath('userData'), 'pings-cache.json');
+}
+function recentPings(pings) {
+  const cutoff = Date.now() - PERSIST_WINDOW_MS;
+  const kept = (pings || []).filter((p) => {
+    const t = Date.parse(p && p.checkedAt);
+    return Number.isFinite(t) && t > cutoff;
+  });
+  return kept.length > MAX_PINGS_PER_COMPANY ? kept.slice(kept.length - MAX_PINGS_PER_COMPANY) : kept;
+}
+function snapshotPings() {
+  const out = [];
+  for (const e of companies.values()) {
+    const pings = recentPings(e.pings);
+    if (pings.length) out.push({ id: e.id, label: e.label, pings });
+  }
+  return { savedAt: Date.now(), companies: out };
+}
+function loadPingsCache() {
+  let data;
+  try { data = JSON.parse(fs.readFileSync(pingsCacheFile(), 'utf8')); }
+  catch { return; }
+  if (!data || !Array.isArray(data.companies)) return;
+  for (const c of data.companies) {
+    if (!c || !c.id || !Array.isArray(c.pings)) continue;
+    const pings = recentPings(c.pings);
+    if (!pings.length) continue;
+    // Rebuild lastByCheck (newest ping per checkId) so ingestCheck's
+    // retained-re-delivery dedupe (it compares the last ping's checkedAt) works
+    // against the restored history and never double-counts a replay.
+    const lastByCheck = new Map();
+    for (const p of pings) { if (p && p.checkId) lastByCheck.set(p.checkId, p); }
+    companies.set(c.id, { id: c.id, label: c.label || c.id, pings, lastByCheck, systems: new Set() });
+  }
+}
+let pingsSaveTimer = null;
+function savePingsSoon() {
+  if (pingsSaveTimer) return;
+  pingsSaveTimer = setTimeout(() => {
+    pingsSaveTimer = null;
+    fs.promises.writeFile(pingsCacheFile(), JSON.stringify(snapshotPings())).catch(() => {});
+  }, 60000);
+}
+function flushPingsCache() {
+  if (pingsSaveTimer) { clearTimeout(pingsSaveTimer); pingsSaveTimer = null; }
+  try { fs.writeFileSync(pingsCacheFile(), JSON.stringify(snapshotPings())); } catch {}
 }
 
 // The vantage point a check pings FROM, parsed from its label "(from X)".
@@ -1030,6 +1088,7 @@ app.whenReady().then(() => {
   if (app.dock) app.dock.hide();
 
   roster = loadRoster();
+  loadPingsCache(); // restore per-company ping history before live data resumes
   auth.init();
 
   tray = new Tray(icons.grey);
@@ -1080,7 +1139,7 @@ app.whenReady().then(() => {
   connectMqtt();
 });
 
-app.on('before-quit', () => { isQuitting = true; });
+app.on('before-quit', () => { isQuitting = true; flushPingsCache(); });
 
 app.on('window-all-closed', () => {});
 
