@@ -321,18 +321,33 @@ function derivedMinuteLevels(pings) {
   });
 }
 
-// Consecutive derived-down minute buckets at the END of the history (the current
-// run). >= CRITICAL_DOWN_STREAK is a confirmed, sustained outage — the single
-// rule that turns the tray icon red and auto-highlights the pie slice.
+// Memoized per-company derivation. derivedMinuteLevels is O(pings); recomputing it
+// for every company on every 1.5s snapshot — and 3x per company in companies:pie —
+// was the main-thread hot path that decayed as buffers filled toward the 3000 cap.
+// Cache the result on the entry, keyed by (ping count + newest ping timestamp), so
+// it recomputes ONLY when that company gets a new ping; every reader (companyWorst,
+// the pie counts, the critical streak) then shares one derivation over the last 24h.
+function derivedFor(entry) {
+  const pings = entry.pings || [];
+  const lastTs = pings.length ? pings[pings.length - 1].checkedAt : '';
+  const cache = entry._derived;
+  if (cache && cache.len === pings.length && cache.lastTs === lastTs) return cache;
+  const windowed = recentPings(pings);
+  const levels = derivedMinuteLevels(windowed);
+  const viewers = new Set(windowed.map((p) => viewerFromMachine(p.machine))).size || 1;
+  const next = { len: pings.length, lastTs, levels, viewers };
+  entry._derived = next;
+  return next;
+}
+
+// Consecutive derived-down minute buckets at the END of the run. >= CRITICAL_DOWN_STREAK
+// is a confirmed, sustained outage — the single rule that reds the tray icon and
+// auto-highlights the pie slice. Operates on already-derived levels (cheap tail scan).
 const CRITICAL_DOWN_STREAK = 4;
-function trailingDownStreak(pings) {
-  const levels = derivedMinuteLevels(pings);
+function trailingDownStreakFromLevels(levels) {
   let streak = 0;
   for (let i = levels.length - 1; i >= 0 && levels[i].level === 'red'; i--) streak += 1;
   return streak;
-}
-function isCriticalStreak(pings) {
-  return trailingDownStreak(pings) >= CRITICAL_DOWN_STREAK;
 }
 
 // A circuit watched from several vantage points ("viewers") is a redundancy
@@ -342,7 +357,8 @@ function isCriticalStreak(pings) {
 // buckets (the current run). A shorter dip or any degraded viewer is AMBER, so a
 // single blip never reds the fleet; red means a confirmed, ongoing outage.
 function companyWorst(entry) {
-  if (isCriticalStreak(entry.pings || [])) return 'red';
+  const { levels } = derivedFor(entry);
+  if (trailingDownStreakFromLevels(levels) >= CRITICAL_DOWN_STREAK) return 'red';
   const byViewer = new Map();
   const worse = { green: 0, yellow: 1, red: 2 };
   for (const ping of entry.lastByCheck.values()) {
@@ -1390,30 +1406,26 @@ ipcMain.handle('dashboard:open', () => {
 // (red >=50% of viewers down; else amber if any viewer down or degraded; else
 // green) and tally the buckets. The pie's radial thirds + counts read this, so
 // a single viewer's bad path can't paint the whole circuit red.
-function consensusCounts(pings) {
-  const levels = derivedMinuteLevels(pings);
-  let healthy = 0, degraded = 0, down = 0;
-  for (const { level } of levels) {
-    if (level === 'red') down += 1;
-    else if (level === 'yellow') degraded += 1;
-    else healthy += 1;
-  }
-  const viewers = new Set(pings.map((p) => viewerFromMachine(p.machine))).size || 1;
-  return { healthy, degraded, down, total: levels.length, viewers };
-}
-
 ipcMain.handle('companies:pie', () => {
-  const dayAgo = Date.now() - 86400000;
   return companyList().map((co) => {
     const entry = companies.get(co.id);
-    const pings = (entry?.pings || []).filter((p) => {
-      const t = Date.parse(p.checkedAt);
-      return Number.isFinite(t) && t > dayAgo;
-    });
-    const c = consensusCounts(pings);
+    if (!entry) {
+      return { id: co.id, label: co.label, online: co.online, healthy: 0, degraded: 0, down: 0, total: 0, viewers: 1, critical: false };
+    }
+    // One memoized derivation per company (a cache hit — companyList just ran it)
+    // powers BOTH the segment counts and the critical streak. The 24h window lives
+    // inside derivedFor (recentPings), so no extra per-call filtering.
+    const { levels, viewers } = derivedFor(entry);
+    let healthy = 0, degraded = 0, down = 0;
+    for (const { level } of levels) {
+      if (level === 'red') down += 1;
+      else if (level === 'yellow') degraded += 1;
+      else healthy += 1;
+    }
     // critical = a SUSTAINED outage right now (>=4 derived-down buckets in a row);
     // the pie auto-highlights these slices red without needing a hover.
-    return { id: co.id, label: co.label, online: co.online, healthy: c.healthy, degraded: c.degraded, down: c.down, total: c.total, viewers: c.viewers, critical: co.online && isCriticalStreak(pings) };
+    const critical = co.online && trailingDownStreakFromLevels(levels) >= CRITICAL_DOWN_STREAK;
+    return { id: co.id, label: co.label, online: co.online, healthy, degraded, down, total: levels.length, viewers, critical };
   });
 });
 
