@@ -668,11 +668,11 @@
     if (resizeHandler) { window.removeEventListener("resize", resizeHandler); resizeHandler = null; }
   };
 
-  // User preference (persisted): the liquid-glass effect defaults ON — only an
-  // explicit "off" disables it.
+  // User preference (persisted): the liquid-glass effect defaults OFF — only an
+  // explicit "on" enables it.
   const GLASS_PREF_KEY = "dashboard-webgl-glass";
   const glassPrefEnabled = () => {
-    try { return localStorage.getItem(GLASS_PREF_KEY) !== "off"; } catch { return true; }
+    try { return localStorage.getItem(GLASS_PREF_KEY) === "on"; } catch { return false; }
   };
   const setGlassPref = (on) => {
     try { localStorage.setItem(GLASS_PREF_KEY, on ? "on" : "off"); } catch {}

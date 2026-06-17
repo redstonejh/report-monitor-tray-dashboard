@@ -2790,6 +2790,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const VIEWER_LAYOUT_KEY = "builder";
     const slugViewer = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "v";
     const viewerLayout = () => document.querySelector(`.panel-layout[data-layout-key="${VIEWER_LAYOUT_KEY}"]`);
+    const escVp = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    // Viewer panel title: an eye glyph + the viewer name, then a "|" and the IP
+    // (smaller + a more muted tone). The plain-text form is the panel's default
+    // title (used for serialization / rename fallback).
+    const VIEWER_EYE_SVG = '<svg class="vp-eye" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 5c-5.5 0-9.27 4.4-10.4 6.32a1.3 1.3 0 0 0 0 1.36C2.73 14.6 6.5 19 12 19s9.27-4.4 10.4-6.32a1.3 1.3 0 0 0 0-1.36C21.27 9.4 17.5 5 12 5Zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9Zm0-2.2a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6Z"/></svg>';
+    const viewerTitleHTML = (info) => {
+      const name = escVp(info.displayName || info.name || "");
+      const ip = escVp(info.ip || "");
+      return `${VIEWER_EYE_SVG}<span class="vp-name">${name}</span>`
+        + (ip ? `<span class="vp-sep">|</span><span class="vp-ip">${ip}</span>` : "");
+    };
+    const viewerTitleText = (info) => {
+      const name = info.displayName || info.name || "";
+      return info.ip ? `${name} | ${info.ip}` : name;
+    };
+    const setViewerPanelTitle = (panel, info) => {
+      const titleEl = panel?.querySelector(":scope > .db-panel-hd .db-panel-title");
+      if (!titleEl) return;
+      titleEl.classList.add("vp-title-rich"); // inline-flex so the eye centres on the text
+      const html = viewerTitleHTML(info);
+      if (titleEl.innerHTML !== html) titleEl.innerHTML = html;
+      panel.dataset.defaultTitle = viewerTitleText(info);
+    };
     const generatedPanels = (layout) => [...layout.querySelectorAll(':scope > .db-panel[data-status-feed-generated="true"]')];
 
     // Height (grid rows) of every viewer panel — Grayson Fiber's saved layout
@@ -2823,11 +2846,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // grid (col, row).
     const addViewerPanel = (layout, companyId, info, col, row) => {
       const vslug = info.slug;
-      const title = info.ip ? `${info.name} - ${info.ip}` : info.name;
+      const title = viewerTitleText(info);
       const panel = createCustomPanel({
         key: `vp-${companyId}-${vslug}`,
         title,
-        color: "",
+        color: "#ffffff",
         span: 2,
         workspaceObjectType: WORKSPACE_OBJECT_TYPES.panel,
         dashboardObjectKind: "panel",
@@ -2838,7 +2861,7 @@ document.addEventListener("DOMContentLoaded", () => {
       panel.dataset.viewerSlug = vslug;
       panel.dataset.gridRowSpan = String(PANEL_ROW_SPAN);
       panelRuntime.applyPanelSpan(panel, 2);
-      applyPanelColor(panel, null);
+      applyPanelColor(panel, "#ffffff"); // launch on the white scheme (not glass)
       applyPanelTitleColor(panel, "");
       const target = { ...panelAddTarget(layout, panel), col, row };
       panelRuntime.applyPanelGridPosition(panel, col, row);
@@ -2884,16 +2907,22 @@ document.addEventListener("DOMContentLoaded", () => {
       // The panel was created empty; now that it holds a widget, clear the
       // "Empty panel — drop widgets here" placeholder.
       updatePanelChildEmptyState?.(panel);
+      // Launch on the white scheme, ENFORCED after __initPanel: panel init
+      // re-hydrates the color from the (empty) default theme, which would clear
+      // it back to glass. Pin the default theme to white and apply it last.
+      const colorToggle = panel.querySelector(":scope > .db-panel-hd .panel-color-toggle");
+      if (colorToggle) colorToggle.dataset.defaultTheme = "#ffffff";
+      applyPanelColor(panel, "#ffffff");
+      setViewerPanelTitle(panel, info);
     };
 
     // Refresh an EXISTING panel's title + table columns to the current format
     // (panels persist across reloads, so a panel saved by an older build must be
     // migrated in place rather than left with stale title/columns).
     const updateViewerPanel = (panel, info) => {
-      const title = info.ip ? `${info.name} - ${info.ip}` : info.name;
-      const titleEl = panel.querySelector(":scope > .db-panel-hd .db-panel-title");
-      if (titleEl && titleEl.textContent !== title) titleEl.textContent = title;
-      panel.dataset.defaultTitle = title;
+      setViewerPanelTitle(panel, info);
+      // Keep the white scheme pinned (a re-render/hydration may have cleared it).
+      if (!panel.classList.contains("db-panel-custom-color")) applyPanelColor(panel, "#ffffff");
       const widget = panel.querySelector(".panel-internal-widget-grid > .widget-card[data-widget-runtime-type='table']");
       if (widget) {
         let cfg = {};
@@ -2940,6 +2969,15 @@ document.addEventListener("DOMContentLoaded", () => {
       teardown() {
         const layout = viewerLayout();
         if (layout) generatedPanels(layout).forEach((p) => { p.hidden = true; });
+      },
+      // Launch a builder panel (e.g. Metrics) on the white scheme. The static
+      // default-theme is unreliable here (the runtime injects extra color toggles
+      // and the header default-theme ends up empty), so enforce it directly. Only
+      // applies when the panel isn't already custom-coloured, so a deliberate user
+      // colour is never overridden.
+      forceWhite(panel) {
+        if (!panel || panel.classList.contains("db-panel-custom-color")) return;
+        applyPanelColor(panel, "#ffffff");
       },
     };
   }

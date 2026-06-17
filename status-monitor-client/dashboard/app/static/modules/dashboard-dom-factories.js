@@ -44,7 +44,7 @@ export const createDashboardDomFactories = ({
         <span class="db-panel-count">0</span>
         <div class="panel-tools">
           <div class="panel-tool-drawer" aria-label="Panel tools">
-            ${panelToolButtonsMarkup(definition.color || "", true)}
+            ${panelToolButtonsMarkup(definition.color || "#ffffff", true)}
           </div>
         </div>
       </div>

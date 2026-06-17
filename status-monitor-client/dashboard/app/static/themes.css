@@ -5966,6 +5966,28 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
   animation: db-loading-spin 0.8s linear infinite;
 }
 @keyframes db-loading-spin{ to { transform: rotate(360deg); } }
+/* Viewer panel title: [eye] Name | ip — the IP is smaller and a touch darker
+ * than the eye + name. inline-flex vertically centres the eye on the text. */
+.db-panel-title.vp-title-rich{ display: inline-flex; align-items: center; }
+.db-panel-title .vp-eye{ flex: 0 0 auto; margin-right: 7px; }
+.db-panel-title .vp-name{ font-weight: inherit; }
+.db-panel-title .vp-sep{ margin: 0 7px; opacity: 0.4; font-weight: 400; }
+.db-panel-title .vp-ip{
+  font-size: 0.82em;
+  color: color-mix(in srgb, currentColor 70%, #000 30%);
+}
+/* Active company tab: the circuit's (target) IP appears ABOVE the tab name,
+ * slightly muted. The tab is pulled up by exactly the IP's height (see the
+ * :has() rule in injectCompanyCss) so the name stays where it was. */
+.company-tab-ip{
+  display: block;
+  height: 14px;
+  line-height: 14px;
+  margin-bottom: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+}
 /* The app already paints scrollbars fully transparent, so the default
  * 19px gutter was pure dead space holding the header short of the well's
  * right edge — drop the gutter entirely (wheel/keyboard scrolling is

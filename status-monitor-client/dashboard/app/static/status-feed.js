@@ -420,6 +420,9 @@ function rowsForActive() {
 // name → IP) for anything the derivation can't resolve.
 const VIEWER_IPS = {};
 let viewerIpMap = {};
+// The active circuit's target host, shown above the selected company tab. Set by
+// publish() (which knows the host once history loads) and read by renderCompanyTabs.
+let activeCircuitHost = "";
 
 // Pull the vantage-point name out of a check label; "(from Eureka NOC)" → "Eureka NOC".
 function viewerOf(machine) {
@@ -679,16 +682,14 @@ function publish() {
   const targetLabel = activeCo ? conciseLabel(activeCo.label) : "";
   const defaultRows = multi ? deriveConsensusRows(rows, targetLabel) : rows;
 
-  // Metrics panel title reflects the active tab: "Metrics for <company> - <ip>".
-  // The IP is the circuit's own target host (same across its viewers).
-  const metricsTitle = document.querySelector('.db-panel[data-panel-key="builder-metrics"] > .db-panel-hd > .db-panel-title');
-  if (metricsTitle) {
-    const host = rows.length ? (rows[rows.length - 1].ip || "") : "";
-    const next = targetLabel
-      ? (host ? `Metrics for ${targetLabel} - ${host}` : `Metrics for ${targetLabel}`)
-      : "Metrics";
-    if (metricsTitle.textContent !== next) metricsTitle.textContent = next;
+  // The Metrics panel carries a fixed title on every tab.
+  const metricsPanel = document.querySelector('.db-panel[data-panel-key="builder-metrics"]');
+  const metricsTitle = metricsPanel?.querySelector(':scope > .db-panel-hd > .db-panel-title');
+  if (metricsTitle && metricsTitle.textContent !== "Metrics & Controls") {
+    metricsTitle.textContent = "Metrics & Controls";
   }
+  // The Metrics panel launches on the white scheme like the viewer panels.
+  window.dashboardViewerPanels?.forceWhite?.(metricsPanel);
 
   // Stat cards stay a per-company aggregate over every viewer's pings (unchanged).
   const widgets = {
@@ -714,7 +715,24 @@ function publish() {
   // e.g. ping "31 (+1)" / "200 (+192)", loss "0 (+0)" — "ms"/"%" live in the
   // column headers ("ping (ms)" / "loss (%)"). The title carries the viewer's
   // own (source) IP (derived in main.js); VIEWER_IPS is a manual override.
-  const viewerInfos = viewers.map((name) => ({ name, ip: VIEWER_IPS[name] || viewerIpMap[name] || "" }));
+  // The circuit's own target host (same across its viewers) — used as the IP for a
+  // direct ("Primary") check that has no remote vantage point.
+  const targetHost = rows.length ? (rows[rows.length - 1].ip || "") : "";
+  // Surface the active circuit's IP above its tab — re-render tabs only when the
+  // host actually changes (i.e. on a tab switch / first data), not every publish.
+  if (activeCircuitHost !== targetHost) { activeCircuitHost = targetHost; renderCompanyTabs(); }
+  const viewerInfos = viewers.map((name) => {
+    // A "Primary" viewer is a direct check (no "(from X)"): there's no remote
+    // vantage, so display the circuit's real identity + its target host instead of
+    // the generic "Primary". `name` is kept verbatim so the panel/table slug+key
+    // stay stable (the table data is fed under viewerSlug(name)).
+    const isPrimary = name === "Primary";
+    return {
+      name,
+      displayName: isPrimary ? (targetLabel || name) : name,
+      ip: isPrimary ? targetHost : (VIEWER_IPS[name] || viewerIpMap[name] || ""),
+    };
+  });
   renderViewerTablePanels(companyState.active, hasViewers ? viewerInfos : []);
   if (hasViewers) {
     for (const viewer of viewers) {
@@ -808,7 +826,10 @@ function injectCompanyCss() {
      controls, so the centring translateX can never slide a tab over a trigger
      and steal its clicks (that overlap is what made the "…" need several
      tries). The buttons sit outside the viewport and stay fully hittable. */
-  .company-tab-viewport{ flex:1 1 auto; min-width:0; display:flex; justify-content:center; overflow:hidden; }
+  .company-tab-viewport{ flex:1 1 auto; min-width:0; display:flex; justify-content:center; overflow-x:clip; overflow-y:visible; }
+  /* The active tab carries an IP line above its name. Pull the tab up by the IP's
+     height (14px + 2px gap) so the name stays in place and the IP sits higher. */
+  .company-tab:has(.company-tab-ip){ margin-top:-16px; }
   .company-tab-scroller{ display:inline-flex; align-items:flex-start; min-width:0; transform:translateX(0); transition:transform .3s cubic-bezier(.25,.8,.3,1); will-change:transform; }
   .company-tab{
     flex:0 0 auto;
@@ -986,6 +1007,8 @@ function renderCompanyTabs() {
   for (const [id, el] of [...tabsById]) {
     if (!all.some((c) => c.id === id)) { el.remove(); tabsById.delete(id); }
   }
+  // Shown above the selected tab only (set by publish once history loads).
+  const activeHost = activeCircuitHost;
   all.forEach((co, index) => {
     let b = tabsById.get(co.id);
     if (!b) {
@@ -1006,7 +1029,17 @@ function renderCompanyTabs() {
     b.setAttribute("aria-hidden", String(!inWindow));
     b.setAttribute("tabindex", isActive ? "0" : "-1");
     b.title = co.online === false ? `${co.label} — offline` : co.label; // full name on hover
-    b.textContent = conciseLabel(co.label);
+    const label = conciseLabel(co.label);
+    if (isActive && activeHost) {
+      // Selected tab only: the circuit IP sits above the name, slightly muted.
+      b.textContent = "";
+      const ipEl = document.createElement("span");
+      ipEl.className = "company-tab-ip";
+      ipEl.textContent = activeHost;
+      b.append(ipEl, document.createTextNode(label));
+    } else {
+      b.textContent = label;
+    }
     if (scroller.children[index] !== b) scroller.insertBefore(b, scroller.children[index] || null);
   });
   while (scroller.children.length > all.length) scroller.lastChild.remove();
@@ -1042,6 +1075,12 @@ function renderCompanyTabs() {
 async function startFeed() {
   const bridge = window.dashboard;
   if (!bridge) { console.warn("[status-feed] window.dashboard bridge unavailable — no live data."); return; }
+
+  // Viewer panels are transient — regenerated from live data each session. An
+  // older build may have persisted them into the layout store, so they get
+  // restored with stale titles/colours. Purge any restored ones on boot; the
+  // first publish() recreates them fresh (current title format + white scheme).
+  document.querySelectorAll('.db-panel[data-status-feed-generated="true"]').forEach((p) => p.remove());
 
   try {
     const snapshot = await bridge.getStatus();
