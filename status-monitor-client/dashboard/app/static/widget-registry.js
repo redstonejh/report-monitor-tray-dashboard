@@ -163,42 +163,42 @@
   // needed to keep the graph and the table in the viewport together.
   const focusHistoryRow = (checkedAt) => {
     if (!checkedAt) return false;
-    // Match across EVERY table on the page — the default history table AND each
-    // per-viewer table. The chart can show consensus pings keyed to the minute
-    // while viewer rows carry the exact ping time, so match by minute (with an
-    // exact-timestamp fast path).
+    // Match across EVERY visible table — the default history table AND each per-
+    // viewer table. The chart shows consensus pings keyed to the minute while rows
+    // carry the exact time, so match by minute (exact-timestamp fast path).
     const ms = Date.parse(checkedAt);
     const targetMinute = Number.isFinite(ms) ? Math.floor(ms / 60000) : null;
-    const allRows = [...document.querySelectorAll('.widget-card[data-widget-runtime-type="table"] tbody tr[data-checked-at]')];
-    const matches = allRows.filter((tr) => {
-      if (tr.offsetParent === null) return false; // skip rows in hidden panels (other tabs)
-      if (tr.dataset.checkedAt === checkedAt) return true;
-      if (targetMinute == null) return false;
-      const t = Date.parse(tr.dataset.checkedAt);
-      return Number.isFinite(t) && Math.floor(t / 60000) === targetMinute;
-    });
-    if (!matches.length) return false;
-    // Scroll each table's own well to its matching row, and flash every match.
-    const scrolled = new Set();
-    for (const row of matches) {
-      let scroller = row.parentElement;
-      while (scroller && scroller !== document.body && scroller.scrollHeight <= scroller.clientHeight + 4) {
-        scroller = scroller.parentElement;
-      }
-      if (scroller && scroller !== document.body && !scrolled.has(scroller)) {
-        scrolled.add(scroller);
-        const rowTop = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
-        scroller.scrollTo({
-          top: Math.max(0, rowTop - (scroller.clientHeight - row.offsetHeight) / 2),
-          behavior: "smooth",
-        });
-      }
+    const minuteOf = (iso) => { const t = Date.parse(iso); return Number.isFinite(t) ? Math.floor(t / 60000) : null; };
+    const flashed = [];
+    const flash = (row) => {
+      if (!row) return;
       row.classList.add("ping-focus");
       window.setTimeout(() => row.classList.remove("ping-focus"), 2400);
+      flashed.push(row);
+    };
+    for (const table of document.querySelectorAll('.widget-card[data-widget-runtime-type="table"] .runtime-table')) {
+      if (table.offsetParent === null) continue; // hidden tab
+      const scroller = table.closest(".widget-content-well") || findTableScroller(table);
+      if (scroller && scroller.__vtable) {
+        // Windowed table: most rows aren't in the DOM. Resolve via the data — it
+        // scrolls the match into the window and hands back the now-live <tr>.
+        flash(scroller.__vtable.locate(checkedAt));
+        continue;
+      }
+      // Fully-rendered table: scan its DOM rows and scroll its own well.
+      const match = [...table.querySelectorAll('tbody tr[data-checked-at]')].find((tr) =>
+        tr.dataset.checkedAt === checkedAt || (targetMinute != null && minuteOf(tr.dataset.checkedAt) === targetMinute));
+      if (!match) continue;
+      if (scroller && scroller !== document.body) {
+        const rowTop = match.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+        scroller.scrollTo({ top: Math.max(0, rowTop - (scroller.clientHeight - match.offsetHeight) / 2), behavior: "smooth" });
+      }
+      flash(match);
     }
+    if (!flashed.length) return false;
     // Keep the graph and the (first) table framed in the viewport together.
     const chartCard = [...document.querySelectorAll(".widget-card")].find((el) => typeof el.__focusChartPing === "function");
-    const tableCard = matches[0].closest(".widget-card");
+    const tableCard = flashed[0].closest(".widget-card");
     const rects = [chartCard, tableCard].filter(Boolean).map((el) => el.getBoundingClientRect());
     if (rects.length) {
       const top = Math.min(...rects.map((r) => r.top)) + window.scrollY - 12;
@@ -1416,6 +1416,11 @@
     }
     return null;
   };
+  // Above this many rows a table is WINDOWED: only the visible rows (+ overscan)
+  // are built into the DOM, so a 24h ping buffer no longer rebuilds thousands of
+  // <tr> on every ingest. Smaller tables render fully (no behaviour change).
+  const TABLE_VIRTUALIZE_THRESHOLD = 120;
+  const TABLE_VIRTUALIZE_OVERSCAN = 10;
   const mountTableBodyRenderer = ({ contentRoot, instance }) => {
     const target = contentRoot?.querySelector?.(".runtime-table-tanstack");
     if (!target) return null;
@@ -1460,115 +1465,148 @@
     const schemaFields = rows.length ? Object.keys(rows[0] || {}) : dataSchemaFields(instance?.data);
     const allFields = unique(configuredColumns.length ? configuredColumns : schemaFields.length ? schemaFields : [""]);
     const visibleFields = allFields.slice(0, tableVisibleColumnCount(instance.cols));
-    const visibleRows = rows.slice(0, tableVisibleRowCount(instance.rows, config.limit));
-    let disposed = false;
-    loadTanstackTable()
-      .then((TableCore) => {
-        if (disposed || !target.isConnected) return;
-        const { createTable, getCoreRowModel } = TableCore;
-        const columnDefs = visibleFields.map((key) => ({
-          id: key,
-          accessorKey: key,
-          header: key,
-        }));
-        const tableInitialState = {
-          columnOrder: [],
-          columnVisibility: {},
-          columnPinning: { left: [], right: [] },
-          columnSizing: {},
-          columnSizingInfo: { columnSizingStart: [], deltaOffset: null, deltaPercentage: null, isResizingColumn: false, startOffset: null, startSize: null },
-          expanded: {},
-          globalFilter: "",
-          grouping: [],
-          pagination: { pageIndex: 0, pageSize: 50 },
-          rowPinning: { top: [], bottom: [] },
-          rowSelection: {},
-          sorting: [],
-          columnFilters: [],
-        };
-        const table = createTable({
-          data: visibleRows,
-          columns: columnDefs,
-          getCoreRowModel: getCoreRowModel(),
-          state: tableInitialState,
-          onStateChange: () => {},
-          renderFallbackValue: "",
+    const dataRows = rows.slice(0, tableVisibleRowCount(instance.rows, config.limit));
+
+    // Build one data <tr> with the hooks the table has always had: result/level
+    // dataset for hover tinting, checkedAt for the timeline link, and a click that
+    // focuses that ping on the chart and flashes the row.
+    const makeRow = (rowData) => {
+      const tr = document.createElement("tr");
+      const rowResult = rowData?.result;
+      if (rowResult) tr.dataset.result = rowResult;
+      const rowLevel = rowData?.level || (rowData?.status === "red" ? "red" : rowData?.status === "yellow" ? "yellow" : rowResult ? "green" : "");
+      if (rowLevel) tr.dataset.level = rowLevel;
+      if (rowData?.checkedAt) {
+        tr.dataset.checkedAt = rowData.checkedAt;
+        tr.style.cursor = "pointer";
+        tr.addEventListener("click", (event) => {
+          if (wasDragGesture(event)) return;
+          focusChartPing(tr.dataset.checkedAt);
+          tr.classList.add("ping-focus");
+          window.setTimeout(() => tr.classList.remove("ping-focus"), 2400);
         });
-        const tableEl = document.createElement("table");
-        tableEl.className = "runtime-table";
-        tableEl.setAttribute("role", "grid");
-        tableEl.setAttribute("aria-label", config.title || "Table");
-        const thead = document.createElement("thead");
-        const headerTr = document.createElement("tr");
-        table.getHeaderGroups().forEach((hg) => {
-          hg.headers.forEach((header) => {
-            const th = document.createElement("th");
-            const label = String(header.column.columnDef.header || header.id || "");
-            th.textContent = label;
-            th.title = label;
-            headerTr.appendChild(th);
-          });
-        });
-        thead.appendChild(headerTr);
-        tableEl.appendChild(thead);
-        const tbody = document.createElement("tbody");
-        table.getRowModel().rows.forEach((row) => {
-          const tr = document.createElement("tr");
-          // Tag the row with its pass/fail result so it can subtly highlight
-          // green/red on hover.
-          const rowResult = row.original?.result;
-          if (rowResult) tr.dataset.result = rowResult;
-          // Criticality level drives the row highlight color (green / amber /
-          // red) — same three-level logic as the chart bars and stat cards.
-          const rowLevel = row.original?.level || (row.original?.status === "red" ? "red" : row.original?.status === "yellow" ? "yellow" : rowResult ? "green" : "");
-          if (rowLevel) tr.dataset.level = rowLevel;
-          // Lets the status timeline scroll to and highlight a specific ping —
-          // and clicking the row navigates the timeline chart to that ping.
-          if (row.original?.checkedAt) {
-            tr.dataset.checkedAt = row.original.checkedAt;
-            tr.style.cursor = "pointer";
-            tr.addEventListener("click", (event) => {
-              if (wasDragGesture(event)) return;
-              focusChartPing(tr.dataset.checkedAt);
-              tr.classList.add("ping-focus");
-              window.setTimeout(() => tr.classList.remove("ping-focus"), 2400);
-            });
-          }
-          row.getVisibleCells().forEach((cell) => {
-            const td = document.createElement("td");
-            const value = String(cell.getValue() ?? "");
-            td.textContent = value;
-            td.title = value;
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
-        });
-        tableEl.appendChild(tbody);
+      }
+      for (const field of visibleFields) {
+        const td = document.createElement("td");
+        const value = String(rowData?.[field] ?? "");
+        td.textContent = value;
+        td.title = value;
+        tr.appendChild(td);
+      }
+      return tr;
+    };
+
+    try {
+      const tableEl = document.createElement("table");
+      tableEl.className = "runtime-table";
+      tableEl.setAttribute("role", "grid");
+      tableEl.setAttribute("aria-label", config.title || "Table");
+      const thead = document.createElement("thead");
+      const headerTr = document.createElement("tr");
+      for (const field of visibleFields) {
+        const th = document.createElement("th");
+        th.textContent = String(field);
+        th.title = String(field);
+        headerTr.appendChild(th);
+      }
+      thead.appendChild(headerTr);
+      tableEl.appendChild(thead);
+      const tbody = document.createElement("tbody");
+      tableEl.appendChild(tbody);
+
+      // The well is the scroll container for these table widgets.
+      scroller = target.closest(".widget-content-well") || findTableScroller(target);
+      const virtualize = !!scroller && dataRows.length > TABLE_VIRTUALIZE_THRESHOLD;
+
+      if (!virtualize) {
+        for (const rowData of dataRows) tbody.appendChild(makeRow(rowData));
         target.appendChild(tableEl);
-        // Restore (and keep tracking) the scroll position so per-ping rebuilds
-        // don't reset where the user is in the table.
-        if (memKey) {
-          scroller = findTableScroller(target);
-          if (scroller) {
-            const saved = tableScrollMemory.get(memKey);
-            if (saved) scroller.scrollTop = saved;
-            scrollHandler = () => tableScrollMemory.set(memKey, scroller.scrollTop);
-            scroller.addEventListener("scroll", scrollHandler, { passive: true });
-          }
-        }
-      })
-      .catch((error) => {
-        if (disposed || !target.isConnected) return;
-        target.innerHTML = defaultWidgetVisual("table");
-      });
+        if (scroller) delete scroller.__vtable;
+      } else {
+        // Windowed: only the visible rows (+ overscan) live in the DOM, between two
+        // spacer rows whose heights stand in for the off-screen rows — so the DOM
+        // and the per-ping rebuild stay ~constant no matter how many pings pile up.
+        tableEl.classList.add("runtime-table-virtual");
+        const makeSpacer = () => {
+          const tr = document.createElement("tr");
+          tr.className = "vt-spacer";
+          tr.setAttribute("aria-hidden", "true");
+          const td = document.createElement("td");
+          td.colSpan = visibleFields.length || 1;
+          tr.appendChild(td);
+          return tr;
+        };
+        const topSpacer = makeSpacer();
+        const botSpacer = makeSpacer();
+        tbody.appendChild(topSpacer);
+        tbody.appendChild(botSpacer);
+        // Probe a real row in the DOM to measure the density-aware row height.
+        const probe = makeRow(dataRows[0]);
+        tbody.insertBefore(probe, botSpacer);
+        target.appendChild(tableEl);
+        const rowH = Math.max(1, Math.round(probe.getBoundingClientRect().height) || 24);
+        probe.remove();
+
+        const renderWindow = () => {
+          const total = dataRows.length;
+          const first = Math.max(0, Math.floor(scroller.scrollTop / rowH) - TABLE_VIRTUALIZE_OVERSCAN);
+          const last = Math.min(total, first + Math.ceil((scroller.clientHeight || 1) / rowH) + TABLE_VIRTUALIZE_OVERSCAN * 2);
+          topSpacer.firstChild.style.height = (first * rowH) + "px";
+          botSpacer.firstChild.style.height = (Math.max(0, total - last) * rowH) + "px";
+          for (let n = topSpacer.nextSibling; n && n !== botSpacer; ) { const next = n.nextSibling; n.remove(); n = next; }
+          const frag = document.createDocumentFragment();
+          for (let i = first; i < last; i++) frag.appendChild(makeRow(dataRows[i]));
+          tbody.insertBefore(frag, botSpacer);
+        };
+
+        // Let the chart-ping click (focusHistoryRow) reach a row outside the window:
+        // find it in the data, scroll it in, render, and hand back the live <tr>.
+        const matchIndex = (checkedAt) => {
+          const t0 = Date.parse(checkedAt);
+          const minute = Number.isFinite(t0) ? Math.floor(t0 / 60000) : null;
+          return dataRows.findIndex((r) => r.checkedAt === checkedAt ||
+            (minute != null && Number.isFinite(Date.parse(r.checkedAt)) && Math.floor(Date.parse(r.checkedAt) / 60000) === minute));
+        };
+        scroller.__vtable = {
+          rowH,
+          render: renderWindow,
+          locate: (checkedAt) => {
+            const idx = matchIndex(checkedAt);
+            if (idx < 0) return null;
+            scroller.scrollTop = Math.max(0, idx * rowH - (scroller.clientHeight - rowH) / 2);
+            renderWindow();
+            const t0 = Date.parse(checkedAt);
+            const minute = Number.isFinite(t0) ? Math.floor(t0 / 60000) : null;
+            return [...tbody.querySelectorAll("tr[data-checked-at]")].find((tr) =>
+              tr.dataset.checkedAt === checkedAt ||
+              (minute != null && Number.isFinite(Date.parse(tr.dataset.checkedAt)) && Math.floor(Date.parse(tr.dataset.checkedAt) / 60000) === minute)) || null;
+          },
+        };
+        renderWindow();
+      }
+
+      // Restore the saved scroll position and keep tracking it (both paths).
+      if (scroller && memKey) {
+        const saved = tableScrollMemory.get(memKey);
+        if (saved) { scroller.scrollTop = saved; if (scroller.__vtable) scroller.__vtable.render(); }
+        scrollHandler = () => {
+          tableScrollMemory.set(memKey, scroller.scrollTop);
+          if (scroller.__vtable) scroller.__vtable.render();
+        };
+        scroller.addEventListener("scroll", scrollHandler, { passive: true });
+      }
+    } catch (error) {
+      if (target.isConnected) target.innerHTML = defaultWidgetVisual("table");
+    }
+
     return () => {
-      disposed = true;
       // Save the latest offset and detach BEFORE clearing, so the teardown's
       // scroll-to-0 can't overwrite the remembered position.
       if (memKey && scroller) {
         tableScrollMemory.set(memKey, scroller.scrollTop);
         if (scrollHandler) scroller.removeEventListener("scroll", scrollHandler);
         scrollHandler = null;
+        delete scroller.__vtable;
       }
       if (target.isConnected) target.innerHTML = "";
     };

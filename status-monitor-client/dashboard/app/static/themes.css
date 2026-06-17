@@ -5937,6 +5937,20 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
   box-shadow: none !important;
   border-bottom: 0 !important;
 }
+/* Windowed (virtualized) tables: rows must be a uniform height for the spacer
+ * math to line up, so they don't wrap. Values here (timestamps, pass/fail,
+ * ping/loss) are short, so nowrap + ellipsis is invisible in practice. The spacer
+ * rows carry only height — no padding/border — so the off-screen stand-in is exact. */
+.runtime-table-virtual td,
+.runtime-table-virtual th{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.runtime-table-virtual .vt-spacer td{
+  padding: 0 !important;
+  border: 0 !important;
+}
 /* The app already paints scrollbars fully transparent, so the default
  * 19px gutter was pure dead space holding the header short of the well's
  * right edge — drop the gutter entirely (wheel/keyboard scrolling is
