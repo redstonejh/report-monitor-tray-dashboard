@@ -60,6 +60,10 @@
   <link rel="stylesheet" href="./app/static/utilities.css">
 </head>
 <body>
+  <!-- Loading gate: covers the initial boot (layout + history load + first widget
+       render) so the dashboard never shows a half-built/janky UI. Cleared by
+       status-feed.js after the first publish renders, with a safety timeout. -->
+  <div id="db-loading" class="db-loading"><div class="db-loading-spinner" aria-label="Loading"></div></div>
   <main class="page">
 
 <div class="app-window-drag-region" aria-hidden="true"></div>

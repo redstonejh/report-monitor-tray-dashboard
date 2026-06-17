@@ -184,6 +184,17 @@ function ingestCheck(payload, system) {
   entry.pings.push(ping);
   if (entry.pings.length > MAX_PINGS_PER_COMPANY) entry.pings.splice(0, entry.pings.length - MAX_PINGS_PER_COMPANY);
   if (ping.checkedAt) lastCheckedAt = ping.checkedAt;
+  // Bound lastByCheck: drop checks that haven't reported in a long time so a
+  // company churning through check IDs can't grow the map without limit (and
+  // long-dead checks don't linger in the "current" status). Gated on size so it's
+  // a no-op for the normal handful of checks.
+  if (entry.lastByCheck.size > 64) {
+    const staleBefore = Date.now() - STALE_MS;
+    for (const [k, p] of entry.lastByCheck) {
+      const t = Date.parse(p.checkedAt);
+      if (Number.isFinite(t) && t < staleBefore) entry.lastByCheck.delete(k);
+    }
+  }
   savePingsSoon(); // debounced persist so history survives a restart
   return { companyId: co.id, ping };
 }

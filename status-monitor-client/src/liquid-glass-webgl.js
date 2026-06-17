@@ -659,6 +659,19 @@
     }
   };
 
+  // Tear down everything attachObservers() set up, and cancel any queued frame.
+  // The observers (a body-wide MutationObserver especially) and the rAF loop ran
+  // for the whole life of the always-alive tray window; this lets us stop them
+  // when the window is hidden (visibilitychange below) and on disable().
+  const detachObservers = () => {
+    if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
+    if (mutationObserver) { mutationObserver.disconnect(); mutationObserver = null; }
+    if (scrollHandler) { window.removeEventListener("scroll", scrollHandler); scrollHandler = null; }
+    if (resizeHandler) { window.removeEventListener("resize", resizeHandler); resizeHandler = null; }
+    if (rafHandle != null) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+    pendingFrame = false;
+  };
+
   const enable = () => {
     if (active) return;
     if (!ensureCanvas()) return;
@@ -729,7 +742,9 @@
       reconcile();
     },
     disable: () => {
-      reconcile();
+      if (!active) return;
+      active = false;
+      detachObservers();
     },
     // debug(0|false) = off, debug(1|true) = mask overlay, debug(2) = UV displacement field
     debug: (mode = 1) => {
@@ -754,6 +769,22 @@
     markDirty,
     isActive: () => active,
   };
+
+  // Pause all glass work while the window is hidden (the tray popover is hidden
+  // most of the time): detach observers + cancel the RAF so nothing runs in the
+  // background; re-attach and redraw when shown again. The webgl-glass-on class
+  // stays put so the panel's CSS acrylic is unaffected.
+  document.addEventListener("visibilitychange", () => {
+    if (!active) return;
+    if (document.hidden) {
+      detachObservers();
+    } else {
+      attachObservers();
+      lastTextureKey = "";
+      rasterizeBackdropTexture();
+      markDirty();
+    }
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {

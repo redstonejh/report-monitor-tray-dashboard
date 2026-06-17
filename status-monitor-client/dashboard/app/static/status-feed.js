@@ -1063,6 +1063,8 @@ async function startFeed() {
   }
   renderCompanyTabs();
   publish();
+  // First render done — clear the loading gate after the render frame settles.
+  requestAnimationFrame(() => requestAnimationFrame(hideDashboardLoading));
 
   // Tray pie click-through: land on the company whose slice was clicked
   // (pulled when this window boots; pushed live when it is already open).
@@ -1179,4 +1181,9 @@ ensureStatusIndicator();
 updateStatusIndicator();
 watchForStatusWidgets();
 mirrorBackgroundPreference();
+function hideDashboardLoading() {
+  document.getElementById("db-loading")?.classList.add("hidden");
+}
+// Safety net: never let the gate stick even if boot stalls or errors out.
+setTimeout(hideDashboardLoading, 8000);
 whenDataRuntimeReady(() => { startFeed(); });
