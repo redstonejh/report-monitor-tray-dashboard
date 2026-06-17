@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('dashboard', {
   // Tray pie click-through: a pending company focus pulled at boot, plus live
   // pushes when the window is already open.
   consumeCompanyFocus: () => ipcRenderer.invoke('company:focus:consume'),
-  onSetCompany: (cb) => ipcRenderer.on('dashboard:set-company', (_e, companyId) => cb(companyId)),
+  onSetCompany: (cb) => ipcRenderer.on('dashboard:set-company', (_e, payload) => cb(payload)),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (settings) => ipcRenderer.invoke('settings:save', settings),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),

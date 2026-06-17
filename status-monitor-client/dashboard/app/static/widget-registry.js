@@ -1175,7 +1175,23 @@
           // HP-bar segments stack bottom-up: healthy green, degraded amber,
           // down red — each proportional to its share of the bucket. Empty
           // (no-data) slots render as a full-height translucent grey bar.
-          const hpSegment = (id, color, share) => ({
+          //
+          // Exaggeration: a few bad pings in a big bucket would be a near-invisible
+          // sliver, so any non-zero degraded/down share is bumped to a MINIMUM
+          // visible band (carved out of the green share, never overflowing 100), so
+          // amber/red read at a glance even when there were only a few.
+          const MIN_DOWN = 15, MIN_DEGRADED = 10;
+          const hpShares = (bk) => {
+            if (!bk.total) return { ok: 0, degraded: 0, down: 0 };
+            let down = (bk.down / bk.total) * 100;
+            let degraded = (bk.degraded / bk.total) * 100;
+            if (down > 0) down = Math.max(down, MIN_DOWN);
+            if (degraded > 0) degraded = Math.max(degraded, MIN_DEGRADED);
+            if (down + degraded > 100) { const s = 100 / (down + degraded); down *= s; degraded *= s; }
+            const r = (n) => Math.round(n * 10) / 10;
+            return { ok: r(Math.max(0, 100 - down - degraded)), degraded: r(degraded), down: r(down) };
+          };
+          const hpSegment = (id, color, pct) => ({
             ...transitionProps,
             id,
             type: "bar",
@@ -1185,7 +1201,7 @@
             cursor: "pointer",
             emphasis,
             data: ordered.map((bk) => ({
-              value: bk.total ? Math.round((share(bk) / bk.total) * 1000) / 10 : 0,
+              value: pct(bk),
               itemStyle: { color, borderRadius: 2 },
               ...bucketMeta(bk),
             })),
@@ -1206,9 +1222,9 @@
             })),
           };
           return [
-            hpSegment("hp-ok", "#6fc99a", (bk) => bk.success),
-            hpSegment("hp-degraded", "#d4ab63", (bk) => bk.degraded),
-            hpSegment("hp-down", "#e1857c", (bk) => bk.down),
+            hpSegment("hp-ok", "#6fc99a", (bk) => hpShares(bk).ok),
+            hpSegment("hp-degraded", "#d4ab63", (bk) => hpShares(bk).degraded),
+            hpSegment("hp-down", "#e1857c", (bk) => hpShares(bk).down),
             emptySegment,
           ];
         })(),
@@ -1555,6 +1571,20 @@
         const rowH = Math.max(1, Math.round(probe.getBoundingClientRect().height) || 24);
         probe.remove();
 
+        // The chart-ping focus highlight must SURVIVE re-renders. Scrolling a row
+        // into view changes scrollTop, which fires the scroll handler → renderWindow,
+        // rebuilding the rows. If the flash lived only on the original <tr> it was
+        // wiped by that very re-render — which is why it appeared to work only on
+        // the SECOND click (when scrollTop no longer changed, so no re-render fired).
+        // Track the focused minute + expiry and re-apply .ping-focus on every render.
+        let focusMinute = null, focusUntil = 0;
+        const applyFocus = () => {
+          if (focusMinute == null || Date.now() > focusUntil) return;
+          for (const tr of tbody.querySelectorAll("tr[data-checked-at]")) {
+            const t = Date.parse(tr.dataset.checkedAt);
+            if (Number.isFinite(t) && Math.floor(t / 60000) === focusMinute) tr.classList.add("ping-focus");
+          }
+        };
         const renderWindow = () => {
           const total = dataRows.length;
           const first = Math.max(0, Math.floor(scroller.scrollTop / rowH) - TABLE_VIRTUALIZE_OVERSCAN);
@@ -1565,6 +1595,7 @@
           const frag = document.createDocumentFragment();
           for (let i = first; i < last; i++) frag.appendChild(makeRow(dataRows[i]));
           tbody.insertBefore(frag, botSpacer);
+          applyFocus();
         };
 
         // Let the chart-ping click (focusHistoryRow) reach a row outside the window:
@@ -1581,13 +1612,14 @@
           locate: (checkedAt) => {
             const idx = matchIndex(checkedAt);
             if (idx < 0) return null;
-            scroller.scrollTop = Math.max(0, idx * rowH - (scroller.clientHeight - rowH) / 2);
-            renderWindow();
             const t0 = Date.parse(checkedAt);
-            const minute = Number.isFinite(t0) ? Math.floor(t0 / 60000) : null;
-            return [...tbody.querySelectorAll("tr[data-checked-at]")].find((tr) =>
-              tr.dataset.checkedAt === checkedAt ||
-              (minute != null && Number.isFinite(Date.parse(tr.dataset.checkedAt)) && Math.floor(Date.parse(tr.dataset.checkedAt) / 60000) === minute)) || null;
+            focusMinute = Number.isFinite(t0) ? Math.floor(t0 / 60000) : null;
+            focusUntil = Date.now() + 2400;
+            scroller.scrollTop = Math.max(0, idx * rowH - (scroller.clientHeight - rowH) / 2);
+            renderWindow(); // applies .ping-focus; the scroll-triggered re-render re-applies it too
+            // Clear the focus after the flash duration and repaint once to drop it.
+            window.setTimeout(() => { focusMinute = null; if (scroller.__vtable) renderWindow(); }, 2450);
+            return tbody.querySelector("tr.ping-focus") || null;
           },
         };
         renderWindow();

@@ -27,8 +27,8 @@ contextBridge.exposeInMainWorld('electron', {
 
   // Tray pie: per-company past-24h condition mix, and slice click-through that
   // opens the dashboard on that company's tab.
-  getCompaniesPie: () => ipcRenderer.invoke('companies:pie'),
-  openCompany: (companyId) => ipcRenderer.invoke('dashboard:open-company', companyId),
+  getCompaniesPie: (windowMs) => ipcRenderer.invoke('companies:pie', windowMs),
+  openCompany: (companyId, chartDepth) => ipcRenderer.invoke('dashboard:open-company', companyId, chartDepth),
 
   // Current dashboard background environment (tone colors + optional photo)
   // used by the popover's liquid-glass WebGL backdrop.

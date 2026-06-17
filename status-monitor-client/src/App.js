@@ -149,7 +149,7 @@ export default function App() {
   return (
     <div
       ref={panelRef}
-      className={`panel ${popoverMode} edge-${anchorEdge}${revealing ? ' revealing' : ''}`}
+      className={`panel ${popoverMode} edge-${anchorEdge}${revealing ? ' revealing' : ''}${isExpanded ? ` view-${view}` : ''}`}
       onPointerEnter={handlePointerEnter}
       onPointerMove={popoverMode === 'peek' ? handlePointerEnter : undefined}
       onPointerLeave={handlePointerLeave}
@@ -173,7 +173,9 @@ export default function App() {
               autoComplete="off"
             />
           )}
-          {fullyAuthed && view === 'profile' && (
+          {/* Back button always sits in the top-LEFT for every submenu (settings,
+              profile) — consistent, never on the right. */}
+          {fullyAuthed && view !== 'status' && (
             <button
               className="icon-btn"
               onClick={() => setView('status')}
@@ -186,7 +188,7 @@ export default function App() {
           <div className="topbar-spacer" />
           {fullyAuthed && (
             <button
-              className="icon-btn profile-btn"
+              className={`icon-btn profile-btn${view === 'profile' ? ' is-active' : ''}`}
               onClick={() => setView(view === 'profile' ? 'status' : 'profile')}
               title={`Account — ${user.username}`}
               aria-label="Account"
@@ -196,12 +198,12 @@ export default function App() {
           )}
           {fullyAuthed && (
             <button
-              className="icon-btn"
+              className={`icon-btn${view === 'settings' ? ' is-active' : ''}`}
               onClick={() => setView(view === 'settings' ? 'status' : 'settings')}
-              title={view === 'settings' ? 'Back' : 'Settings'}
-              aria-label={view === 'settings' ? 'Back' : 'Settings'}
+              title="Settings"
+              aria-label="Settings"
             >
-              {view === 'settings' ? <ArrowLeftOutlined /> : <SettingOutlined />}
+              <SettingOutlined />
             </button>
           )}
           <button className="icon-btn" onClick={hidePopover} title="Close" aria-label="Close">

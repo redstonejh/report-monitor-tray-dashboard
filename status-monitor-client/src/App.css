@@ -62,10 +62,10 @@ body.webgl-glass-on #root { position: relative; z-index: 1; }
   flex-direction: column;
   border-radius: 20px;
   overflow: hidden;
-  /* EXACT widget-well acrylic — the source of truth (themes.css ~5889, the dark
-     well surface). Same gradient, same blur, same rim and shadow, so the tray
-     popover reads as the identical frosted material as the dashboard wells. */
-  background: linear-gradient(180deg, rgba(12, 16, 25, 0.56), rgba(5, 8, 14, 0.50));
+  /* Acrylic: a dark-grey TINT (the dashboard's #1f2937 tone) at moderate opacity so
+     the window's OS acrylic (DWM frosts the desktop/apps behind the popover) shows
+     through — a translucent frosted dark-grey glass, not a flat solid slab. */
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.55), rgba(24, 32, 44, 0.5));
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   backdrop-filter: blur(18px) saturate(135%);
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -98,6 +98,12 @@ body.win-acrylic .panel.peek { border-radius: 0; }
 /* No cap: the panel grows to its content (e.g. when "Manual setup" expands) so
    the ResizeObserver fires and the window grows; main clamps the final height. */
 .panel.expanded { max-height: none; }
+/* Submenus (Settings, Profile) match the STATUS view's height (donut + time
+   filters → a 283px scroll area) so the window NEVER shrinks when you open them —
+   it stays one size. "Manual setup" (a <details>) expands the Settings view beyond
+   this floor on demand; min-height only sets the floor, so growth still works. */
+.panel.view-settings .panel-scroll,
+.panel.view-profile .panel-scroll { min-height: 283px; }
 .panel.edge-bottom { margin-top: auto; transform-origin: bottom center; }
 .panel.edge-top { margin-bottom: auto; transform-origin: top center; }
 
@@ -174,6 +180,9 @@ body.win-acrylic .panel.peek { border-radius: 0; }
 }
 .icon-btn:hover { background: rgba(255, 255, 255, 0.12); color: var(--text); }
 .icon-btn:disabled { opacity: 0.5; cursor: default; }
+/* The button for the view you're currently in reads as gently lit — a premium
+   "you are here" cue (colour-only, never a blue/filled slab). */
+.icon-btn.is-active { background: rgba(255, 255, 255, 0.14); color: var(--text); }
 
 /* The dashboard button reads as a clear, clickable glass pill that stands out
    from the plain icon controls, with a gently bouncing chevron. */
@@ -229,18 +238,27 @@ body.win-acrylic .panel.peek { border-radius: 0; }
 }
 .fleet-pie { width: 100%; height: 100%; display: block; overflow: visible; }
 .fleet-slice { cursor: pointer; transition: opacity 0.18s ease, filter 0.18s ease; }
+/* Rounded slice edges are produced GEOMETRICALLY in the path (roundedRingSlicePath
+   in StatusPanel) — only the donut's outer/inner extremes are rounded, so multi-
+   band slices have no internal notches. Round joins keep any remaining corners
+   soft. */
+.fleet-slice path { stroke-linejoin: round; stroke-linecap: round; }
 /* Hover highlight identical to the dashboard bar chart's ECharts emphasis:
    white 2px border + a 16px white glow (shadowBlur 16, rgba(255,255,255,0.85)). */
 /* Auto-highlight (no hover needed): a circuit in a SUSTAINED outage — 4+ derived
    fails in a row — glows red, the exact same treatment as the white hover ring
    but in red. Declared before the hover/match rule so hovering still wins. */
-.fleet-slice.is-critical path {
+/* The highlight is ONE outline around the whole slice perimeter (a single overlaid
+   path), NOT a stroke per coloured band — so a multi-tier slice gets one clean ring,
+   never a box drawn around each third. */
+.fleet-slice-outline { fill: none; stroke: none; pointer-events: none; transition: filter 0.18s ease; }
+.fleet-slice.is-critical .fleet-slice-outline {
   stroke: #ff5b52;
   stroke-width: 2;
   filter: drop-shadow(0 0 16px rgba(255, 91, 82, 0.9));
 }
-.fleet-slice:hover path,
-.fleet-slice.is-match path {
+.fleet-slice:hover .fleet-slice-outline,
+.fleet-slice.is-match .fleet-slice-outline {
   stroke: #ffffff;
   stroke-width: 2;
   filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.85));
@@ -292,6 +310,25 @@ body.win-acrylic .panel.peek { border-radius: 0; }
 .status-hero.amber   { --accent: var(--amber); }
 .status-hero.red     { --accent: var(--red); }
 .status-hero.neutral { --accent: var(--neutral); }
+
+/* Donut time filters — plain clickable text under the pie (never a box/pill). The
+   active window is brighter with a thin underline; the rest are muted. Colour-only,
+   matching the dashboard's text-style time filter. */
+.fleet-filters { display: flex; justify-content: center; gap: 16px; margin: 4px auto 0; }
+.fleet-filter {
+  -webkit-app-region: no-drag;
+  position: relative;
+  background: transparent; border: 0; padding: 2px 2px 5px; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--text-soft); transition: color 0.14s ease;
+}
+.fleet-filter:hover { color: var(--text); }
+.fleet-filter.is-active { color: var(--text); }
+.fleet-filter.is-active::after {
+  content: ""; position: absolute; left: 2px; right: 2px; bottom: 0;
+  height: 2px; border-radius: 2px; background: currentColor; opacity: 0.85;
+}
+.fleet-filter:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.5); outline-offset: 2px; border-radius: 5px; }
 
 .status-ring {
   width: 78px;

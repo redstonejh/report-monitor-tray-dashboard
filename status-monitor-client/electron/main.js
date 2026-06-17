@@ -361,6 +361,19 @@ function trailingDownStreakFromLevels(levels) {
   return streak;
 }
 
+// How many DISTINCT sustained-outage episodes occurred across the window — each
+// maximal run of >= CRITICAL_DOWN_STREAK consecutive derived-down buckets counts
+// once (the moment the run crosses the threshold is the icon going red once). This
+// feeds the pie's deep-red outer tier: a tally of "went critical" events.
+function countCriticalEpisodes(levels) {
+  let count = 0, run = 0;
+  for (const { level } of levels) {
+    if (level === 'red') { run += 1; if (run === CRITICAL_DOWN_STREAK) count += 1; }
+    else run = 0;
+  }
+  return count;
+}
+
 // A circuit watched from several vantage points ("viewers") is a redundancy
 // group: a single viewer reporting down usually means THAT viewer's path is
 // broken, not the target — so criticality is derived by >=50% quorum per minute.
@@ -757,7 +770,11 @@ function resetToHoverBaseline() {
   lastAnchorEdge = 'bottom';
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setIgnoreMouseEvents(false);
-    applyPopoverBounds(POPOVER_PEEK_HEIGHT, false);
+    // Only reposition while VISIBLE. Repositioning a HIDDEN window here — with the
+    // anchor just cleared above — re-anchors it to the live cursor (which is now far
+    // from the tray, so capturePopoverAnchor falls back to the cursor). A later show
+    // then made the window flash at the cursor instead of by the tray icon.
+    if (mainWindow.isVisible()) applyPopoverBounds(POPOVER_PEEK_HEIGHT, false);
     sendAnchorEdge();
     sendPopoverMode();
   }
@@ -1252,7 +1269,11 @@ ipcMain.handle('window:resize-content', (e, size = {}) => {
     ? POPOVER_PEEK_HEIGHT
     : Math.min(Math.max(measuredHeight, POPOVER_MIN_HEIGHT), maxPopoverHeight());
 
-  applyPopoverBounds(height, popoverPinned);
+  // Don't reposition a hidden window: the renderer's ResizeObserver keeps firing
+  // while hidden (status ticks, view reset), and re-anchoring then snaps the window
+  // to the far-away cursor — which is what made it flash at the cursor on a later
+  // desktop click. Resize in place only when visible.
+  if (mainWindow.isVisible()) applyPopoverBounds(height, popoverPinned);
   return { ok: true, width: POPOVER_WIDTH, height };
 });
 
@@ -1419,16 +1440,30 @@ ipcMain.handle('dashboard:open', () => {
 // (red >=50% of viewers down; else amber if any viewer down or degraded; else
 // green) and tally the buckets. The pie's radial thirds + counts read this, so
 // a single viewer's bad path can't paint the whole circuit red.
-ipcMain.handle('companies:pie', () => {
+ipcMain.handle('companies:pie', (e, windowMs) => {
+  // Optional time filter (tray donut 1hr / 1d / 1w). Default = the retained 24h.
+  const w = Number(windowMs);
+  const useWindow = Number.isFinite(w) && w > 0 && w !== PERSIST_WINDOW_MS;
   return companyList().map((co) => {
     const entry = companies.get(co.id);
     if (!entry) {
-      return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy: 0, degraded: 0, down: 0, total: 0, viewers: 1, critical: false };
+      return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy: 0, degraded: 0, down: 0, total: 0, viewers: 1, critical: false, criticalCount: 0 };
     }
-    // One memoized derivation per company (a cache hit — companyList just ran it)
-    // powers BOTH the segment counts and the critical streak. The 24h window lives
-    // inside derivedFor (recentPings), so no extra per-call filtering.
-    const { levels, viewers } = derivedFor(entry);
+    // The memoized 24h derivation (a cache hit — companyList just ran it) is the
+    // base. For a sub-24h filter (1hr) we just slice its per-minute levels — no
+    // recompute. For a longer filter (1w) we derive over whatever raw history we
+    // still hold (bounded by the 3000-ping cap). 1d uses the base as-is.
+    const base = derivedFor(entry);
+    const viewers = base.viewers;
+    let levels = base.levels;
+    if (useWindow) {
+      const cutoff = Date.now() - w;
+      if (w < PERSIST_WINDOW_MS) {
+        levels = base.levels.filter((l) => l.ms >= cutoff);
+      } else {
+        levels = derivedMinuteLevels((entry.pings || []).filter((p) => Date.parse(p.checkedAt) >= cutoff));
+      }
+    }
     let healthy = 0, degraded = 0, down = 0;
     for (const { level } of levels) {
       if (level === 'red') down += 1;
@@ -1438,7 +1473,10 @@ ipcMain.handle('companies:pie', () => {
     // critical = a SUSTAINED outage right now (>=4 derived-down buckets in a row);
     // the pie auto-highlights these slices red without needing a hover.
     const critical = co.online && trailingDownStreakFromLevels(levels) >= CRITICAL_DOWN_STREAK;
-    return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy, degraded, down, total: levels.length, viewers, critical };
+    // criticalCount = how many times this circuit went critical (4-in-a-row) over
+    // the window — the deep-red outer tier's tally (shown only when > 0).
+    const criticalCount = countCriticalEpisodes(levels);
+    return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy, degraded, down, total: levels.length, viewers, critical, criticalCount };
   });
 });
 
@@ -1446,20 +1484,24 @@ ipcMain.handle('companies:pie', () => {
 // window already exists the company is pushed live; a freshly created window
 // pulls the pending focus once its feed boots.
 let pendingCompanyFocus = null;
-ipcMain.handle('dashboard:open-company', (_e, companyId) => {
+let pendingChartDepth = null; // bar-chart depth to open at (from the donut's time filter)
+ipcMain.handle('dashboard:open-company', (_e, companyId, chartDepth) => {
   pendingCompanyFocus = String(companyId || '') || null;
+  pendingChartDepth = chartDepth === 'day' || chartDepth === 'hour' ? chartDepth : null;
   const existing = dashboardWindow && !dashboardWindow.isDestroyed();
   openDashboardWindow();
   if (existing && pendingCompanyFocus) {
-    dashboardWindow.webContents.send('dashboard:set-company', pendingCompanyFocus);
+    dashboardWindow.webContents.send('dashboard:set-company', { id: pendingCompanyFocus, depth: pendingChartDepth });
     pendingCompanyFocus = null;
+    pendingChartDepth = null;
   }
   return { ok: true };
 });
 
 ipcMain.handle('company:focus:consume', () => {
-  const value = pendingCompanyFocus;
+  const value = { id: pendingCompanyFocus, depth: pendingChartDepth };
   pendingCompanyFocus = null;
+  pendingChartDepth = null;
   return value;
 });
 

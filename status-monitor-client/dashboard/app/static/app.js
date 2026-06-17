@@ -2921,6 +2921,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // migrated in place rather than left with stale title/columns).
     const updateViewerPanel = (panel, info) => {
       setViewerPanelTitle(panel, info);
+      // The table widget's config title (matches addViewerPanel). This was missing —
+      // referencing an undefined `title` threw here, which aborted sync() and the
+      // rest of setActiveCompany (so publish() never ran), leaving the chart/stats
+      // stale on every REVISITED tab (the "going left never updates" bug).
+      const title = viewerTitleText(info);
       // Keep the white scheme pinned (a re-render/hydration may have cleared it).
       if (!panel.classList.contains("db-panel-custom-color")) applyPanelColor(panel, "#ffffff");
       const widget = panel.querySelector(".panel-internal-widget-grid > .widget-card[data-widget-runtime-type='table']");

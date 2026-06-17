@@ -7,7 +7,8 @@ export const useStatusStore = create((set) => ({
   lastSuccess: null,      // ISO string
   checkedAt: null,        // ISO string
   connectionState: 'grey', // 'grey' | 'live' | 'black'
-  popoverMode: 'peek',     // 'peek' | 'expanded'
+  popoverMode: 'expanded', // 'peek' | 'expanded' — default expanded so the popover
+                           // never flashes the legacy peek view before main confirms
 
   setStatus: (payload) => set({
     status:      payload.status,

@@ -395,6 +395,7 @@ const companyState = {
 const LABEL_RENAMES = {
   "omv server": "OMV",
   "boiler opacity pc": "Boiler",
+  "actfax server": "Actfax",
 };
 // Trim protocol/source noise from a tab title — "(ICMP)", "(TCP 23)",
 // "(from … NOC)" — while keeping meaningful parentheticals like a location
@@ -812,6 +813,27 @@ async function setActiveCompany(id) {
   animateCompanySwitch(dir);
 }
 
+// Open the active company's timeline chart at a given bar depth ("hour"/"day"),
+// driven by the tray donut's time filter. The chart (re)renders asynchronously
+// after a company switch, so poll briefly for its level strip, then pin that
+// depth via the same level button the user would click (skip if already there).
+function applyChartDepth(depth) {
+  if (depth !== "hour" && depth !== "day") return;
+  let tries = 0;
+  const tryApply = () => {
+    const card = [...document.querySelectorAll('.widget-card[data-widget-runtime-type="chart"]')]
+      .find((c) => c.offsetParent !== null && c.querySelector(".chart-level-btn[data-level]"));
+    if (card) {
+      if (card.dataset.bucketLevel !== depth) {
+        card.querySelector(`.chart-level-btn[data-level="${depth}"]`)?.click();
+      }
+      return;
+    }
+    if (++tries < 24) setTimeout(tryApply, 150);
+  };
+  setTimeout(tryApply, 200);
+}
+
 // ── Company tab bar (scrollable, with "…" overflow menus on each end) ──────────
 
 let companyCssInjected = false;
@@ -833,8 +855,8 @@ function injectCompanyCss() {
      tries). The buttons sit outside the viewport and stay fully hittable. */
   .company-tab-viewport{ flex:1 1 auto; min-width:0; display:flex; justify-content:center; overflow-x:clip; overflow-y:visible; }
   /* The active tab carries an IP line above its name. Pull the tab up by the IP's
-     height (14px + 2px gap) so the name stays in place and the IP sits higher. */
-  .company-tab:has(.company-tab-ip){ margin-top:-16px; }
+     height (20px + 2px gap) so the name stays in place and the IP sits higher. */
+  .company-tab:has(.company-tab-ip){ margin-top:-22px; }
   .company-tab-scroller{ display:inline-flex; align-items:flex-start; min-width:0; transform:translateX(0); transition:transform .3s cubic-bezier(.25,.8,.3,1); will-change:transform; }
   .company-tab{
     flex:0 0 auto;
@@ -1095,11 +1117,12 @@ function initDashboardSearch() {
   const renderResults = () => {
     const q = input.value.trim().toLowerCase();
     results.innerHTML = "";
-    if (!q) return; // no placeholder text — the input's own placeholder already says it
-    const matches = companyState.companies
-      .map((c) => ({ id: c.id, label: conciseLabel(c.label), host: String(c.host || ""), online: c.online !== false }))
-      .filter((c) => c.label.toLowerCase().includes(q) || c.host.toLowerCase().includes(q))
-      .slice(0, 12);
+    // Show the FULL circuit list by default (empty query); typing filters it down.
+    const all = companyState.companies
+      .map((c) => ({ id: c.id, label: conciseLabel(c.label), host: String(c.host || ""), online: c.online !== false }));
+    const matches = q
+      ? all.filter((c) => c.label.toLowerCase().includes(q) || c.host.toLowerCase().includes(q))
+      : all;
     if (!matches.length) { results.innerHTML = '<div class="dashboard-search-empty">No matches</div>'; return; }
     for (const m of matches) {
       const b = document.createElement("button");
@@ -1176,12 +1199,18 @@ async function startFeed() {
   requestAnimationFrame(() => requestAnimationFrame(hideDashboardLoading));
 
   // Tray pie click-through: land on the company whose slice was clicked
-  // (pulled when this window boots; pushed live when it is already open).
-  try {
-    const focus = await bridge.consumeCompanyFocus?.();
-    if (focus && companyState.companies.some((c) => c.id === focus)) await setActiveCompany(focus);
-  } catch {}
-  bridge.onSetCompany?.((companyId) => { if (companyId) setActiveCompany(companyId); });
+  // (pulled when this window boots; pushed live when it is already open). The
+  // payload is { id, depth } — depth is the bar-chart granularity the donut's
+  // time filter maps to (1hr/1d → hour, 1w → day).
+  const focusCompany = async (payload) => {
+    const id = (payload && typeof payload === "object") ? payload.id : payload;
+    const depth = (payload && typeof payload === "object") ? payload.depth : null;
+    if (!id || !companyState.companies.some((c) => c.id === id)) return;
+    await setActiveCompany(id);
+    if (depth) applyChartDepth(depth);
+  };
+  try { await focusCompany(await bridge.consumeCompanyFocus?.()); } catch {}
+  bridge.onSetCompany?.((payload) => { focusCompany(payload); });
 
   // ← / → flip between companies (skip while typing or with a menu/modifier).
   document.addEventListener("keydown", (e) => {
@@ -1271,16 +1300,31 @@ function mirrorBackgroundPreference() {
 // before the ~0.5s hover delay can pop the Windows tooltip. Covers static markup
 // (panel tool buttons, etc.) and dynamic content (table cells, tabs).
 function suppressNativeTooltips() {
+  const strip = (el) => {
+    if (!el || el.nodeType !== 1) return;
+    if (typeof el.hasAttribute === "function" && el.hasAttribute("title")) el.removeAttribute("title");
+    if (el.namespaceURI === "http://www.w3.org/2000/svg" && typeof el.querySelector === "function") {
+      el.querySelector(":scope > title")?.remove();
+    }
+  };
   document.addEventListener("pointerover", (event) => {
     let el = event.target;
-    while (el && el.nodeType === 1) {
-      if (typeof el.hasAttribute === "function" && el.hasAttribute("title")) el.removeAttribute("title");
-      if (el.namespaceURI === "http://www.w3.org/2000/svg" && typeof el.querySelector === "function") {
-        el.querySelector(":scope > title")?.remove();
-      }
-      el = el.parentElement;
-    }
+    while (el && el.nodeType === 1) { strip(el); el = el.parentElement; }
   }, true);
+  // pointerover only fires when the cursor ENTERS an element, so a `title` that a
+  // re-render adds (or restores) while the cursor sits still — the long-hover and
+  // click-then-hover cases — was never stripped and the OS tooltip still popped.
+  // Strip titles the instant they appear/change anywhere in the document.
+  const obs = new MutationObserver((muts) => {
+    for (const m of muts) {
+      if (m.type === "attributes") strip(m.target);
+      else for (const node of m.addedNodes) {
+        strip(node);
+        if (node.querySelectorAll) node.querySelectorAll("[title], title").forEach(strip);
+      }
+    }
+  });
+  obs.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ["title"] });
 }
 suppressNativeTooltips();
 

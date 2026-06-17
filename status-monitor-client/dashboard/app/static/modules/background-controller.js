@@ -330,7 +330,7 @@ export function initializeBackgroundController({ portalFloatingMenu, restoreFloa
     document.body.classList.remove("has-photo-background");
   };
   
-  const backgroundDefault = "tone-dark-grey";
+  const backgroundDefault = "tone-grey";
   const backgroundStorageKey = "dashboard-background";
   const parseBackgroundState = (value) => {
     if (typeof value === "string" && value.trim().startsWith("{")) {

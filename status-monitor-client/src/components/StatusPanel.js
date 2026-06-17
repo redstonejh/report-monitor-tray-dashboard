@@ -36,8 +36,13 @@ function resolve(connectionState, status, projectId) {
 // same HP language as the dashboard's timeline bars. Clicking a slice opens
 // the dashboard on that company's tab.
 
-const PIE_COLORS = { healthy: '#6fc99a', degraded: '#d4ab63', down: '#e1857c' };
+const PIE_COLORS = { healthy: '#6fc99a', degraded: '#d4ab63', down: '#e1857c', critical: '#9b1c1c' };
 const PIE_EMPTY = 'rgba(148, 163, 184, 0.3)';
+
+// Donut time-filter windows (clickable text under the pie, like the dashboard's
+// time filter). The selected window is passed to the pie IPC so main derives the
+// health mix over that span. 1w is bounded by how much history is retained.
+const WINDOW_MS = { '1hr': 3600000, '1d': 86400000, '1w': 604800000 };
 
 const polar = (cx, cy, r, deg) => {
   const rad = ((deg - 90) * Math.PI) / 180;
@@ -54,6 +59,34 @@ function ringSlicePath(cx, cy, r0, r1, a0, a1) {
   return `M${f(x0)} ${f(y0)} A${f(r1)} ${f(r1)} 0 ${large} 1 ${f(x1)} ${f(y1)} L${f(x2)} ${f(y2)} A${f(r0)} ${f(r0)} 0 ${large} 0 ${f(x3)} ${f(y3)} Z`;
 }
 
+// A ring slice whose OUTER corners are rounded (premium rounded-bar tips). Only
+// the slice's outer edge is rounded — its inner edge stays flat against the donut
+// hole and internal band boundaries are untouched, so multi-band slices never get
+// stray notches. `ro` = round the outer corners (set true only for the outermost
+// band of each slice). Falls back to the square path when too thin to round.
+function roundedRingSlicePath(cx, cy, r0, r1, a0, a1, ro) {
+  const span = a1 - a0;
+  if (span <= 0) return ringSlicePath(cx, cy, r0, r1, a0, a1);
+  const arcLen = (span * Math.PI / 180) * r1;
+  const rad = Math.min(4, (r1 - r0) * 0.4, arcLen * 0.45);
+  if (!ro || rad < 0.5) return ringSlicePath(cx, cy, r0, r1, a0, a1);
+  const dO = (rad / r1) * 180 / Math.PI; // angular inset on the outer arc
+  const large = span > 180 ? 1 : 0;
+  const f = (n) => n.toFixed(2);
+  const P = (r, a) => { const [x, y] = polar(cx, cy, r, a); return `${f(x)} ${f(y)}`; };
+  const R = (r) => `${f(r)} ${f(r)}`;
+  return [
+    `M ${P(r1, a0 + dO)}`,
+    `A ${R(r1)} 0 ${large} 1 ${P(r1, a1 - dO)}`,  // outer arc (inset for the corners)
+    `A ${R(rad)} 0 0 1 ${P(r1 - rad, a1)}`,        // round the outer-end corner
+    `L ${P(r0, a1)}`,                              // radial edge inward
+    `A ${R(r0)} 0 ${large} 0 ${P(r0, a0)}`,        // inner arc back (square inner)
+    `L ${P(r1 - rad, a0)}`,                        // radial edge outward
+    `A ${R(rad)} 0 0 1 ${P(r1, a0 + dO)}`,         // round the outer-start corner
+    'Z',
+  ].join(' ');
+}
+
 // Trim protocol/source noise from labels, like the dashboard tabs do.
 const conciseLabel = (s) => String(s || '')
   .replace(/\s*\((?:ICMP|TCP|UDP|HTTP|HTTPS|from\b)[^)]*\)\s*/gi, ' ')
@@ -63,18 +96,19 @@ const conciseLabel = (s) => String(s || '')
 function FleetPie({ query = '' }) {
   const [companies, setCompanies] = useState([]);
   const [hovered, setHovered] = useState(null);
+  const [windowKey, setWindowKey] = useState('1d'); // donut time filter
 
   useEffect(() => {
     let cancelled = false;
     const load = () => {
-      window.electron?.getCompaniesPie?.().then((list) => {
+      window.electron?.getCompaniesPie?.(WINDOW_MS[windowKey]).then((list) => {
         if (!cancelled && Array.isArray(list)) setCompanies(list);
       }).catch(() => {});
     };
     load();
     const id = setInterval(load, 30_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, []);
+  }, [windowKey]);
 
   const n = companies.length;
   const CX = 110;
@@ -114,29 +148,38 @@ function FleetPie({ query = '' }) {
     : 'neutral';
 
   return (
+    <>
     <div className="fleet-pie-wrap" onMouseLeave={() => setHovered(null)}>
       <svg className="fleet-pie" viewBox="0 0 220 220" role="img" aria-label="Client health, past 24 hours (derived consensus)">
         {companies.map((co, index) => {
           const a0 = index * span + GAP / 2;
           const a1 = (index + 1) * span - GAP / 2;
           if (a1 <= a0) return null;
-          // Fixed thirds (not proportional): green fills the ring by default; a
-          // 1/3-deep band is ADDED for degraded and/or down — inner green, then
-          // amber, then red on the rim — so a single derived bad bucket reads as
-          // a full legible band, never an invisible sliver. The count of derived
-          // degraded / down buckets is printed INSIDE its band.
+          // Fixed thirds (not proportional): up to THREE alert tiers stack outward
+          // from the green core, each taking exactly 1/3 of the ring depth — amber
+          // (degraded) → light red (down) → deep red (critical). Green fills only
+          // what's left, so with all three present there is NO green (3 × 1/3 =
+          // full depth). Each band prints its count: degraded/down derived buckets,
+          // and for the deep-red tier the number of "went critical" episodes (4
+          // derived fails in a row). A tier only appears when it applies (count>0).
           const segments = [];
           if (!co.total) {
             segments.push({ key: 'empty', r0: R0, r1: R1, color: PIE_EMPTY });
           } else {
             const depth = R1 - R0;
             const third = depth / 3;
-            const alerts = (co.degraded > 0 ? 1 : 0) + (co.down > 0 ? 1 : 0);
-            const greenEnd = R0 + depth - alerts * third;
-            segments.push({ key: 'healthy', r0: R0, r1: greenEnd, color: PIE_COLORS.healthy });
+            const tiers = [];
+            if (co.degraded > 0) tiers.push({ key: 'degraded', color: PIE_COLORS.degraded, count: co.degraded });
+            if (co.down > 0) tiers.push({ key: 'down', color: PIE_COLORS.down, count: co.down });
+            if (co.criticalCount > 0) tiers.push({ key: 'critical', color: PIE_COLORS.critical, count: co.criticalCount });
+            const greenEnd = R0 + depth - tiers.length * third;
+            if (greenEnd > R0 + 0.5) segments.push({ key: 'healthy', r0: R0, r1: greenEnd, color: PIE_COLORS.healthy });
             let edge = greenEnd;
-            if (co.degraded > 0) { segments.push({ key: 'degraded', r0: edge, r1: edge + third, color: PIE_COLORS.degraded, count: co.degraded }); edge += third; }
-            if (co.down > 0) { segments.push({ key: 'down', r0: edge, r1: R1, color: PIE_COLORS.down, count: co.down }); }
+            tiers.forEach((t, i) => {
+              const outerR = i === tiers.length - 1 ? R1 : edge + third;
+              segments.push({ key: t.key, r0: edge, r1: outerR, color: t.color, count: t.count });
+              edge += third;
+            });
           }
           const mid = (a0 + a1) / 2;
           return (
@@ -144,10 +187,14 @@ function FleetPie({ query = '' }) {
               key={co.id}
               className={`fleet-slice${co.online === false ? ' offline' : ''}${co.critical ? ' is-critical' : ''}${co.id === highlightId ? ' is-match' : ''}`}
               onMouseEnter={() => setHovered(co.id)}
-              onClick={() => window.electron?.openCompany?.(co.id)}
+              onClick={() => window.electron?.openCompany?.(co.id, windowKey === '1w' ? 'day' : 'hour')}
             >
-              {segments.map((seg) => (
-                <path key={seg.key} d={ringSlicePath(CX, CY, seg.r0, seg.r1, a0, a1)} fill={seg.color} />
+              {segments.map((seg, si) => (
+                <path
+                  key={seg.key}
+                  d={roundedRingSlicePath(CX, CY, seg.r0, seg.r1, a0, a1, si === segments.length - 1)}
+                  fill={seg.color}
+                />
               ))}
               {segments.filter((seg) => seg.count != null).map((seg) => {
                 const [tx, ty] = polar(CX, CY, (seg.r0 + seg.r1) / 2, mid);
@@ -158,6 +205,10 @@ function FleetPie({ query = '' }) {
                   </text>
                 );
               })}
+              {/* ONE highlight around the whole slice perimeter (hover / match /
+                  critical) — a single outline path spanning R0→R1, NOT a separate
+                  box per coloured band. */}
+              <path className="fleet-slice-outline" d={roundedRingSlicePath(CX, CY, R0, R1, a0, a1, true)} fill="none" />
             </g>
           );
         })}
@@ -166,6 +217,21 @@ function FleetPie({ query = '' }) {
         {centerTitle && <span className="fleet-center-title">{centerTitle}</span>}
       </div>
     </div>
+    {/* Time filters under the donut — clickable text (1hr / 1d / 1w) that refilter
+        the pie over that window, mirroring the dashboard's time filter. */}
+    <div className="fleet-filters" role="group" aria-label="Donut time range">
+      {Object.keys(WINDOW_MS).map((k) => (
+        <button
+          key={k}
+          type="button"
+          className={`fleet-filter${k === windowKey ? ' is-active' : ''}`}
+          onClick={() => setWindowKey(k)}
+        >
+          {k}
+        </button>
+      ))}
+    </div>
+    </>
   );
 }
 
@@ -185,24 +251,9 @@ export default function StatusPanel({ mode = 'expanded', fleetQuery = '' }) {
   const connecting = !live && connectionState !== 'black' && !!projectId;
   const { accent, mark, title } = resolve(connectionState, status, projectId);
 
-  if (mode === 'peek') {
-    const sub = live
-      ? `Checked ${formatRelative(checkedAt)}`
-      : connectionState === 'black'
-        ? (checkedAt ? `Last seen ${formatRelative(checkedAt)}` : 'Broker unreachable')
-        : projectId ? 'Waiting for status' : 'Open settings to begin';
-    return (
-      <div className={`peek ${accent}`}>
-        <span className="peek-dot">
-          {connecting ? <span className="spinner" aria-hidden="true" /> : mark}
-        </span>
-        <span className="peek-copy">
-          <span className="peek-title" role="status" aria-live="polite">{title}</span>
-          <span className="peek-sub">{sub}</span>
-        </span>
-      </div>
-    );
-  }
+  // NOTE: the legacy single-status "peek" glance (the green ✓ "All good" pop-up)
+  // is deleted on purpose — the fleet donut is the only status surface now, so
+  // that window must NEVER render, in any mode. Do not reintroduce it.
 
   if (connectionState !== 'live' && connectionState !== 'black') {
     // Not connected yet — keep the quiet connecting hero.

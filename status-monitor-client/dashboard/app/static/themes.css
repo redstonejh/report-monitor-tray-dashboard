@@ -6103,6 +6103,26 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18) !important;
   color: rgba(255, 255, 255, 0.96) !important;
 }
+/* HOVER — the !important box-shadow above was overriding the dashboard's stat-card
+   hover highlight (it outranks the old .stat-card:hover rule), which killed the
+   mouse-over feedback. Restore it at matching specificity (same selectors + :hover):
+   a translucent white wash brightens the whole card, a brighter top edge, and a
+   deeper lift shadow. No border (the rim was intentionally removed). */
+.stat-card:not(:has(.widget-content-well)):hover,
+.timeframe-widget-card:not(:has(.widget-content-well)):hover,
+.widget-layout > .widget-card.stat-card:not(:has(.widget-content-well)):hover,
+.widget-layout > .widget-card.stat-card.db-panel-custom-color:not(:has(.widget-content-well)):hover,
+.panel-internal-widget-grid > .widget-card.stat-card:not(:has(.widget-content-well)):hover,
+.panel-internal-widget-grid > .widget-card.stat-card.db-panel-custom-color:not(:has(.widget-content-well)):hover,
+.widget-layout > .widget-card.timeframe-widget-card:not(:has(.widget-content-well)):hover,
+.widget-layout > .widget-card.timeframe-widget-card.db-panel-custom-color:not(:has(.widget-content-well)):hover,
+.panel-internal-widget-grid > .widget-card.timeframe-widget-card:not(:has(.widget-content-well)):hover,
+.panel-internal-widget-grid > .widget-card.timeframe-widget-card.db-panel-custom-color:not(:has(.widget-content-well)):hover{
+  box-shadow:
+    inset 0 0 0 9999px rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 12px 30px rgba(0, 0, 0, 0.26) !important;
+}
 .stat-card .stat-val{ color: rgba(255, 255, 255, 0.96) !important; }
 .stat-card .stat-lbl{ color: rgba(255, 255, 255, 0.76) !important; }
 /* The pinned table header (column names): ONE continuous acrylic strip, using
@@ -6190,10 +6210,10 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
  * :has() rule in injectCompanyCss) so the name stays where it was. */
 .company-tab-ip{
   display: block;
-  height: 15px;
-  line-height: 15px;
+  height: 20px;
+  line-height: 20px;
   margin-bottom: 2px;
-  font-size: 13px;
+  font-size: 18px; /* matches the panel-title IP (.vp-ip = 0.82em of 22px ≈ 18px) */
   font-weight: 500;
   color: rgba(255, 255, 255, 0.5);
 }
