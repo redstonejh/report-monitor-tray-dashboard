@@ -102,14 +102,12 @@
     <div class="auth-profile-menu" role="menu">
       <div class="auth-profile-head">
         <strong class="auth-profile-name"></strong>
-        <span class="auth-role-badge"></span>
       </div>
       <button class="auth-menu-item auth-manage" type="button" hidden>Manage accounts</button>
       <button class="auth-menu-item auth-signout" type="button">Sign out</button>
     </div>`;
   document.body.appendChild(profile);
   const nameEl = profile.querySelector(".auth-profile-name");
-  const roleEl = profile.querySelector(".auth-role-badge");
   const manageBtn = profile.querySelector(".auth-manage");
   profile.querySelector(".auth-profile-button").addEventListener("click", () => profile.classList.toggle("open"));
   profile.querySelector(".auth-signout").addEventListener("click", async () => {
@@ -143,7 +141,6 @@
     profile.style.display = "block";
     document.body.classList.remove("auth-gated");
     nameEl.textContent = user.username;
-    roleEl.textContent = roleOf(user);
     manageBtn.hidden = !(user.isAdmin || user.permissions.canManageUsers);
     document.body.classList.toggle("dashboard-viewer", !user.permissions.canEdit);
   }
@@ -314,24 +311,36 @@
         -webkit-mask: url("${USER_ICON}") center / contain no-repeat;
         mask: url("${USER_ICON}") center / contain no-repeat;
       }
+      /* Account menu mirrors the "…" / search / background dropdowns EXACTLY:
+         the same translucent popover shell + colour-only item hover (transparent
+         background, text rgba .62 → white). Never a filled/blue hover. */
       .auth-profile-menu {
         position: absolute; top: calc(100% + 8px); left: 0; width: 220px;
-        display: none; flex-direction: column; gap: 2px; padding: 8px; border-radius: 14px;
+        display: none; flex-direction: column; gap: 1px; padding: 8px 6px; border-radius: 14px;
+        background: linear-gradient(180deg, rgba(22, 26, 36, 0.62), rgba(12, 16, 24, 0.55));
+        -webkit-backdrop-filter: blur(26px) saturate(140%);
+        backdrop-filter: blur(26px) saturate(140%);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 18px 42px rgba(0, 0, 0, 0.4);
       }
       .auth-profile-cluster.open .auth-profile-menu { display: flex; }
-      .auth-profile-head { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px 10px; }
-      .auth-profile-name { font-size: 14px; font-weight: 600; color: #ffffff; }
+      .auth-profile-head { display: flex; flex-direction: column; padding: 4px 12px 8px; }
+      .auth-profile-name { font-size: 14px; font-weight: 700; color: #ffffff; }
       .auth-role-badge {
         align-self: flex-start; font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
         text-transform: uppercase; padding: 1px 8px; border-radius: 999px;
         background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.74);
       }
       .auth-menu-item {
-        text-align: left; border: 0; border-radius: 9px; padding: 9px 10px; cursor: pointer;
-        background: transparent; color: #ffffff; font: inherit; font-size: 13px;
-        transition: background 0.12s ease;
+        appearance: none; -webkit-appearance: none;
+        display: flex; align-items: center; justify-content: flex-start;
+        text-align: left; border: 0; outline: 0; box-shadow: none;
+        border-radius: 8px; padding: 7px 12px; margin: 0; width: 100%; cursor: pointer;
+        background: transparent; color: rgba(255, 255, 255, 0.62);
+        font: inherit; font-size: 0.95rem; font-weight: 600; white-space: nowrap;
+        transition: color 0.14s ease;
       }
-      .auth-menu-item:hover { background: rgba(255, 255, 255, 0.1); }
+      .auth-menu-item:hover, .auth-menu-item:focus-visible { background: transparent; color: #ffffff; }
 
       .auth-modal-backdrop {
         position: fixed; inset: 0; z-index: 100001;

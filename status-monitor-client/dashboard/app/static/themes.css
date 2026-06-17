@@ -6076,17 +6076,25 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
  * `.widget-layout > .widget-card.db-panel-custom-color` (specificity 0,3,0,
  * !important) plus a `backdrop-filter: none !important` reset. The grid-context
  * selectors below are (0,4,0) so they outrank both. Light ink for contrast; the
- * neutral .stat-card:hover keeps hover non-blue. */
-.stat-card,
-.timeframe-widget-card,
-.widget-layout > .widget-card.stat-card,
-.widget-layout > .widget-card.stat-card.db-panel-custom-color,
-.panel-internal-widget-grid > .widget-card.stat-card,
-.panel-internal-widget-grid > .widget-card.stat-card.db-panel-custom-color,
-.widget-layout > .widget-card.timeframe-widget-card,
-.widget-layout > .widget-card.timeframe-widget-card.db-panel-custom-color,
-.panel-internal-widget-grid > .widget-card.timeframe-widget-card,
-.panel-internal-widget-grid > .widget-card.timeframe-widget-card.db-panel-custom-color{
+ * neutral .stat-card:hover keeps hover non-blue.
+ *
+ * EXCLUDE well widgets (charts/tables): their CARD also carries `.stat-card`, but
+ * the actual surface is the inner translucent `.widget-content-well`. If this tint
+ * hit the card, the accent (white for the default/"clear" colour) would bleed
+ * THROUGH that translucent well and wash the table white when WebGL is off. The
+ * `:not(:has(.widget-content-well))` guard keeps the tint on pure stat/timeframe
+ * cards only; well cards fall back to their near-transparent default so the well
+ * stays clear acrylic in both WebGL states. */
+.stat-card:not(:has(.widget-content-well)),
+.timeframe-widget-card:not(:has(.widget-content-well)),
+.widget-layout > .widget-card.stat-card:not(:has(.widget-content-well)),
+.widget-layout > .widget-card.stat-card.db-panel-custom-color:not(:has(.widget-content-well)),
+.panel-internal-widget-grid > .widget-card.stat-card:not(:has(.widget-content-well)),
+.panel-internal-widget-grid > .widget-card.stat-card.db-panel-custom-color:not(:has(.widget-content-well)),
+.widget-layout > .widget-card.timeframe-widget-card:not(:has(.widget-content-well)),
+.widget-layout > .widget-card.timeframe-widget-card.db-panel-custom-color:not(:has(.widget-content-well)),
+.panel-internal-widget-grid > .widget-card.timeframe-widget-card:not(:has(.widget-content-well)),
+.panel-internal-widget-grid > .widget-card.timeframe-widget-card.db-panel-custom-color:not(:has(.widget-content-well)){
   background: linear-gradient(180deg, rgba(var(--panel-accent-rgb, 18, 24, 36), 0.46), rgba(var(--panel-accent-rgb, 8, 12, 20), 0.28)) !important;
   background-image: linear-gradient(180deg, rgba(var(--panel-accent-rgb, 18, 24, 36), 0.46), rgba(var(--panel-accent-rgb, 8, 12, 20), 0.28)) !important;
   -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
@@ -6182,10 +6190,10 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
  * :has() rule in injectCompanyCss) so the name stays where it was. */
 .company-tab-ip{
   display: block;
-  height: 14px;
-  line-height: 14px;
+  height: 15px;
+  line-height: 15px;
   margin-bottom: 2px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.5);
 }
