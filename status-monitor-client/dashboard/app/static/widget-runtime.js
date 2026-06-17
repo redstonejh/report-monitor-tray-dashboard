@@ -397,9 +397,43 @@
       if (!widget?.classList?.contains("widget-card")) return;
       renderRuntimeContent(widget);
     };
-    const refreshAllWidgetData = () => {
+    // Re-rendering every widget on each ingest (every ~250ms) is the dashboard's
+    // dominant cost. Two guards make it cheap: (1) when the dashboard window is
+    // hidden (it's a tray app — usually backgrounded) skip entirely and just mark
+    // a pending refresh, flushed when it becomes visible again; (2) coalesce a
+    // burst of ingests into a single requestAnimationFrame so N pings in one frame
+    // cause one render, not N.
+    const doRefreshAllWidgetData = () => {
       document.querySelectorAll(".widget-card").forEach(refreshWidgetData);
     };
+    let refreshScheduled = false;
+    let refreshPendingWhileHidden = false;
+    const refreshAllWidgetData = () => {
+      if (typeof document !== "undefined" && document.hidden) {
+        refreshPendingWhileHidden = true;
+        return;
+      }
+      if (refreshScheduled) return;
+      refreshScheduled = true;
+      const run = () => {
+        refreshScheduled = false;
+        if (typeof document !== "undefined" && document.hidden) {
+          refreshPendingWhileHidden = true;
+          return;
+        }
+        doRefreshAllWidgetData();
+      };
+      if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+      else run();
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && refreshPendingWhileHidden) {
+          refreshPendingWhileHidden = false;
+          refreshAllWidgetData();
+        }
+      });
+    }
     const setWidgetData = (key, data, options = {}) => {
       const normalizedKey = String(key || "").trim();
       if (!normalizedKey) return false;
