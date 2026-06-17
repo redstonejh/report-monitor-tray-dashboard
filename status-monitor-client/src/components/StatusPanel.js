@@ -85,13 +85,18 @@ function FleetPie({ query = '' }) {
   const span = n ? 360 / n : 360;
 
   // Type-ahead: as letters are typed in the search box, progressively highlight
-  // the first company whose name STARTS with them (Windows desktop style); fall
-  // back to a substring match so mid-word typing still finds something.
+  // the first company whose name OR IP STARTS with them (Windows desktop style);
+  // fall back to a substring match so mid-word typing still finds something.
   const q = query.trim().toLowerCase();
   const matchId = useMemo(() => {
     if (!q) return null;
-    const named = companies.map((c) => ({ id: c.id, name: conciseLabel(c.label).toLowerCase() }));
-    return (named.find((c) => c.name.startsWith(q)) || named.find((c) => c.name.includes(q)) || {}).id || null;
+    const named = companies.map((c) => ({
+      id: c.id,
+      name: conciseLabel(c.label).toLowerCase(),
+      host: String(c.host || "").toLowerCase(),
+    }));
+    return (named.find((c) => c.name.startsWith(q) || c.host.startsWith(q))
+      || named.find((c) => c.name.includes(q) || c.host.includes(q)) || {}).id || null;
   }, [q, companies]);
 
   // Hover wins for instant feedback; otherwise the search match drives the

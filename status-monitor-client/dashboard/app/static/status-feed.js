@@ -391,6 +391,11 @@ const companyState = {
   pingsById: new Map(),  // id -> [ping]
 };
 
+// Specific display-name shortenings (matched case-insensitively after trimming).
+const LABEL_RENAMES = {
+  "omv server": "OMV",
+  "boiler opacity pc": "Boiler",
+};
 // Trim protocol/source noise from a tab title — "(ICMP)", "(TCP 23)",
 // "(from … NOC)" — while keeping meaningful parentheticals like a location
 // "(H St.)". The full name stays available via the tab's title tooltip.
@@ -399,7 +404,7 @@ const conciseLabel = (s) => {
     .replace(/\s*\((?:ICMP|TCP|UDP|HTTP|HTTPS|from\b)[^)]*\)\s*/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return trimmed || String(s || "");
+  return LABEL_RENAMES[trimmed.toLowerCase()] || trimmed || String(s || "");
 };
 
 // One company's pings → widget rows (the shape the widgets already read).
@@ -1072,9 +1077,74 @@ function renderCompanyTabs() {
   });
 }
 
+// Top-bar search: press the search icon, type a name or IP, and matching circuit
+// tabs appear below — clicking one navigates to that company tab.
+function initDashboardSearch() {
+  const btn = document.querySelector(".control-bar-search");
+  const pop = document.getElementById("dashboard-search-popover");
+  if (!btn || !pop || pop.dataset.wired === "true") return;
+  pop.dataset.wired = "true";
+  const input = pop.querySelector(".dashboard-search-input");
+  const results = pop.querySelector(".dashboard-search-results");
+
+  const positionPopover = () => {
+    const r = btn.getBoundingClientRect();
+    pop.style.top = `${Math.round(r.bottom + 8)}px`;
+    pop.style.left = `${Math.round(r.left)}px`;
+  };
+  const renderResults = () => {
+    const q = input.value.trim().toLowerCase();
+    results.innerHTML = "";
+    if (!q) return; // no placeholder text — the input's own placeholder already says it
+    const matches = companyState.companies
+      .map((c) => ({ id: c.id, label: conciseLabel(c.label), host: String(c.host || ""), online: c.online !== false }))
+      .filter((c) => c.label.toLowerCase().includes(q) || c.host.toLowerCase().includes(q))
+      .slice(0, 12);
+    if (!matches.length) { results.innerHTML = '<div class="dashboard-search-empty">No matches</div>'; return; }
+    for (const m of matches) {
+      const b = document.createElement("button");
+      b.type = "button";
+      // Reuse the "…" overflow-menu item styling EXACTLY (.company-overflow-item):
+      // it already kills the native button appearance/blue active state and uses a
+      // colour-only hover. dashboard-search-result only adds the name|IP layout.
+      b.className = "company-overflow-item dashboard-search-result" + (m.online ? "" : " is-offline");
+      const name = document.createElement("span");
+      name.textContent = m.label;
+      b.appendChild(name);
+      if (m.host) { const ip = document.createElement("span"); ip.className = "res-ip"; ip.textContent = m.host; b.appendChild(ip); }
+      b.addEventListener("click", () => { close(); setActiveCompany(m.id); });
+      results.appendChild(b);
+    }
+  };
+  const open = () => {
+    pop.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    positionPopover();
+    input.value = "";
+    renderResults();
+    input.focus();
+  };
+  function close() {
+    pop.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  }
+  btn.addEventListener("click", (e) => { e.stopPropagation(); pop.hidden ? open() : close(); });
+  input.addEventListener("input", renderResults);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { close(); btn.focus(); }
+    else if (e.key === "Enter") { results.querySelector(".dashboard-search-result")?.click(); }
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (pop.hidden || pop.contains(e.target) || btn.contains(e.target)) return;
+    close();
+  }, true);
+  window.addEventListener("resize", () => { if (!pop.hidden) positionPopover(); });
+}
+
 async function startFeed() {
   const bridge = window.dashboard;
   if (!bridge) { console.warn("[status-feed] window.dashboard bridge unavailable — no live data."); return; }
+  initDashboardSearch();
 
   // Viewer panels are transient — regenerated from live data each session. An
   // older build may have persisted them into the layout store, so they get

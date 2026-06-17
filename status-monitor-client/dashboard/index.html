@@ -71,7 +71,70 @@
      dashboard-controls gear beside it. Top-right: minimize, refresh, close —
      close anchored furthest right. -->
 <div class="window-control-cluster window-control-cluster-left" aria-label="Dashboard controls">
-  <button class="window-glass-control control-bar-gear" type="button" aria-label="Toggle dashboard controls" aria-expanded="false" aria-controls="dashboard-control-bar" title="Dashboard controls"></button>
+  <button class="window-glass-control control-bar-search" type="button" aria-label="Search circuits" aria-expanded="false" aria-controls="dashboard-search-popover" title="Search circuits"></button>
+  <details class="background-tone-menu bg-picker">
+    <summary class="background-tone-trigger window-glass-control control-bar-background" aria-label="Workspace background" title="Background"><span class="background-tone-dot" aria-hidden="true"></span></summary>
+    <div class="background-tone-popover bg-picker-pop">
+      <div class="background-tone-group glass-fx-group" aria-label="Visual effects">
+        <span class="background-tone-label">Effects</span>
+        <button type="button" class="glass-fx-toggle" aria-pressed="false" title="Toggle the liquid-glass effect">
+          <span class="glass-fx-name">Liquid glass</span>
+          <span class="glass-fx-switch" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="background-tone-group background-tone-group-derived" aria-label="Color backgrounds">
+        <span class="background-tone-label">Color</span>
+        <button type="button" class="background-tone-option" data-background-tone="tone-light-grey" style="--base-tone: #d1d5db;">Light grey</button>
+        <button type="button" class="background-tone-option" data-background-tone="tone-grey" style="--base-tone: #6b7280;">Grey</button>
+        <button type="button" class="background-tone-option" data-background-tone="tone-dark-grey" style="--base-tone: #1f2937;">Dark grey</button>
+        <button type="button" class="background-tone-option" data-background-tone="tone-black" style="--base-tone: #000000;">Black</button>
+      </div>
+      <div class="background-photo-group" aria-label="Nature photo backgrounds">
+        <span class="background-tone-label">Nature</span>
+        <button type="button" class="background-photo-option" data-background-tone="photo-bark">Bark</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-cloud">Clouds</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-jungle">Jungle</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-moss">Moss</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-sand">Sand</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-shore">Shore</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-turf">Turf</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-water">Ocean</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-water2">Water</button>
+      </div>
+      <div class="background-photo-group" aria-label="Texture photo backgrounds">
+        <span class="background-tone-label">Textures</span>
+        <button type="button" class="background-photo-option" data-background-tone="photo-denim">Denim</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-marble">Marble</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-leather">Leather</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-texture">Stone</button>
+      </div>
+      <div class="background-photo-group" aria-label="Abstract and urban photo backgrounds">
+        <span class="background-tone-label">Abstract &amp; Urban</span>
+        <button type="button" class="background-photo-option" data-background-tone="photo-paint">Paint</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-paintspill">Spill</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-city">City</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-modern">Modern</button>
+      </div>
+      <div class="background-photo-group" aria-label="Space photo backgrounds">
+        <span class="background-tone-label">Space</span>
+        <button type="button" class="background-photo-option" data-background-tone="photo-mercury">Mercury</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-venus">Venus</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-earth">Earth</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-mars">Mars</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-jupiter">Jupiter</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-saturn">Saturn</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-uranus">Uranus</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-neptune">Neptune</button>
+        <button type="button" class="background-photo-option" data-background-tone="photo-pluto">Pluto</button>
+      </div>
+    </div>
+  </details>
+</div>
+<!-- Search popover: type a name or IP; matching circuit tabs appear below and
+     clicking one navigates to it. Positioned under the search button by JS. -->
+<div class="dashboard-search-popover" id="dashboard-search-popover" hidden>
+  <input class="dashboard-search-input" type="text" placeholder="Search name or IP…" aria-label="Search circuits" autocomplete="off" spellcheck="false" />
+  <div class="dashboard-search-results" role="listbox" aria-label="Matching circuits"></div>
 </div>
 <div class="window-control-cluster" aria-label="Window controls">
   <button class="window-glass-control window-minimize-control" type="button" aria-label="Minimize app" title="Minimize app"></button>
@@ -100,71 +163,9 @@
       <button class="panel-reset-button restore-layout-button" type="button" data-layout-target="builder" aria-label="Reset to default layout" title="Reset to default layout">Reset</button>
     </div>
   </div>
-  <div class="app-nav-actions">
-    <div class="workspace-command-island appearance-command-island" aria-label="Appearance and environment">
-      <details class="background-tone-menu">
-      <summary class="background-tone-trigger" aria-label="Workspace background" title="Workspace background"><span class="background-tone-dot" aria-hidden="true"></span></summary>
-      <div class="background-tone-popover nav-menu-shell floating-glass-menu glass-menu-scroll-region">
-        <div class="background-tone-group glass-fx-group" aria-label="Visual effects">
-          <span class="background-tone-label">Effects</span>
-          <button type="button" class="glass-fx-toggle is-on" aria-pressed="true" title="Toggle the liquid-glass effect">
-            <span class="glass-fx-name">Liquid glass</span>
-            <span class="glass-fx-switch" aria-hidden="true"></span>
-          </button>
-        </div>
-        <div class="background-tone-group background-tone-group-derived" aria-label="Color backgrounds">
-          <span class="background-tone-label">Color</span>
-          <button type="button" class="background-tone-option" data-background-tone="tone-light-grey" style="--base-tone: #d1d5db;">Light grey</button>
-          <button type="button" class="background-tone-option" data-background-tone="tone-grey" style="--base-tone: #6b7280;">Grey</button>
-          <button type="button" class="background-tone-option" data-background-tone="tone-dark-grey" style="--base-tone: #1f2937;">Dark grey</button>
-          <button type="button" class="background-tone-option" data-background-tone="tone-black" style="--base-tone: #000000;">Black</button>
-        </div>
-        <div class="background-photo-group" aria-label="Nature photo backgrounds">
-          <span class="background-tone-label">Nature</span>
-          <button type="button" class="background-photo-option" data-background-tone="photo-bark">Bark</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-cloud">Clouds</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-jungle">Jungle</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-moss">Moss</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-sand">Sand</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-shore">Shore</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-turf">Turf</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-water">Ocean</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-water2">Water</button>
-        </div>
-        <div class="background-photo-group" aria-label="Texture photo backgrounds">
-          <span class="background-tone-label">Textures</span>
-          <button type="button" class="background-photo-option" data-background-tone="photo-denim">Denim</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-marble">Marble</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-leather">Leather</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-texture">Stone</button>
-        </div>
-        <div class="background-photo-group" aria-label="Abstract and urban photo backgrounds">
-          <span class="background-tone-label">Abstract &amp; Urban</span>
-          <button type="button" class="background-photo-option" data-background-tone="photo-paint">Paint</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-paintspill">Spill</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-city">City</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-modern">Modern</button>
-        </div>
-        <div class="background-photo-group" aria-label="Space photo backgrounds">
-          <span class="background-tone-label">Space</span>
-          <button type="button" class="background-photo-option" data-background-tone="photo-mercury">Mercury</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-venus">Venus</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-earth">Earth</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-mars">Mars</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-jupiter">Jupiter</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-saturn">Saturn</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-uranus">Uranus</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-neptune">Neptune</button>
-          <button type="button" class="background-photo-option" data-background-tone="photo-pluto">Pluto</button>
-        </div>
-        <div class="background-photo-group" aria-label="Solar system sequence mode">
-          <span class="background-tone-label">Sequence</span>
-          <button type="button" class="background-photo-option" data-background-tone="solar-system">Solar system</button>
-        </div>
-      </div>
-      </details>
-    </div>
-  </div>
+  <!-- Appearance/background picker moved to the top-left background button. The
+       layout builder tools above (app-nav-status) are kept but the whole control
+       bar is hidden (see #dashboard-control-bar in themes.css). -->
 </header>
 
 <nav class="workspace-tab-bar" aria-label="Workspace tabs" data-workspace-tabs></nav>

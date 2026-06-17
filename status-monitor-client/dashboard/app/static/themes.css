@@ -5424,6 +5424,174 @@ body.workspace-page-swipe-dragging{
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center / contain no-repeat;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+.control-bar-search::before{
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* ── MENU / DROPDOWN STYLING RULE — READ BEFORE STYLING ANY MENU ───────────────
+ * For ANY menu, dropdown, popover, or option list, mirror the "…" company
+ * overflow menu EXACTLY: .company-overflow-menu (shell) + .company-overflow-item
+ * (options). Those reset the native control appearance and use a COLOUR-ONLY
+ * hover (background stays transparent).
+ *
+ * NEVER give an option a native <button> appearance, a focus outline, or a
+ * filled / blue / accent hover-or-active highlight. That native/legacy state is
+ * exactly what put a stray blue highlight on these search results. The fix is to
+ * REUSE .company-overflow-item — do not invent a new option style. */
+.dashboard-search-popover{
+  position: fixed;
+  z-index: calc(var(--z-menu-overlay, 2600) + 30);
+  width: 280px;
+  max-width: calc(100vw - 28px);
+  padding: 8px 6px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(22, 26, 36, 0.62), rgba(12, 16, 24, 0.55));
+  -webkit-backdrop-filter: blur(26px) saturate(140%);
+  backdrop-filter: blur(26px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 18px 42px rgba(0, 0, 0, 0.4);
+  -webkit-app-region: no-drag;
+}
+.dashboard-search-popover[hidden]{ display: none !important; }
+.dashboard-search-input{
+  width: 100%;
+  height: 32px;
+  margin: 0 0 4px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  outline: none !important;
+}
+.dashboard-search-input::placeholder{ color: rgba(255, 255, 255, 0.42); }
+.dashboard-search-input:focus{ border-color: rgba(255, 255, 255, 0.42); background: rgba(255, 255, 255, 0.1); }
+.dashboard-search-results{ max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+/* Options ARE .company-overflow-item (all colour/hover/appearance comes from there
+   — see the rule above). This only adds the name | IP row layout; the doubled
+   selector beats the item's display:block regardless of stylesheet order. */
+.company-overflow-item.dashboard-search-result{ display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dashboard-search-result .res-ip{ font-size: 0.82em; color: rgba(255, 255, 255, 0.5); font-weight: 400; flex: 0 0 auto; }
+.dashboard-search-result.is-offline{ opacity: 0.5; }
+.dashboard-search-empty{ padding: 7px 12px; color: rgba(255, 255, 255, 0.5); font-size: 12.5px; }
+
+/* ── Background picker (top-left button + dropdown) ────────────────────────────
+ * Replaces the settings gear. The whole layout control bar is hidden (its builder
+ * tools are kept in markup/code — just not shown). The dropdown mirrors the "…" /
+ * search menus per the MENU/DROPDOWN STYLING RULE above (colour-only hover, no
+ * native button appearance, no blue/accent highlight). */
+#dashboard-control-bar{ display: none !important; }  /* builder tools kept, hidden */
+.control-bar-gear{ display: none !important; }        /* gear replaced by the background button */
+.window-control-cluster-left .background-tone-menu{ position: relative; -webkit-app-region: no-drag; display: inline-flex; }
+/* The relocated background trigger is a top-bar glass button FIRST. Neutralize ALL
+   legacy .background-tone-trigger styling (the old settings-menu size of 44px and
+   its blue hover/focus fill) so it is pixel-identical to its siblings — search /
+   minimize / close all render 46px with padding:0 22px. Per the MENU/DROPDOWN
+   STYLING RULE above: NEVER the legacy blue; focus uses the same white ring as the
+   other top-bar buttons (.window-glass-control:focus-visible). */
+.window-control-cluster-left .control-bar-background.background-tone-trigger.window-glass-control{
+  box-sizing: border-box !important;
+  width: 46px !important; height: 46px !important;
+  min-width: 46px !important; min-height: 46px !important; max-width: 46px !important;
+  padding: 0 22px !important; margin: 0 !important;
+  list-style: none !important;
+  background: transparent !important;
+}
+.window-control-cluster-left .control-bar-background.background-tone-trigger:hover,
+.window-control-cluster-left .control-bar-background.background-tone-trigger:active,
+.window-control-cluster-left .control-bar-background.background-tone-trigger:focus,
+.window-control-cluster-left .control-bar-background.background-tone-trigger:focus-visible{
+  background: transparent !important;   /* never the legacy blue fill */
+  /* the legacy .background-tone-trigger:hover/:focus turns the BORDER blue — force
+     it back to the neutral glass border the other top-bar buttons use. Never blue. */
+  border-color: color-mix(in srgb, var(--glass-border) 72%, transparent) !important;
+}
+.window-control-cluster-left .control-bar-background.background-tone-trigger:focus{ outline: none !important; }
+.window-control-cluster-left .control-bar-background.background-tone-trigger:focus-visible{
+  outline: 2px solid rgba(255, 255, 255, .58) !important; outline-offset: 3px !important;
+}
+.background-tone-trigger.window-glass-control::-webkit-details-marker{ display: none; }
+.background-tone-trigger.window-glass-control::marker{ content: ""; }
+.control-bar-background .background-tone-dot{ display: none; }
+.control-bar-background::before{
+  width: 16px; height: 16px; background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpath d='M21 15l-5-5L5 21'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpath d='M21 15l-5-5L5 21'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.bg-picker-pop{
+  position: absolute; top: calc(100% + 8px); left: 0;
+  z-index: calc(var(--z-menu-overlay, 2600) + 30);
+  width: 244px; max-height: 72vh; overflow-y: auto;
+  padding: 8px 6px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(22, 26, 36, 0.62), rgba(12, 16, 24, 0.55));
+  -webkit-backdrop-filter: blur(26px) saturate(140%); backdrop-filter: blur(26px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 18px 42px rgba(0, 0, 0, 0.4);
+  display: flex; flex-direction: column; gap: 1px;
+}
+/* The legacy .background-tone-popover stays opacity:0/visibility:hidden and is only
+   revealed by the portal CSS (which needs .nav-menu-shell — the old nav popover had
+   it, this one doesn't). background-controller.js PORTALS this popover into
+   .workspace-menu-overlay-layer and toggles a `.open` class on it. Hook that class
+   (it travels with the element through the reparent) to force the reveal — no blue,
+   colour-only options per the MENU/DROPDOWN STYLING RULE above. */
+.bg-picker-pop.open{
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+.bg-picker-pop .background-tone-group, .bg-picker-pop .background-photo-group{ display: flex; flex-direction: column; gap: 1px; padding: 2px 0; }
+.bg-picker-pop .background-tone-label{ padding: 6px 12px 3px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #ffffff !important; }
+/* Options reuse the "…" overflow-item treatment EXACTLY: transparent, colour-only
+   hover, no native appearance, no outline. (Colour options add a swatch dot.) */
+.bg-picker-pop .background-tone-option,
+.bg-picker-pop .background-photo-option,
+.bg-picker-pop .glass-fx-toggle{
+  appearance: none !important; -webkit-appearance: none !important;
+  border: 0 !important; box-shadow: none !important; outline: 0 !important; filter: none !important;
+  background: transparent !important; min-height: 0 !important;
+  padding: 7px 12px !important; margin: 0 !important; border-radius: 8px !important;
+  color: #ffffff !important; font: inherit; font-size: .95rem; font-weight: 600;
+  text-align: left; cursor: pointer; white-space: nowrap; transition: color .14s ease;
+  display: flex; align-items: center; gap: 9px; width: 100%;
+}
+/* The legacy glass-fx markup colours the "Liquid glass" name near-black (#1f2937).
+   Force every text node in the picker white — no grey, no black. */
+.bg-picker-pop .glass-fx-name,
+.bg-picker-pop .glass-fx-toggle{ color: #ffffff !important; }
+.bg-picker-pop .background-tone-option:hover, .bg-picker-pop .background-photo-option:hover,
+.bg-picker-pop .glass-fx-toggle:hover, .bg-picker-pop .background-tone-option:focus-visible,
+.bg-picker-pop .background-photo-option:focus-visible, .bg-picker-pop .glass-fx-toggle:focus-visible{
+  background: transparent !important; color: #ffffff;
+}
+/* Selected option: the active background reads as brighter white text ONLY (the
+   swatch/thumbnail already shows which one). The legacy is-selected state fills it
+   blue (.workspace-menu-overlay-layer .background-tone-option.is-selected) — kill
+   that here. NEVER the legacy blue. */
+.bg-picker-pop .background-tone-option.is-selected,
+.bg-picker-pop .background-photo-option.is-selected{
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  transform: none !important;
+}
+.bg-picker-pop .background-tone-option::before{
+  content: ""; flex: 0 0 auto; width: 13px; height: 13px; border-radius: 50%;
+  background: var(--base-tone, #888); border: 1px solid rgba(255, 255, 255, .3);
+}
+/* Liquid-glass toggle pill (green when on — never the legacy blue). */
+.bg-picker-pop .glass-fx-toggle{ justify-content: space-between; }
+.bg-picker-pop .glass-fx-switch{ position: relative; flex: 0 0 auto; width: 34px; height: 18px; border-radius: 999px; background: rgba(255, 255, 255, .18) !important; transition: background .15s ease; }
+.bg-picker-pop .glass-fx-switch::after{ content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s ease; }
+.bg-picker-pop .glass-fx-toggle.is-on .glass-fx-switch{ background: rgba(111, 201, 154, .9) !important; }
+.bg-picker-pop .glass-fx-toggle.is-on .glass-fx-switch::after{ transform: translateX(16px); }
 .window-minimize-control::before{
   width: 15px;
   height: 15px;
@@ -5896,6 +6064,39 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
     0 10px 28px rgba(0, 0, 0, 0.22) !important;
   color: rgba(255, 255, 255, 0.96) !important;
 }
+/* Stat + Timeframe widgets get the SAME acrylic MATERIAL as the echarts/table
+ * wells directly above — the identical backdrop blur — but TINTED with each
+ * widget's own colour so it still reads its status. Each card carries
+ * `--panel-accent-rgb` (e.g. 22,163,74 = green healthy / red down); the frosted
+ * gradient uses it, falling back to the wells' neutral dark (18,24,36) when no
+ * colour is set. No border rim — the card is a clean frosted pane, just a soft
+ * drop shadow for separation.
+ *
+ * These widgets otherwise paint a flat custom-colour fill via
+ * `.widget-layout > .widget-card.db-panel-custom-color` (specificity 0,3,0,
+ * !important) plus a `backdrop-filter: none !important` reset. The grid-context
+ * selectors below are (0,4,0) so they outrank both. Light ink for contrast; the
+ * neutral .stat-card:hover keeps hover non-blue. */
+.stat-card,
+.timeframe-widget-card,
+.widget-layout > .widget-card.stat-card,
+.widget-layout > .widget-card.stat-card.db-panel-custom-color,
+.panel-internal-widget-grid > .widget-card.stat-card,
+.panel-internal-widget-grid > .widget-card.stat-card.db-panel-custom-color,
+.widget-layout > .widget-card.timeframe-widget-card,
+.widget-layout > .widget-card.timeframe-widget-card.db-panel-custom-color,
+.panel-internal-widget-grid > .widget-card.timeframe-widget-card,
+.panel-internal-widget-grid > .widget-card.timeframe-widget-card.db-panel-custom-color{
+  background: linear-gradient(180deg, rgba(var(--panel-accent-rgb, 18, 24, 36), 0.46), rgba(var(--panel-accent-rgb, 8, 12, 20), 0.28)) !important;
+  background-image: linear-gradient(180deg, rgba(var(--panel-accent-rgb, 18, 24, 36), 0.46), rgba(var(--panel-accent-rgb, 8, 12, 20), 0.28)) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
+  backdrop-filter: blur(18px) saturate(135%) !important;
+  border: 0 !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18) !important;
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+.stat-card .stat-val{ color: rgba(255, 255, 255, 0.96) !important; }
+.stat-card .stat-lbl{ color: rgba(255, 255, 255, 0.76) !important; }
 /* The pinned table header (column names): ONE continuous acrylic strip, using
  * the EXACT widget-well recipe above (same gradient + blur + edge highlight).
  *

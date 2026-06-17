@@ -447,12 +447,14 @@ function companyList() {
   }
   for (const e of companies.values()) {
     const online = companyOnline(e);
+    const lastPing = e.pings.length ? e.pings[e.pings.length - 1] : null;
     out.set(e.id, {
       id: e.id,
       label: e.label,
       status: online ? companyWorst(e) : 'offline',
       online,
       checks: e.lastByCheck.size,
+      host: (lastPing && lastPing.host) || '', // target IP, for search-by-IP
     });
   }
   // Live clients first (left), offline clients last (right); alphabetical within each.
@@ -1421,7 +1423,7 @@ ipcMain.handle('companies:pie', () => {
   return companyList().map((co) => {
     const entry = companies.get(co.id);
     if (!entry) {
-      return { id: co.id, label: co.label, online: co.online, healthy: 0, degraded: 0, down: 0, total: 0, viewers: 1, critical: false };
+      return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy: 0, degraded: 0, down: 0, total: 0, viewers: 1, critical: false };
     }
     // One memoized derivation per company (a cache hit — companyList just ran it)
     // powers BOTH the segment counts and the critical streak. The 24h window lives
@@ -1436,7 +1438,7 @@ ipcMain.handle('companies:pie', () => {
     // critical = a SUSTAINED outage right now (>=4 derived-down buckets in a row);
     // the pie auto-highlights these slices red without needing a hover.
     const critical = co.online && trailingDownStreakFromLevels(levels) >= CRITICAL_DOWN_STREAK;
-    return { id: co.id, label: co.label, online: co.online, healthy, degraded, down, total: levels.length, viewers, critical };
+    return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy, degraded, down, total: levels.length, viewers, critical };
   });
 });
 

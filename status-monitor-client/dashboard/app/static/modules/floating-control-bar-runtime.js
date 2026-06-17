@@ -40,6 +40,42 @@ export const initializeFloatingControlBarRuntime = async () => {
   const minimizeControl = document.querySelector(".window-minimize-control");
   const refreshControl = document.querySelector(".window-refresh-control");
   const closeControl = document.querySelector(".window-close-control");
+
+  // Window controls (minimize / refresh / close) live in the top-bar cluster and
+  // MUST wire up regardless of whether the legacy floating builder bar + its gear
+  // are present. The gear was replaced by the background picker, so don't let a
+  // missing gear bail this whole function (that dead-locked the entire top bar).
+  const reloadSavedWorkspace = () => {
+    if (typeof window.dashboardLayoutSourceRuntime?.load === "function") {
+      window.dashboardLayoutSourceRuntime.load("builder");
+      return;
+    }
+    window.dashboardWorkspacePagesRuntime?.skipNextBeforeUnloadPersist?.();
+    if (typeof window.dashboardWindowControls?.reload === "function") {
+      window.dashboardWindowControls.reload();
+      return;
+    }
+    window.location.reload();
+  };
+
+  minimizeControl?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.dashboardWindowControls?.minimize?.();
+  });
+  refreshControl?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    reloadSavedWorkspace();
+  });
+  closeControl?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.dashboardWindowControls?.close?.();
+  });
+
+  // Everything below is the legacy floating builder bar (hidden for now) and its
+  // gear toggle/drag logic — only wire it when both elements still exist.
   if (!bar || !gear) return null;
 
   let position = readPosition();
@@ -87,37 +123,6 @@ export const initializeFloatingControlBarRuntime = async () => {
     event.preventDefault();
     event.stopPropagation();
     setOpen(!isOpen);
-  });
-
-  minimizeControl?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    window.dashboardWindowControls?.minimize?.();
-  });
-
-  const reloadSavedWorkspace = () => {
-    if (typeof window.dashboardLayoutSourceRuntime?.load === "function") {
-      window.dashboardLayoutSourceRuntime.load("builder");
-      return;
-    }
-    window.dashboardWorkspacePagesRuntime?.skipNextBeforeUnloadPersist?.();
-    if (typeof window.dashboardWindowControls?.reload === "function") {
-      window.dashboardWindowControls.reload();
-      return;
-    }
-    window.location.reload();
-  };
-
-  refreshControl?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    reloadSavedWorkspace();
-  });
-
-  closeControl?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    window.dashboardWindowControls?.close?.();
   });
 
   bar.addEventListener("pointerdown", (event) => {

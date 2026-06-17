@@ -996,7 +996,12 @@
       // Granularity: auto-derived from the window span, unless the user picked
       // an explicit level from the chart's level strip (data-bucket-level).
       const autoLevel = spanH <= 1.5 ? "ping" : spanH <= 50 ? "hour" : spanH <= 24 * 70 ? "day" : "month";
-      const level = ["month", "week", "day", "hour", "ping"].includes(ds.bucketLevel) ? ds.bucketLevel : autoLevel;
+      // "week" is intentionally NOT a selectable level: it was never wired into the
+      // ping→hour→day→month depth ordering (autoLevel never yields it, and drill-up
+      // treated it as a dead-end). Excluding it here makes any stale persisted
+      // bucketLevel="week" fall back to autoLevel, so the leftover week branches
+      // below are dead code.
+      const level = ["month", "day", "hour", "ping"].includes(ds.bucketLevel) ? ds.bucketLevel : autoLevel;
       // Every depth renders ONE natural container with a fixed bar count:
       // pings = the 60 minutes of one clock hour, hours = the 24 hours of one
       // day, days = the 28–31 days of one month, weeks = the rolling 52
@@ -1140,7 +1145,10 @@
             return `${d._label} · ${bits.join(" · ")}`;
           },
         },
-        xAxis: { type: "category", data: ordered.map((bk) => bk.label), axisLabel: { color: axis.text }, axisLine: { lineStyle: { color: axis.line } } },
+        // No x-axis chrome on the timeline: the baseline (axisLine) underlined the
+        // strip and the default category ticks (axisTick) drew a grey separator
+        // under every bar — both pointless here. Keep only the time labels.
+        xAxis: { type: "category", data: ordered.map((bk) => bk.label), axisLabel: { color: axis.text }, axisLine: { show: false }, axisTick: { show: false } },
         yAxis: { type: "value", show: false, min: 0, max: 100 },
         series: (() => {
           const emphasis = { itemStyle: { shadowBlur: 16, shadowColor: "rgba(255, 255, 255, 0.85)", borderColor: "#ffffff", borderWidth: 2 } };
@@ -1723,7 +1731,7 @@
           // right, explicit level selectors (months → pings) on the left. An
           // explicit pick pins the bucket level; drilling re-enters auto mode.
           const LEVELS = [
-            ["month", "Months"], ["week", "Weeks"], ["day", "Days"], ["hour", "Hours"], ["ping", "Pings"],
+            ["month", "Months"], ["day", "Days"], ["hour", "Hours"], ["ping", "Pings"],
           ];
           const strip = document.createElement("div");
           strip.className = "chart-level-strip";
