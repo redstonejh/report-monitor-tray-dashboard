@@ -5547,7 +5547,10 @@ body.workspace-page-swipe-dragging{
   transform: none !important;
 }
 .bg-picker-pop .background-tone-group, .bg-picker-pop .background-photo-group{ display: flex; flex-direction: column; gap: 1px; padding: 2px 0; }
-.bg-picker-pop .background-tone-label{ padding: 6px 12px 3px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #ffffff !important; }
+/* Section labels share the SAME size + weight as the options — they read as
+   headers purely through UPPERCASE + a muted colour, never a different size or
+   bolding (so nothing in the picker looks "slightly different"). */
+.bg-picker-pop .background-tone-label{ padding: 8px 12px 3px; font-size: 13px !important; font-weight: 600 !important; letter-spacing: .02em !important; text-transform: uppercase; color: rgba(255, 255, 255, .5) !important; }
 /* Options reuse the "…" overflow-item treatment EXACTLY: transparent, colour-only
    hover, no native appearance, no outline. (Colour options add a swatch dot.) */
 .bg-picker-pop .background-tone-option,
@@ -5557,7 +5560,13 @@ body.workspace-page-swipe-dragging{
   border: 0 !important; box-shadow: none !important; outline: 0 !important; filter: none !important;
   background: transparent !important; min-height: 0 !important;
   padding: 7px 12px !important; margin: 0 !important; border-radius: 8px !important;
-  color: #ffffff !important; font: inherit; font-size: .95rem; font-weight: 600;
+  /* ONE font for every option, full stop. Colour options, photo options and the
+     glass toggle are otherwise styled by three separate rule blocks (lines ~2089,
+     ~3751 at 0,3,0, ~4111) that each set their own size/weight — that's why some
+     were bigger or bolder than others. !important on family+size+weight here makes
+     the single shared rule authoritative, so they are pixel-for-pixel identical. */
+  color: #ffffff !important; font: inherit;
+  font-family: inherit !important; font-size: 13px !important; font-weight: 600 !important; letter-spacing: 0 !important;
   text-align: left; cursor: pointer; white-space: nowrap; transition: color .14s ease;
   display: flex; align-items: center; gap: 9px; width: 100%;
 }
@@ -5592,6 +5601,19 @@ body.workspace-page-swipe-dragging{
 .bg-picker-pop .glass-fx-switch::after{ content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s ease; }
 .bg-picker-pop .glass-fx-toggle.is-on .glass-fx-switch{ background: rgba(111, 201, 154, .9) !important; }
 .bg-picker-pop .glass-fx-toggle.is-on .glass-fx-switch::after{ transform: translateX(16px); }
+/* Super-subtle macOS-style overlay scrollbar: a thin translucent pill on a
+   transparent track, inset via a transparent border so it floats sleekly; it
+   firms up a touch on hover. */
+.bg-picker-pop{ scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .26) transparent; }
+.bg-picker-pop::-webkit-scrollbar{ width: 10px; }
+.bg-picker-pop::-webkit-scrollbar-track{ background: transparent; }
+.bg-picker-pop::-webkit-scrollbar-thumb{
+  background: rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.bg-picker-pop::-webkit-scrollbar-thumb:hover{ background: rgba(255, 255, 255, .42); background-clip: padding-box; }
 .window-minimize-control::before{
   width: 15px;
   height: 15px;

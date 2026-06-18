@@ -41,6 +41,9 @@ contextBridge.exposeInMainWorld('electron', {
   pinPopover: () => ipcRenderer.invoke('window:pin'),
   refreshStatus: () => ipcRenderer.invoke('window:refresh-status'),
   hidePopover: () => ipcRenderer.invoke('window:hide-popover'),
+  // Legend ("i") opens as a separate window to the left of the popover.
+  toggleLegend: () => ipcRenderer.invoke('legend:toggle'),
+  closeLegend: () => ipcRenderer.invoke('legend:close'),
   onPopoverMode: (cb) => ipcRenderer.on('window:mode', (_e, mode) => cb(mode)),
   onAnchorEdge: (cb) => ipcRenderer.on('window:anchor-edge', (_e, edge) => cb(edge)),
 });

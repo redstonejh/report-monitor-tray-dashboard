@@ -2422,32 +2422,26 @@ that put the drawer on top — palette * has to declare its tier explicitly. */ 
   background: rgba(212, 171, 99, 0.16);
 }.runtime-table tbody tr[data-level="red"]:hover{
   background: rgba(225, 133, 124, 0.16);
-}.runtime-table tbody tr.ping-focus[data-result="Pass"]{
+}/* Ping-focus row highlight: a STEADY tint + coloured rail that stays lit until
+   the user clicks away (no longer a 2.4s flash, so it never re-flashes when the
+   table re-renders on live data). */
+.runtime-table tbody tr.ping-focus[data-result="Pass"]{
   box-shadow: inset 2px 0 0 #6fc99a;
-  animation: ping-focus-pass 2.4s ease;
+  background: rgba(111, 201, 154, 0.22);
 }.runtime-table tbody tr.ping-focus[data-result="Fail"]{
   box-shadow: inset 2px 0 0 #e1857c;
-  animation: ping-focus-fail 2.4s ease;
-}@keyframes ping-focus-pass{
-  0%{ background: rgba(111, 201, 154, 0.5); }
-  100%{ background: rgba(111, 201, 154, 0.12); }
-}@keyframes ping-focus-fail{
-  0%{ background: rgba(225, 133, 124, 0.5); }
-  100%{ background: rgba(225, 133, 124, 0.14); }
-}@keyframes ping-focus-degraded{
-  0%{ background: rgba(212, 171, 99, 0.5); }
-  100%{ background: rgba(212, 171, 99, 0.14); }
+  background: rgba(225, 133, 124, 0.22);
 }/* Criticality-driven row highlight: the three-level logic (green healthy /
    amber degraded / red down) wins over the binary Pass/Fail rules above. */
 .runtime-table tbody tr.ping-focus[data-level="green"]{
   box-shadow: inset 2px 0 0 #6fc99a;
-  animation: ping-focus-pass 2.4s ease;
+  background: rgba(111, 201, 154, 0.22);
 }.runtime-table tbody tr.ping-focus[data-level="yellow"]{
   box-shadow: inset 2px 0 0 #d4ab63;
-  animation: ping-focus-degraded 2.4s ease;
+  background: rgba(212, 171, 99, 0.24);
 }.runtime-table tbody tr.ping-focus[data-level="red"]{
   box-shadow: inset 2px 0 0 #e1857c;
-  animation: ping-focus-fail 2.4s ease;
+  background: rgba(225, 133, 124, 0.22);
 }/* Muted broader-trend delta beside an average stat value ("+13" = thirteen
    over the all-history average). */
 .stat-card .stat-val .stat-delta{

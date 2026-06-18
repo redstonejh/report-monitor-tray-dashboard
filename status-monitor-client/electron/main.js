@@ -95,6 +95,17 @@ let pendingPopover = null;
 let lastAnchorEdge = 'bottom';   // 'top' means grow down; 'bottom' means grow up
 let capturedAnchorPoint = null;
 
+// The legend ("i") opens as its OWN small window to the LEFT of the popover.
+// `legendOpen` suppresses the popover's hide-on-blur so opening/holding the
+// legend doesn't dismiss the dashboard; `legendClosedAt` keeps that suppression
+// alive through the single click that closes the legend, so the FIRST off-click
+// closes only the legend and the SECOND closes the dashboard.
+let legendWindow = null;
+let legendOpen = false;
+let legendClosedAt = 0;
+const LEGEND_W = 230;
+const LEGEND_H = 172;
+
 const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DEFAULT_API_PORT = 3847;
 const POPOVER_WIDTH = 256;
@@ -742,6 +753,9 @@ function createWindow() {
 
   mainWindow.on('blur', () => {
     if (mainWindow.webContents.isDevToolsOpened()) return;
+    // The legend window is open (or just closed by this very click): keep the
+    // popover up. The FIRST off-click closes the legend; the SECOND closes this.
+    if (legendOpen || Date.now() - legendClosedAt < 400) return;
     if (popoverPinned) {
       hidePopover();
       return;
@@ -793,10 +807,86 @@ function resetToHoverBaseline() {
 }
 
 function hidePopover() {
+  hideLegendWindow();
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.hide();
   }
   resetToHoverBaseline();
+}
+
+// ─── Legend window (the "i" key) ──────────────────────────────────────────────
+// A separate frameless acrylic window — same shell as the popover — opened to the
+// LEFT of the popover. It reuses the popover renderer in legend-only mode
+// (?legend=1). Closing on blur + the popover's suppression flag give the layered
+// dismiss the user asked for.
+function legendWindowOpts() {
+  const o = {
+    width: LEGEND_W, height: LEGEND_H, resizable: false, skipTaskbar: true,
+    alwaysOnTop: true, show: false, frame: false, transparent: true,
+    backgroundColor: '#00000000', hasShadow: false, thickFrame: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false, contextIsolation: true,
+    },
+  };
+  if (process.platform === 'darwin') { o.vibrancy = 'under-window'; o.visualEffectState = 'active'; }
+  else if (process.platform === 'win32') { o.transparent = false; o.backgroundMaterial = 'acrylic'; o.thickFrame = true; }
+  return o;
+}
+
+function ensureLegendWindow() {
+  if (legendWindow && !legendWindow.isDestroyed()) return legendWindow;
+  legendWindow = new BrowserWindow(legendWindowOpts());
+  if (process.platform === 'win32' && typeof legendWindow.setBackgroundMaterial === 'function') {
+    try { legendWindow.setBackgroundMaterial('acrylic'); } catch { /* older Electron */ }
+  }
+  legendWindow.setAlwaysOnTop(true, 'screen-saver');
+  legendWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    legendWindow.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}?legend=1`);
+  } else {
+    legendWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`), { search: 'legend=1' });
+  }
+  // Click anywhere off the legend → it loses focus → close just the legend.
+  legendWindow.on('blur', () => {
+    if (legendWindow && legendWindow.webContents.isDevToolsOpened()) return;
+    hideLegendWindow();
+  });
+  legendWindow.on('close', (e) => { if (!isQuitting) { e.preventDefault(); hideLegendWindow(); } });
+  return legendWindow;
+}
+
+function showLegendWindow() {
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
+  const w = ensureLegendWindow();
+  const b = mainWindow.getBounds();
+  // To the LEFT of the popover, bottom-aligned (the "i" sits in the popover's
+  // bottom-left corner). Clamp onto the popover's display work area.
+  const area = screen.getDisplayMatching(b).workArea;
+  let x = b.x - LEGEND_W - 8;
+  let y = b.y + b.height - LEGEND_H;
+  if (x < area.x + 4) x = b.x + b.width + 8;            // no room left → flip right
+  if (x + LEGEND_W > area.x + area.width - 4) x = area.x + area.width - LEGEND_W - 4;
+  if (y < area.y + 4) y = area.y + 4;
+  if (y + LEGEND_H > area.y + area.height - 4) y = area.y + area.height - LEGEND_H - 4;
+  w.setBounds({ x: Math.round(x), y: Math.round(y), width: LEGEND_W, height: LEGEND_H });
+  legendOpen = true;
+  w.show(); // focus it so a click elsewhere fires its blur (and closes it)
+}
+
+function hideLegendWindow() {
+  if (!legendOpen && (!legendWindow || !legendWindow.isVisible())) return;
+  legendOpen = false;
+  legendClosedAt = Date.now();
+  if (legendWindow && !legendWindow.isDestroyed()) legendWindow.hide();
+}
+
+function toggleLegendWindow() {
+  // Clicking the "i" while the legend is open first blurs (and closes) the legend
+  // window; without this recency guard the toggle would then re-open it. Treat a
+  // just-closed legend as "close", so the "i" reliably toggles.
+  if (legendOpen || Date.now() - legendClosedAt < 250) { hideLegendWindow(); return; }
+  showLegendWindow();
 }
 
 function schedulePeekHide() {
@@ -1081,6 +1171,13 @@ function createDashboardWindow() {
   });
 
   seedDefaultLayoutForUser(auth.currentUser());
+  // ⚠ NO HOT-RELOAD: the dashboard is loaded from a STATIC FILE (not the Vite dev
+  // server), so edits to dashboard/app/static/* (auth-ui.js, themes.css,
+  // widget-registry.js, status-feed.js, app.js, …) DO NOT appear until this window
+  // is reloaded (Ctrl+R / the refresh control / dash.reload() over CDP). If a CSS
+  // or JS change "isn't working", reload before assuming the code is wrong — and
+  // verify visual changes by screenshotting over CDP, never by guessing. (The tray
+  // popover, src/*, is React on the Vite server and DOES hot-reload.)
   dashboardWindow.loadFile(dashboardIndexPath());
 
   dashboardWindow.once('ready-to-show', () => {
@@ -1306,6 +1403,15 @@ ipcMain.handle('window:pin', (e) => {
   pinPopover();
   return { ok: true };
 });
+
+// The popover's "i" toggles the legend window; the legend window itself asks to
+// close (its own dismiss button / Escape).
+ipcMain.handle('legend:toggle', (e) => {
+  if (mainWindow && e.sender === mainWindow.webContents) toggleLegendWindow();
+  else hideLegendWindow();
+  return { ok: true };
+});
+ipcMain.handle('legend:close', () => { hideLegendWindow(); return { ok: true }; });
 
 ipcMain.handle('window:refresh-status', (e) => {
   if (!mainWindow || mainWindow.isDestroyed() || e.sender !== mainWindow.webContents) {

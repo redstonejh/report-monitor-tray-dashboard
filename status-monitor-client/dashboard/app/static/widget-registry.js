@@ -156,7 +156,32 @@
     return `${seconds}s`;
   };
 
-  // Scroll the history table to the ping checked at `checkedAt` and flash the
+  // ── Persistent ping-focus highlight ──────────────────────────────────────────
+  // The highlight is no longer a 2.4s flash — a focused row (or, with multiple
+  // viewers, the matching row in every per-viewer table) STAYS lit until the user
+  // clicks somewhere neutral (the "click away to dismiss" handler below). The
+  // single source of truth is the focused minute; painting toggles the class on
+  // every matching row so a new focus replaces the old one and windowed tables
+  // re-apply it on each render.
+  let pingFocusMinute = null;
+  const minuteOfIso = (iso) => { const t = Date.parse(iso); return Number.isFinite(t) ? Math.floor(t / 60000) : null; };
+  const paintPingFocus = (root = document) => {
+    root.querySelectorAll('.runtime-table tbody tr[data-checked-at]').forEach((tr) => {
+      tr.classList.toggle("ping-focus", pingFocusMinute != null && minuteOfIso(tr.dataset.checkedAt) === pingFocusMinute);
+    });
+  };
+  const setPingFocus = (checkedAt) => {
+    pingFocusMinute = minuteOfIso(checkedAt);
+    paintPingFocus();
+  };
+  const clearPingFocus = () => {
+    if (pingFocusMinute == null) return false;
+    pingFocusMinute = null;
+    document.querySelectorAll(".runtime-table tbody tr.ping-focus").forEach((tr) => tr.classList.remove("ping-focus"));
+    return true;
+  };
+
+  // Scroll the history table to the ping checked at `checkedAt` and light the
   // same status-aware highlight the timeline uses (.ping-focus). Shared by the
   // chart's ping click and the single-event stat cards (min/max/since-down).
   // The row centres inside the table's OWN scroll well; the page only moves if
@@ -168,12 +193,14 @@
     // carry the exact time, so match by minute (exact-timestamp fast path).
     const ms = Date.parse(checkedAt);
     const targetMinute = Number.isFinite(ms) ? Math.floor(ms / 60000) : null;
-    const minuteOf = (iso) => { const t = Date.parse(iso); return Number.isFinite(t) ? Math.floor(t / 60000) : null; };
+    const minuteOf = minuteOfIso;
+    // Apply the persistent highlight to every matching row up front (replacing
+    // any previous focus); the loop below only handles scrolling each table well.
+    setPingFocus(checkedAt);
     const flashed = [];
     const flash = (row) => {
       if (!row) return;
       row.classList.add("ping-focus");
-      window.setTimeout(() => row.classList.remove("ping-focus"), 2400);
       flashed.push(row);
     };
     for (const table of document.querySelectorAll('.widget-card[data-widget-runtime-type="table"] .runtime-table')) {
@@ -276,6 +303,23 @@
       focusHistoryRow(focusEl.dataset.focusCheckedAt);
       focusChartPing(focusEl.dataset.focusCheckedAt);
     }
+  });
+
+  // Click-away to dismiss the persistent highlight. Any click that did NOT land
+  // on a focus producer — a ping table row, a stat card that carries a focus
+  // timestamp, or the timeline chart — clears it, the same way clicking in an
+  // empty area closes a menu. Clicks on a producer leave the highlight to that
+  // producer (which sets/replaces it). Registered last so it observes the final
+  // target; drag-release clicks are ignored.
+  document.addEventListener("click", (event) => {
+    if (pingFocusMinute == null) return;
+    if (wasDragGesture(event)) return;
+    const el = event.target;
+    if (el?.closest?.('.runtime-table tbody tr[data-checked-at]')) return; // a ping row
+    const card = el?.closest?.(".widget-card");
+    if (card && (card.matches('[data-widget-runtime-type="chart"]')
+      || card.querySelector(":scope [data-focus-checked-at], :scope [data-focus-cycle]"))) return; // chart / focus stat card
+    clearPingFocus();
   });
 
   const displaySchemaFields = (data = null) => (
@@ -1512,8 +1556,9 @@
         tr.addEventListener("click", (event) => {
           if (wasDragGesture(event)) return;
           focusChartPing(tr.dataset.checkedAt);
-          tr.classList.add("ping-focus");
-          window.setTimeout(() => tr.classList.remove("ping-focus"), 2400);
+          // Persistent highlight (same minute lights up across every viewer
+          // table); stays until a click-away. setPingFocus repaints all tables.
+          setPingFocus(tr.dataset.checkedAt);
         });
       }
       for (const field of visibleFields) {
@@ -1577,18 +1622,15 @@
         const rowH = Math.max(1, Math.round(probe.getBoundingClientRect().height) || 24);
         probe.remove();
 
-        // The chart-ping focus highlight must SURVIVE re-renders. Scrolling a row
-        // into view changes scrollTop, which fires the scroll handler → renderWindow,
-        // rebuilding the rows. If the flash lived only on the original <tr> it was
-        // wiped by that very re-render — which is why it appeared to work only on
-        // the SECOND click (when scrollTop no longer changed, so no re-render fired).
-        // Track the focused minute + expiry and re-apply .ping-focus on every render.
-        let focusMinute = null, focusUntil = 0;
+        // The ping-focus highlight must SURVIVE re-renders. Scrolling a row into
+        // view changes scrollTop, which fires the scroll handler → renderWindow,
+        // rebuilding the rows. If the highlight lived only on the original <tr> it
+        // was wiped by that very re-render. It now reads the shared persistent
+        // pingFocusMinute, so every render re-applies (or drops) it to match.
         const applyFocus = () => {
-          if (focusMinute == null || Date.now() > focusUntil) return;
           for (const tr of tbody.querySelectorAll("tr[data-checked-at]")) {
             const t = Date.parse(tr.dataset.checkedAt);
-            if (Number.isFinite(t) && Math.floor(t / 60000) === focusMinute) tr.classList.add("ping-focus");
+            tr.classList.toggle("ping-focus", pingFocusMinute != null && Number.isFinite(t) && Math.floor(t / 60000) === pingFocusMinute);
           }
         };
         const renderWindow = () => {
@@ -1618,18 +1660,23 @@
           locate: (checkedAt) => {
             const idx = matchIndex(checkedAt);
             if (idx < 0) return null;
+            // focusHistoryRow already set the shared pingFocusMinute; set it here
+            // too for any direct caller, then scroll the match in and paint it. The
+            // highlight is persistent — it clears on a click-away, not a timer.
             const t0 = Date.parse(checkedAt);
-            focusMinute = Number.isFinite(t0) ? Math.floor(t0 / 60000) : null;
-            focusUntil = Date.now() + 2400;
+            if (Number.isFinite(t0)) pingFocusMinute = Math.floor(t0 / 60000);
             scroller.scrollTop = Math.max(0, idx * rowH - (scroller.clientHeight - rowH) / 2);
             renderWindow(); // applies .ping-focus; the scroll-triggered re-render re-applies it too
-            // Clear the focus after the flash duration and repaint once to drop it.
-            window.setTimeout(() => { focusMinute = null; if (scroller.__vtable) renderWindow(); }, 2450);
             return tbody.querySelector("tr.ping-focus") || null;
           },
         };
         renderWindow();
       }
+
+      // A persistent ping-focus must survive this re-render (live data refreshes
+      // rebuild the rows). Re-apply it to the freshly built rows; windowed tables
+      // also re-apply on every scroll render via applyFocus.
+      if (pingFocusMinute != null) paintPingFocus(target);
 
       // Restore the saved scroll position and keep tracking it (both paths).
       if (scroller && memKey) {

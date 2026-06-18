@@ -135,6 +135,9 @@ export default function App() {
     return () => clearTimeout(fallback);
   }, [isExpanded, anchorEdge]);
 
+  // Leaving the status view closes the separate legend window.
+  useEffect(() => { if (view !== 'status') window.electron?.closeLegend?.(); }, [view]);
+
   // Escape: from Settings → back to status; from status → close the popover.
   useEffect(() => {
     const onKey = (e) => {
@@ -210,6 +213,22 @@ export default function App() {
             <CloseOutlined />
           </button>
         </header>
+      )}
+
+      {/* The "i" sits in the popover's BOTTOM-LEFT corner, styled like the other
+          .icon-btn controls (no circle). It opens the legend as a SEPARATE window
+          to the left (main: legend:toggle) — NOT an in-window popup. The layered
+          dismiss (1st off-click closes the legend, 2nd closes the dashboard) is
+          handled by the two windows' focus in main.js. */}
+      {isExpanded && fullyAuthed && view === 'status' && (
+        <button
+          className="icon-btn legend-fab"
+          onClick={() => window.electron?.toggleLegend?.()}
+          title="Status legend"
+          aria-label="Status legend"
+        >
+          <span className="legend-i" aria-hidden="true">i</span>
+        </button>
       )}
 
       <div className={`panel-scroll ${isExpanded ? 'content-reveal' : ''}`}>

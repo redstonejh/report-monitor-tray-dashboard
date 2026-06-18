@@ -1,13 +1,14 @@
 // Account layer for the dashboard: the default onboarding (a sign-in / create-
-// account gate), a top-right account button that matches the other circular
-// window controls, an account menu, admin account management with per-
-// permission checkboxes, a forced first-login password reset for admin-created
-// accounts, and a viewer-mode lockdown that hides editing controls.
+// account gate), a top-left account button that matches the other circular
+// window controls, an account menu (+ a portaled Layout flyout), and admin
+// account management with per-IP visibility + a manage-accounts checkbox.
 //
-// Every surface is liquid glass — clear dark glass + white text, refracted by
-// the WebGL shader (the gate/menu/modal are registered in OBJECT_SELECTOR), the
-// same material as the status detail popover. Darkness/lightness comes from the
-// background, not a light/dark theme.
+// Every surface is dark glass via plain CSS backdrop-filter — NOT the WebGL
+// shader. (These classes are NOT in liquid-glass-webgl.js OBJECT_SELECTOR; an
+// older comment here claimed they were "registered in OBJECT_SELECTOR" — that was
+// false. Don't rely on shader refraction for auth surfaces.) Because it's CSS
+// backdrop-filter, nesting one inside another breaks it — see the big warning at
+// the Layout flyout below. Darkness comes from the background, not a theme.
 //
 // Auth state lives in the main process (window.auth bridge); after a sign-in,
 // sign-up or password reset the window reloads so the per-user layout store and
@@ -104,18 +105,153 @@
         <strong class="auth-profile-name"></strong>
       </div>
       <button class="auth-menu-item auth-manage" type="button" hidden>Manage accounts</button>
+      <div class="auth-submenu-wrap">
+        <button class="auth-menu-item auth-layout" type="button" aria-haspopup="true" aria-expanded="false">
+          Layout<span class="auth-submenu-caret" aria-hidden="true">›</span>
+        </button>
+        <div class="auth-submenu" role="menu">
+          <button class="auth-menu-item auth-layout-save" type="button">Save</button>
+          <button class="auth-menu-item auth-layout-load" type="button">Load</button>
+          <button class="auth-menu-item auth-layout-default" type="button">Default</button>
+        </div>
+      </div>
       <button class="auth-menu-item auth-signout" type="button">Sign out</button>
     </div>`;
   document.body.appendChild(profile);
   const nameEl = profile.querySelector(".auth-profile-name");
   const manageBtn = profile.querySelector(".auth-manage");
-  profile.querySelector(".auth-profile-button").addEventListener("click", () => profile.classList.toggle("open"));
+  // ┌─ READ THIS BEFORE TOUCHING ANY SUBMENU/FLYOUT GLASS ───────────────────────┐
+  // │ A `backdrop-filter` element NESTED inside another `backdrop-filter` element │
+  // │ is IGNORED by Chromium. So a flyout left as a child of .auth-profile-menu   │
+  // │ (which is frosted) renders FLAT and can NEVER match the parent, no matter   │
+  // │ how perfectly you copy the CSS. Things that DO NOT WORK (all tried, all     │
+  // │ failed — do not "fix" it back to these):                                    │
+  // │   • identical CSS while still nested        → flat, no frost                │
+  // │   • a near-opaque solid background "to fake glass" → solid, still mismatched │
+  // │ The ONLY fix is to PORTAL the flyout OUT of the filtered ancestor (onto     │
+  // │ <body> here) and give it the parent's EXACT recipe, then position it in JS. │
+  // │ VERIFY by reloading the dashboard + screenshotting over CDP — do NOT eyeball │
+  // │ or assume (the dashboard is a static file, see note in electron/main.js).   │
+  // └────────────────────────────────────────────────────────────────────────────┘
+  const layoutBtn = profile.querySelector(".auth-layout");
+  const layoutMenu = profile.querySelector(".auth-submenu");
+  document.body.appendChild(layoutMenu);
+  const closeLayoutMenu = () => {
+    layoutMenu.classList.remove("open");
+    layoutBtn.setAttribute("aria-expanded", "false");
+  };
+  // Collapse the menu (and its Layout flyout) together.
+  const closeProfile = () => {
+    profile.classList.remove("open");
+    closeLayoutMenu();
+  };
+  profile.querySelector(".auth-profile-button").addEventListener("click", () => {
+    if (profile.classList.contains("open")) closeProfile();
+    else profile.classList.add("open");
+  });
   profile.querySelector(".auth-signout").addEventListener("click", async () => {
     await bridge.logout();
     window.location.reload();
   });
-  manageBtn.addEventListener("click", () => { profile.classList.remove("open"); openManageUsers(); });
-  document.addEventListener("click", (e) => { if (!profile.contains(e.target)) profile.classList.remove("open"); });
+  manageBtn.addEventListener("click", () => { closeProfile(); openManageUsers(); });
+  document.addEventListener("click", (e) => {
+    if (!profile.contains(e.target) && !layoutMenu.contains(e.target)) closeProfile();
+  });
+
+  // ─── Layout snapshots (per-account Save / Load / Default) ─────────────────────
+  // The dashboard keeps its layout + panel colours in the per-account bridge
+  // store and its background in localStorage. Save captures BOTH into one
+  // snapshot (kept under its own key so a later reset never erases it); Load
+  // restores them; Default wipes the customisation keys so the markup defaults
+  // re-seed on reload. The saved snapshot survives Default, so the user can
+  // always recover a layout they liked.
+  const SNAPSHOT_KEY = "dashboard-saved-layout-snapshot";
+  const store = window.dashboardPersistence || null;
+
+  const localDashboardKeys = () => {
+    const out = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("dashboard-")) out.push(k);
+    }
+    return out;
+  };
+  // Remove every customisation key (layout, colours, background) but keep the
+  // saved snapshot itself.
+  const clearDashboardState = () => {
+    if (store?.keys) {
+      for (const k of store.keys()) {
+        if (k !== SNAPSHOT_KEY) { try { store.removeItem(k); } catch {} }
+      }
+    }
+    localDashboardKeys().forEach((k) => { try { localStorage.removeItem(k); } catch {} });
+  };
+
+  const layoutSave = () => {
+    if (!store?.setItem) return false;
+    const snap = { store: {}, local: {} };
+    if (store.keys) {
+      for (const k of store.keys()) {
+        if (k === SNAPSHOT_KEY) continue;
+        const v = store.getItem(k);
+        if (v != null) snap.store[k] = v;
+      }
+    }
+    localDashboardKeys().forEach((k) => { snap.local[k] = localStorage.getItem(k); });
+    try { store.setItem(SNAPSHOT_KEY, JSON.stringify(snap)); return true; } catch { return false; }
+  };
+
+  const layoutLoad = () => {
+    const raw = store?.getItem?.(SNAPSHOT_KEY);
+    if (!raw) return false;
+    let snap;
+    try { snap = JSON.parse(raw); } catch { return false; }
+    clearDashboardState();
+    for (const [k, v] of Object.entries(snap.store || {})) { if (v != null) try { store.setItem(k, v); } catch {} }
+    for (const [k, v] of Object.entries(snap.local || {})) { if (v != null) try { localStorage.setItem(k, v); } catch {} }
+    window.location.reload();
+    return true;
+  };
+
+  const layoutDefault = () => {
+    clearDashboardState();
+    window.location.reload();
+  };
+
+  // Transient label feedback for the actions that don't reload the page.
+  const flashLabel = (btn, text) => {
+    if (!btn || btn.dataset.flashing) return;
+    const original = btn.textContent;
+    btn.dataset.flashing = "1";
+    btn.textContent = text;
+    window.setTimeout(() => { btn.textContent = original; delete btn.dataset.flashing; }, 1200);
+  };
+
+  // Place the portaled flyout immediately to the right of the Layout item.
+  const positionLayoutMenu = () => {
+    const r = layoutBtn.getBoundingClientRect();
+    layoutMenu.style.left = `${Math.round(r.right + 6)}px`;
+    layoutMenu.style.top = `${Math.round(r.top - 8)}px`;
+  };
+  layoutBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = !layoutMenu.classList.contains("open");
+    if (open) positionLayoutMenu();
+    layoutMenu.classList.toggle("open", open);
+    layoutBtn.setAttribute("aria-expanded", String(open));
+  });
+  layoutMenu.querySelector(".auth-layout-save").addEventListener("click", (e) => {
+    e.stopPropagation();
+    flashLabel(e.currentTarget, layoutSave() ? "Saved ✓" : "Unavailable");
+  });
+  layoutMenu.querySelector(".auth-layout-load").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!layoutLoad()) flashLabel(e.currentTarget, "Nothing saved");
+  });
+  layoutMenu.querySelector(".auth-layout-default").addEventListener("click", (e) => {
+    e.stopPropagation();
+    layoutDefault();
+  });
 
   // ─── Session application ─────────────────────────────────────────────────────
   function applySession(s) {
@@ -311,12 +447,12 @@
          shadow. Strip that from the account buttons (the glass profile button,
          a .window-glass-control, styles itself and is excluded). Each button is
          restyled explicitly below. */
-      :where(.auth-gate, .auth-profile-menu, .auth-modal) button {
+      :where(.auth-gate, .auth-profile-menu, .auth-submenu, .auth-modal) button {
         min-height: 0; padding: 0; border: 0; border-radius: 0;
         background: transparent; box-shadow: none;
       }
-      :where(.auth-gate, .auth-profile-menu, .auth-modal) button:hover,
-      :where(.auth-gate, .auth-profile-menu, .auth-modal) button:active {
+      :where(.auth-gate, .auth-profile-menu, .auth-submenu, .auth-modal) button:hover,
+      :where(.auth-gate, .auth-profile-menu, .auth-submenu, .auth-modal) button:active {
         background: transparent; box-shadow: none; transform: none;
       }
 
@@ -393,6 +529,27 @@
         transition: color 0.14s ease;
       }
       .auth-menu-item:hover, .auth-menu-item:focus-visible { background: transparent; color: #ffffff; }
+
+      /* Layout flyout — PORTALED onto <body> (see the big warning in the JS) and
+         given the EXACT same shell as .auth-profile-menu above. These values MUST
+         stay byte-for-byte identical to .auth-profile-menu. Do NOT make it opaque,
+         do NOT change the gradient/blur/border/shadow to "fix" a mismatch — if it
+         looks wrong it's a NESTING/reload problem, not a values problem. */
+      .auth-submenu-wrap { position: relative; }
+      .auth-layout { justify-content: space-between; }
+      .auth-submenu-caret { color: rgba(255, 255, 255, 0.5); font-weight: 700; padding-left: 10px; }
+      .auth-layout[aria-expanded="true"] .auth-submenu-caret { color: #ffffff; }
+      .auth-submenu {
+        position: fixed; top: 0; left: 0; min-width: 150px;
+        display: none; flex-direction: column; gap: 1px; padding: 8px 6px; border-radius: 14px;
+        background: linear-gradient(180deg, rgba(22, 26, 36, 0.62), rgba(12, 16, 24, 0.55));
+        -webkit-backdrop-filter: blur(26px) saturate(140%);
+        backdrop-filter: blur(26px) saturate(140%);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 18px 42px rgba(0, 0, 0, 0.4);
+        z-index: calc(var(--z-menu-overlay, 2600) + 22);
+      }
+      .auth-submenu.open { display: flex; }
 
       .auth-modal-backdrop {
         position: fixed; inset: 0; z-index: 100001;
