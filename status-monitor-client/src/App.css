@@ -213,34 +213,30 @@ body.win-acrylic .panel.peek { border-radius: 0; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px;
+  /* One EQUAL comfortable gap between EVERYTHING; content fills the window so the
+     only empty space is this breathing room. */
+  gap: 16px;
+  padding: 16px;
   background: linear-gradient(180deg, rgba(31, 41, 55, 0.55), rgba(24, 32, 44, 0.5));
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   backdrop-filter: blur(18px) saturate(135%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
   color: var(--text);
-  font-size: 12px;
+  font-size: 11.5px;
 }
-.legend-row { display: flex; align-items: center; gap: 9px; line-height: 1.3; }
-.legend-mark {
-  flex: none;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1;
+.legend-sec {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
 }
-.legend-mark.green { color: #6fc99a; background: rgba(111, 201, 154, 0.16); }
-.legend-mark.amber { color: #d4ab63; background: rgba(212, 171, 99, 0.18); }
-.legend-mark.red { color: #e1857c; background: rgba(225, 133, 124, 0.18); }
+.legend-row { display: flex; align-items: center; gap: 9px; line-height: 1.2; }
+/* The LITERAL tray-icon PNG (from main via toDataURL) — never a recreation. */
+.legend-ico { flex: none; width: 17px; height: 17px; display: inline-block; }
+.legend-ico-ph { border-radius: 50%; background: rgba(255, 255, 255, 0.12); }
+/* The labelled donut-slice diagram: one REAL slice drawn with the FleetPie's own
+   path code, equal-thickness rings + horizontal arrows to each band's meaning. */
+.legend-donut { display: block; width: 100%; height: auto; }
 .legend-foot {
-  margin-top: 1px;
+  margin-top: 4px;
   padding-top: 7px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 11px;
@@ -320,6 +316,14 @@ body.win-acrylic .panel.peek { border-radius: 0; }
   stroke: #ff5b52;
   stroke-width: 2;
   filter: drop-shadow(0 0 16px rgba(255, 91, 82, 0.9));
+}
+/* Flaky (yellow) auto-highlight — the EXACT same treatment as is-critical above,
+   in the tray-icon amber (#ffd60a), when a circuit is flaky (4+ non-consecutive
+   fails in 10 min). is-critical wins if both somehow apply (declared first). */
+.fleet-slice.is-warn .fleet-slice-outline {
+  stroke: #ffd60a;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 16px rgba(255, 214, 10, 0.85));
 }
 .fleet-slice:hover .fleet-slice-outline,
 .fleet-slice.is-match .fleet-slice-outline {

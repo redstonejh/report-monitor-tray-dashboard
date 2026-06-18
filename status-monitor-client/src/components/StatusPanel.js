@@ -36,56 +36,15 @@ function resolve(connectionState, status, projectId) {
 // same HP language as the dashboard's timeline bars. Clicking a slice opens
 // the dashboard on that company's tab.
 
-const PIE_COLORS = { healthy: '#6fc99a', degraded: '#d4ab63', down: '#e1857c', critical: '#9b1c1c' };
+// Pie geometry + palette live in a shared module so the legend window can draw
+// the REAL donut slices (same paths + colours), not a recreation.
+import { PIE_COLORS, polar, roundedRingSlicePath } from './pie-geometry';
 const PIE_EMPTY = 'rgba(148, 163, 184, 0.3)';
 
 // Donut time-filter windows (clickable text under the pie, like the dashboard's
 // time filter). The selected window is passed to the pie IPC so main derives the
 // health mix over that span. 1w is bounded by how much history is retained.
 const WINDOW_MS = { '1hr': 3600000, '1d': 86400000, '1w': 604800000 };
-
-const polar = (cx, cy, r, deg) => {
-  const rad = ((deg - 90) * Math.PI) / 180;
-  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
-};
-
-function ringSlicePath(cx, cy, r0, r1, a0, a1) {
-  const large = a1 - a0 > 180 ? 1 : 0;
-  const [x0, y0] = polar(cx, cy, r1, a0);
-  const [x1, y1] = polar(cx, cy, r1, a1);
-  const [x2, y2] = polar(cx, cy, r0, a1);
-  const [x3, y3] = polar(cx, cy, r0, a0);
-  const f = (n) => n.toFixed(2);
-  return `M${f(x0)} ${f(y0)} A${f(r1)} ${f(r1)} 0 ${large} 1 ${f(x1)} ${f(y1)} L${f(x2)} ${f(y2)} A${f(r0)} ${f(r0)} 0 ${large} 0 ${f(x3)} ${f(y3)} Z`;
-}
-
-// A ring slice whose OUTER corners are rounded (premium rounded-bar tips). Only
-// the slice's outer edge is rounded — its inner edge stays flat against the donut
-// hole and internal band boundaries are untouched, so multi-band slices never get
-// stray notches. `ro` = round the outer corners (set true only for the outermost
-// band of each slice). Falls back to the square path when too thin to round.
-function roundedRingSlicePath(cx, cy, r0, r1, a0, a1, ro) {
-  const span = a1 - a0;
-  if (span <= 0) return ringSlicePath(cx, cy, r0, r1, a0, a1);
-  const arcLen = (span * Math.PI / 180) * r1;
-  const rad = Math.min(4, (r1 - r0) * 0.4, arcLen * 0.45);
-  if (!ro || rad < 0.5) return ringSlicePath(cx, cy, r0, r1, a0, a1);
-  const dO = (rad / r1) * 180 / Math.PI; // angular inset on the outer arc
-  const large = span > 180 ? 1 : 0;
-  const f = (n) => n.toFixed(2);
-  const P = (r, a) => { const [x, y] = polar(cx, cy, r, a); return `${f(x)} ${f(y)}`; };
-  const R = (r) => `${f(r)} ${f(r)}`;
-  return [
-    `M ${P(r1, a0 + dO)}`,
-    `A ${R(r1)} 0 ${large} 1 ${P(r1, a1 - dO)}`,  // outer arc (inset for the corners)
-    `A ${R(rad)} 0 0 1 ${P(r1 - rad, a1)}`,        // round the outer-end corner
-    `L ${P(r0, a1)}`,                              // radial edge inward
-    `A ${R(r0)} 0 ${large} 0 ${P(r0, a0)}`,        // inner arc back (square inner)
-    `L ${P(r1 - rad, a0)}`,                        // radial edge outward
-    `A ${R(rad)} 0 0 1 ${P(r1, a0 + dO)}`,         // round the outer-start corner
-    'Z',
-  ].join(' ');
-}
 
 // Trim protocol/source noise from labels, like the dashboard tabs do.
 const conciseLabel = (s) => String(s || '')
@@ -185,7 +144,7 @@ function FleetPie({ query = '' }) {
           return (
             <g
               key={co.id}
-              className={`fleet-slice${co.online === false ? ' offline' : ''}${co.critical ? ' is-critical' : ''}${co.id === highlightId ? ' is-match' : ''}`}
+              className={`fleet-slice${co.online === false ? ' offline' : ''}${co.critical ? ' is-critical' : ''}${co.flaky ? ' is-warn' : ''}${co.id === highlightId ? ' is-match' : ''}`}
               onMouseEnter={() => setHovered(co.id)}
               onClick={() => window.electron?.openCompany?.(co.id, windowKey === '1w' ? 'day' : 'hour')}
             >

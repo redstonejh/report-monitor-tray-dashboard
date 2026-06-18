@@ -103,8 +103,8 @@ let capturedAnchorPoint = null;
 let legendWindow = null;
 let legendOpen = false;
 let legendClosedAt = 0;
-const LEGEND_W = 230;
-const LEGEND_H = 172;
+const LEGEND_W = 256; // SAME size as the popover window (POPOVER_WIDTH × its height)
+const LEGEND_H = 319; // measured popover window height — content fills it exactly, no wasted space
 
 const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DEFAULT_API_PORT = 3847;
@@ -372,6 +372,23 @@ function trailingDownStreakFromLevels(levels) {
   return streak;
 }
 
+// FLAKY (yellow): a circuit that failed FLAKY_MIN_FAILS+ derived-down minutes in
+// the last FLAKY_WINDOW_MS, but is NOT in a sustained 4-in-a-row outage right now
+// — i.e. intermittent, non-consecutive drops. This is what turns the tray icon
+// amber (!) and auto-highlights the slice yellow (mirror of the red critical rule).
+const FLAKY_WINDOW_MS = 10 * 60 * 1000; // past 10 minutes
+const FLAKY_MIN_FAILS = 4;
+function recentDownCount(levels, windowMs) {
+  const cutoff = Date.now() - windowMs;
+  let n = 0;
+  for (const { ms, level } of levels) if (level === 'red' && ms >= cutoff) n += 1;
+  return n;
+}
+function isFlaky(levels) {
+  return trailingDownStreakFromLevels(levels) < CRITICAL_DOWN_STREAK
+    && recentDownCount(levels, FLAKY_WINDOW_MS) >= FLAKY_MIN_FAILS;
+}
+
 // How many DISTINCT sustained-outage episodes occurred across the window — each
 // maximal run of >= CRITICAL_DOWN_STREAK consecutive derived-down buckets counts
 // once (the moment the run crosses the threshold is the icon going red once). This
@@ -393,18 +410,11 @@ function countCriticalEpisodes(levels) {
 // single blip never reds the fleet; red means a confirmed, ongoing outage.
 function companyWorst(entry) {
   const { levels } = derivedFor(entry);
+  // RED: a sustained outage — 4 derived-down minutes in a row, right now.
   if (trailingDownStreakFromLevels(levels) >= CRITICAL_DOWN_STREAK) return 'red';
-  const byViewer = new Map();
-  const worse = { green: 0, yellow: 1, red: 2 };
-  for (const ping of entry.lastByCheck.values()) {
-    const v = viewerFromMachine(ping.machine);
-    const cur = byViewer.get(v);
-    if (cur == null || worse[ping.status] > worse[cur]) byViewer.set(v, ping.status);
-  }
-  const statuses = [...byViewer.values()];
-  if (!statuses.length) return 'green';
-  // Not yet a confirmed outage — any current down or degraded viewer is amber.
-  if (statuses.some((s) => s === 'red' || s === 'yellow')) return 'yellow';
+  // YELLOW: flaky — 4+ derived-down minutes in the last 10 min that were NOT
+  // back-to-back (else it'd be red). Intermittent failures, not a current outage.
+  if (isFlaky(levels)) return 'yellow';
   return 'green';
 }
 
@@ -1413,6 +1423,15 @@ ipcMain.handle('legend:toggle', (e) => {
 });
 ipcMain.handle('legend:close', () => { hideLegendWindow(); return { ok: true }; });
 
+// The legend window shows the LITERAL tray icons as its key — hand it the exact
+// nativeImages the tray uses, as PNG data URLs (not a CSS recreation).
+ipcMain.handle('tray-icons:get', () => ({
+  green: icons.green.toDataURL(),
+  yellow: icons.yellow.toDataURL(),
+  red: icons.red.toDataURL(),
+  grey: icons.grey.toDataURL(),
+}));
+
 ipcMain.handle('window:refresh-status', (e) => {
   if (!mainWindow || mainWindow.isDestroyed() || e.sender !== mainWindow.webContents) {
     return { ok: false };
@@ -1565,7 +1584,7 @@ ipcMain.handle('companies:pie', (e, windowMs) => {
   return companyList().map((co) => {
     const entry = companies.get(co.id);
     if (!entry) {
-      return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy: 0, degraded: 0, down: 0, total: 0, viewers: 1, critical: false, criticalCount: 0 };
+      return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy: 0, degraded: 0, down: 0, total: 0, viewers: 1, critical: false, flaky: false, criticalCount: 0 };
     }
     // The memoized 24h derivation (a cache hit — companyList just ran it) is the
     // base. For a sub-24h filter (1hr) we just slice its per-minute levels — no
@@ -1591,10 +1610,14 @@ ipcMain.handle('companies:pie', (e, windowMs) => {
     // critical = a SUSTAINED outage right now (>=4 derived-down buckets in a row);
     // the pie auto-highlights these slices red without needing a hover.
     const critical = co.online && trailingDownStreakFromLevels(levels) >= CRITICAL_DOWN_STREAK;
+    // flaky = the yellow counterpart: 4+ derived-down minutes in the last 10 min
+    // that were NOT consecutive. Auto-highlights the slice YELLOW (same mechanism
+    // as `critical` reds it). Mutually exclusive with critical.
+    const flaky = co.online && !critical && isFlaky(levels);
     // criticalCount = how many times this circuit went critical (4-in-a-row) over
     // the window — the deep-red outer tier's tally (shown only when > 0).
     const criticalCount = countCriticalEpisodes(levels);
-    return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy, degraded, down, total: levels.length, viewers, critical, criticalCount };
+    return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy, degraded, down, total: levels.length, viewers, critical, flaky, criticalCount };
   });
 });
 
