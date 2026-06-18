@@ -19,7 +19,7 @@
   const escapeHtml = (v) => String(v ?? "")
     .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-  const roleOf = (u) => (u.isAdmin ? "Admin" : u.permissions.canEdit ? "Editor" : "Viewer");
+  const roleOf = (u) => ((u.isAdmin || u.permissions.canManageUsers) ? "Admin" : "Viewer");
 
   injectStyles();
 
@@ -125,7 +125,6 @@
       gate.style.display = "flex";
       profile.style.display = "none";
       document.body.classList.add("auth-gated");
-      document.body.classList.remove("dashboard-viewer");
       renderGateMode();
       return;
     }
@@ -142,15 +141,40 @@
     document.body.classList.remove("auth-gated");
     nameEl.textContent = user.username;
     manageBtn.hidden = !(user.isAdmin || user.permissions.canManageUsers);
-    document.body.classList.toggle("dashboard-viewer", !user.permissions.canEdit);
+    // Everyone can edit dashboards (move/resize/recolour/backgrounds); there is
+    // no viewer lockdown. IP visibility is enforced upstream by the company list.
   }
   bridge.session().then(applySession).catch(() => applySession(null));
   bridge.onChanged(applySession);
 
   // ─── Manage accounts (admin) ─────────────────────────────────────────────────
+  // Every monitored IP, fetched from the live company list. The signed-in admin
+  // is unrestricted, so this is the full set the admin can grant from — including
+  // any IP introduced since the last viewer was created.
+  async function fetchCompanies() {
+    try {
+      const list = await window.dashboard?.getCompanies?.();
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
+  }
+
+  // A scrollable checklist of IPs. `selected` is a Set of company ids that start
+  // checked. Each row shows the circuit label and (when known) its IP address.
+  function ipChecklistMarkup(companies, selected) {
+    if (!companies.length) return `<div class="auth-ip-empty">No IPs available yet.</div>`;
+    return companies.map((c) => `
+      <label class="auth-ip-item">
+        <input type="checkbox" value="${escapeHtml(c.id)}" ${selected.has(c.id) ? "checked" : ""}>
+        <span class="auth-ip-name">${escapeHtml(c.label || c.id)}</span>
+        ${c.host ? `<span class="auth-ip-addr">${escapeHtml(c.host)}</span>` : ""}
+      </label>`).join("");
+  }
+  const checkedIds = (container) =>
+    [...container.querySelectorAll('input[type="checkbox"]:checked')].map((c) => c.value);
+
   let manageEl = null;
   async function openManageUsers() {
-    const res = await bridge.listUsers();
+    const [res, companies] = await Promise.all([bridge.listUsers(), fetchCompanies()]);
     if (!res?.ok) return;
     if (manageEl) manageEl.remove();
     manageEl = document.createElement("div");
@@ -168,53 +192,81 @@
             <input class="auth-input" name="username" placeholder="New username">
             <input class="auth-input" name="password" type="password" placeholder="Temporary password">
           </div>
-          <label class="auth-perm"><input type="checkbox" name="canEdit"> Can edit dashboards</label>
-          <label class="auth-perm"><input type="checkbox" name="canManageUsers"> Can manage accounts</label>
+          <label class="auth-perm"><input type="checkbox" name="canManageUsers"> Can manage accounts (admin)</label>
+          <div class="auth-ip-section" data-ip-section>
+            <div class="auth-ip-head">Visible IPs</div>
+            <div class="auth-ip-list auth-new-ip-list"></div>
+          </div>
           <button class="auth-submit auth-add" type="submit">Add account</button>
-          <div class="auth-modal-hint">They'll set their own password on first sign-in.</div>
+          <div class="auth-modal-hint">They'll set their own password on first sign-in. Only the IPs ticked here are visible to them; new IPs stay hidden until granted.</div>
           <div class="auth-error auth-new-error" hidden></div>
         </form>
       </div>`;
     document.body.appendChild(manageEl);
     manageEl.querySelector(".auth-modal-close").addEventListener("click", () => manageEl.remove());
     manageEl.addEventListener("click", (e) => { if (e.target === manageEl) manageEl.remove(); });
-    renderUserList(res.users);
+    renderUserList(res.users, companies);
 
     const form = manageEl.querySelector(".auth-new-user");
     const newError = manageEl.querySelector(".auth-new-error");
+    const newIpList = form.querySelector(".auth-new-ip-list");
+    const ipSection = form.querySelector("[data-ip-section]");
+    newIpList.innerHTML = ipChecklistMarkup(companies, new Set());
+    // An admin (manage = on) sees every IP, so the per-IP picker is moot for them.
+    const manageToggle = form.canManageUsers;
+    const syncIpSectionForNew = () => { ipSection.hidden = manageToggle.checked; };
+    manageToggle.addEventListener("change", syncIpSectionForNew);
+    syncIpSectionForNew();
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       newError.hidden = true;
       const r = await bridge.createUser({
         username: form.username.value.trim(),
         password: form.password.value,
-        permissions: { canEdit: form.canEdit.checked, canManageUsers: form.canManageUsers.checked },
+        canManageUsers: manageToggle.checked,
+        visibleCompanies: manageToggle.checked ? [] : checkedIds(newIpList),
       });
       if (r?.ok) { openManageUsers(); }
       else { newError.textContent = r?.error || "Could not add account"; newError.hidden = false; }
     });
   }
 
-  function renderUserList(users) {
+  function renderUserList(users, companies) {
     const list = manageEl.querySelector(".auth-user-list");
-    list.innerHTML = users.map((u) => `
-      <div class="auth-user-row" data-username="${escapeHtml(u.username)}">
-        <span class="auth-user-name">${escapeHtml(u.username)}<span class="auth-role-badge">${roleOf(u)}</span></span>
-        <label class="auth-perm-inline" title="Can edit dashboards">
-          <input type="checkbox" data-perm="canEdit" ${u.permissions.canEdit ? "checked" : ""} ${u.isAdmin ? "disabled" : ""}> Edit</label>
-        <label class="auth-perm-inline" title="Can manage accounts">
-          <input type="checkbox" data-perm="canManageUsers" ${u.permissions.canManageUsers ? "checked" : ""} ${u.isAdmin ? "disabled" : ""}> Manage</label>
-        <button class="auth-user-delete" type="button" ${u.isAdmin ? "disabled" : ""} aria-label="Delete account">✕</button>
-      </div>`).join("");
+    list.innerHTML = users.map((u) => {
+      const admin = u.isAdmin || u.permissions.canManageUsers; // unrestricted → no IP picker
+      return `
+      <div class="auth-user-block">
+        <div class="auth-user-row" data-username="${escapeHtml(u.username)}">
+          <span class="auth-user-name">${escapeHtml(u.username)}<span class="auth-role-badge">${roleOf(u)}</span></span>
+          ${admin ? "" : `<button class="auth-ip-toggle" type="button" aria-expanded="false">IPs</button>`}
+          <label class="auth-perm-inline" title="Can manage accounts">
+            <input type="checkbox" data-perm="canManageUsers" ${u.permissions.canManageUsers ? "checked" : ""} ${u.isAdmin ? "disabled" : ""}> Admin</label>
+          <button class="auth-user-delete" type="button" ${u.isAdmin ? "disabled" : ""} aria-label="Delete account">✕</button>
+        </div>
+        ${admin ? "" : `<div class="auth-ip-list auth-user-ip-list" hidden>${ipChecklistMarkup(companies, new Set(u.visibleCompanies || []))}</div>`}
+      </div>`;
+    }).join("");
 
-    list.querySelectorAll(".auth-user-row").forEach((row) => {
+    list.querySelectorAll(".auth-user-block").forEach((block) => {
+      const row = block.querySelector(".auth-user-row");
       const username = row.dataset.username;
-      row.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
-        cb.addEventListener("change", async () => {
-          const perms = {};
-          row.querySelectorAll('input[type="checkbox"]').forEach((c) => { perms[c.dataset.perm] = c.checked; });
-          await bridge.updateUser(username, { permissions: perms });
+      const ipList = block.querySelector(".auth-user-ip-list");
+
+      block.querySelector(".auth-ip-toggle")?.addEventListener("click", (e) => {
+        const open = ipList.hidden;
+        ipList.hidden = !open;
+        e.currentTarget.setAttribute("aria-expanded", String(open));
+      });
+      ipList?.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+        cb.addEventListener("change", () => {
+          bridge.updateUser(username, { visibleCompanies: checkedIds(ipList) });
         });
+      });
+      row.querySelector('input[data-perm="canManageUsers"]')?.addEventListener("change", async (e) => {
+        await bridge.updateUser(username, { canManageUsers: e.target.checked });
+        openManageUsers(); // promotion to admin removes the IP picker — re-render
       });
       row.querySelector(".auth-user-delete").addEventListener("click", async () => {
         await bridge.deleteUser(username);
@@ -367,16 +419,34 @@
       .auth-new-row { display: flex; gap: 8px; }
       .auth-new-row .auth-input { flex: 1; }
       .auth-perm { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: rgba(255, 255, 255, 0.82); cursor: pointer; }
+      .auth-user-block { display: flex; flex-direction: column; }
 
-      /* Viewer mode: hide editing affordances so the dashboard is read-only. */
-      body.dashboard-viewer .control-bar-gear,
-      body.dashboard-viewer .panel-tool-drawer,
-      body.dashboard-viewer .panel-tools,
-      body.dashboard-viewer .widget-tools,
-      body.dashboard-viewer .panel-add-picker,
-      body.dashboard-viewer [data-floating-control-bar] { display: none !important; }
-      body.dashboard-viewer .panel-move-handle,
-      body.dashboard-viewer .panel-resize-handle { pointer-events: none !important; }
+      /* Per-account IP allow-list: a compact, scrollable checklist of circuits. */
+      .auth-ip-section { display: flex; flex-direction: column; gap: 6px; }
+      .auth-ip-section[hidden] { display: none; }
+      .auth-ip-head { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+      .auth-ip-list {
+        display: flex; flex-direction: column; gap: 1px;
+        max-height: 168px; overflow: auto; padding: 6px 8px; border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.16);
+      }
+      .auth-user-ip-list { margin: 2px 0 8px; }
+      .auth-ip-item { display: flex; align-items: center; gap: 8px; padding: 3px 2px; font-size: 12px; color: rgba(255, 255, 255, 0.82); cursor: pointer; }
+      .auth-ip-item input { flex: none; }
+      .auth-ip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .auth-ip-addr { margin-left: auto; padding-left: 10px; font-size: 11px; color: rgba(255, 255, 255, 0.5); font-variant-numeric: tabular-nums; }
+      .auth-ip-empty { font-size: 11.5px; color: rgba(255, 255, 255, 0.5); padding: 4px 2px; }
+      .auth-ip-toggle {
+        flex: none; padding: 2px 8px; border-radius: 7px; cursor: pointer;
+        background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.7);
+        font: inherit; font-size: 11px; font-weight: 600;
+      }
+      .auth-ip-toggle:hover { color: #ffffff; background: rgba(255, 255, 255, 0.14); }
+
+      /* Deletion is withheld from everyone — the delete controls stay in the DOM
+         and their handlers stay wired, they are simply never shown. Editing
+         (move / resize / colours / backgrounds) remains open to all. */
+      .panel-delete-handle { display: none !important; }
 
       @media (prefers-reduced-motion: reduce) {
         .auth-submit:active { transform: none; }

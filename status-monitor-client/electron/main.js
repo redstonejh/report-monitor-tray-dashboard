@@ -451,6 +451,15 @@ function companyOnline(entry) {
   return false;
 }
 
+// The signed-in user's allowed company ids, or null when their view is
+// unrestricted (admin / account manager). Drives the per-viewer IP filter so a
+// viewer only ever receives the IPs an admin granted them — and a newly seen IP
+// reaches admins automatically but no viewer until it is granted.
+function allowedCompanyIds() {
+  const ids = auth.visibleCompaniesFor(auth.currentUser());
+  return ids ? new Set(ids) : null;
+}
+
 // The full roster (every company ever seen) merged with this session's live
 // data. Live companies report their real status; the rest read as offline.
 function companyList() {
@@ -470,8 +479,11 @@ function companyList() {
       host: (lastPing && lastPing.host) || '', // target IP, for search-by-IP
     });
   }
+  const allowed = allowedCompanyIds();
+  let list = [...out.values()];
+  if (allowed) list = list.filter((c) => allowed.has(c.id));
   // Live clients first (left), offline clients last (right); alphabetical within each.
-  return [...out.values()].sort((a, b) =>
+  return list.sort((a, b) =>
     (Number(b.online) - Number(a.online)) || a.label.localeCompare(b.label));
 }
 

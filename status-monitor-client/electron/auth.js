@@ -1,8 +1,12 @@
 // Local account system for the tray + dashboard. Accounts live in
 // ~/.status-monitor/users.json with scrypt-hashed passwords; the signed-in
 // user is remembered in session.json. A default admin (admin / admin1) is
-// seeded on first run. Permissions are viewer-by-default; admins (and anyone
-// granted canEdit) may edit dashboards, and canManageUsers may manage accounts.
+// seeded on first run. Everyone may edit dashboards (move/resize/recolour) —
+// there is no edit permission. The only account distinction is canManageUsers
+// (an "admin"): admins manage accounts and see every monitored IP, while a
+// viewer sees only the IPs explicitly granted to them (`visibleCompanies`). A
+// new IP is therefore visible to admins automatically and to no viewer until an
+// admin grants it.
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -12,7 +16,7 @@ const DIR = path.join(os.homedir(), '.status-monitor');
 const USERS_FILE = path.join(DIR, 'users.json');
 const SESSION_FILE = path.join(DIR, 'session.json');
 
-const DEFAULT_PERMISSIONS = { canEdit: false, canManageUsers: false };
+const DEFAULT_PERMISSIONS = { canManageUsers: false };
 
 let currentUsername = null;
 
@@ -53,7 +57,7 @@ function seed() {
       users: [{
         username: 'admin',
         isAdmin: true,
-        permissions: { canEdit: true, canManageUsers: true },
+        permissions: { canManageUsers: true },
         ...hashPassword('admin1'),
       }],
     };
@@ -68,14 +72,31 @@ function rawUser(username) {
   return store.users.find((u) => u.username.toLowerCase() === key) || null;
 }
 
+// An admin (isAdmin) or anyone who can manage accounts sees every IP — their
+// view is unrestricted. Everyone else is limited to an explicit allow-list.
+function isUnrestricted(u) {
+  return !!(u && (u.isAdmin || (u.permissions && u.permissions.canManageUsers)));
+}
+
 function publicUser(u) {
   if (!u) return null;
   return {
     username: u.username,
     isAdmin: !!u.isAdmin,
     permissions: { ...DEFAULT_PERMISSIONS, ...(u.permissions || {}) },
+    // null = unrestricted (sees all IPs, incl. any newly introduced ones);
+    // an array = the exact set of company ids this viewer may see.
+    visibleCompanies: isUnrestricted(u) ? null : (Array.isArray(u.visibleCompanies) ? u.visibleCompanies : []),
     mustChangePassword: !!u.mustChangePassword,
   };
+}
+
+// The company-id allow-list for a username, or null when unrestricted (admin /
+// manager / unknown). Consumed by the main process to filter the company list.
+function visibleCompaniesFor(username) {
+  const u = rawUser(username);
+  if (!u || isUnrestricted(u)) return null;
+  return Array.isArray(u.visibleCompanies) ? u.visibleCompanies : [];
 }
 
 function init() {
@@ -114,7 +135,7 @@ function listUsers() {
   return seed().users.map(publicUser);
 }
 
-function createUser({ username, password, permissions } = {}) {
+function createUser({ username, password, canManageUsers, visibleCompanies } = {}) {
   const name = String(username || '').trim();
   if (!name) return { ok: false, error: 'Username is required' };
   if (!password) return { ok: false, error: 'Password is required' };
@@ -123,11 +144,13 @@ function createUser({ username, password, permissions } = {}) {
     return { ok: false, error: 'That username is already taken' };
   }
   // Admin-created accounts get a temporary password the user must replace on
-  // their first sign-in.
+  // their first sign-in. `visibleCompanies` is the admin's checkmark selection
+  // of which IPs this viewer may see (ignored for managers, who see all).
   store.users.push({
     username: name,
     isAdmin: false,
-    permissions: { ...DEFAULT_PERMISSIONS, ...(permissions || {}) },
+    permissions: { canManageUsers: !!canManageUsers },
+    visibleCompanies: Array.isArray(visibleCompanies) ? visibleCompanies : [],
     mustChangePassword: true,
     ...hashPassword(password),
   });
@@ -149,6 +172,8 @@ function register({ username, password } = {}) {
     username: name,
     isAdmin: false,
     permissions: { ...DEFAULT_PERMISSIONS },
+    // Self-registered viewers start with no visible IPs — an admin grants them.
+    visibleCompanies: [],
     mustChangePassword: false,
     ...hashPassword(password),
   });
@@ -170,14 +195,15 @@ function setOwnPassword(newPassword) {
   return { ok: true, user: publicUser(u) };
 }
 
-function updateUser(username, { permissions, password } = {}) {
+function updateUser(username, { canManageUsers, visibleCompanies, password } = {}) {
   const store = seed();
   const u = store.users.find((x) => x.username.toLowerCase() === String(username || '').toLowerCase());
   if (!u) return { ok: false, error: 'No such account' };
   if (u.isAdmin) {
-    u.permissions = { canEdit: true, canManageUsers: true }; // admin keeps full rights
-  } else if (permissions) {
-    u.permissions = { ...DEFAULT_PERMISSIONS, ...permissions };
+    u.permissions = { canManageUsers: true }; // admin keeps full rights
+  } else {
+    if (canManageUsers !== undefined) u.permissions = { canManageUsers: !!canManageUsers };
+    if (Array.isArray(visibleCompanies)) u.visibleCompanies = visibleCompanies;
   }
   if (password) Object.assign(u, hashPassword(password));
   writeUsers(store);
@@ -196,5 +222,5 @@ function deleteUser(username) {
 
 export default {
   init, session, currentUser, login, logout, register, setOwnPassword,
-  listUsers, createUser, updateUser, deleteUser, publicUser,
+  listUsers, createUser, updateUser, deleteUser, publicUser, visibleCompaniesFor,
 };

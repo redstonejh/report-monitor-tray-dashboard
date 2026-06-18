@@ -196,10 +196,16 @@
       flash(match);
     }
     if (!flashed.length) return false;
-    // Keep the graph and the (first) table framed in the viewport together.
+    // Keep the stat widgets, the graph and the (first) table framed in the
+    // viewport together. Including the visible stat cards pulls the frame's top
+    // up to them, so a click that scrolls to the table doesn't push the stats
+    // off-screen — at the default window size all three co-fit, so the fit-branch
+    // below scrolls exactly to the stats' top; on a smaller window the frame no
+    // longer fits and it falls back to anchoring the graph as before.
     const chartCard = [...document.querySelectorAll(".widget-card")].find((el) => typeof el.__focusChartPing === "function");
     const tableCard = flashed[0].closest(".widget-card");
-    const rects = [chartCard, tableCard].filter(Boolean).map((el) => el.getBoundingClientRect());
+    const statCards = [...document.querySelectorAll(".stat-card")].filter((el) => el.offsetParent !== null);
+    const rects = [chartCard, tableCard, ...statCards].filter(Boolean).map((el) => el.getBoundingClientRect());
     if (rects.length) {
       const top = Math.min(...rects.map((r) => r.top)) + window.scrollY - 12;
       const bottom = Math.max(...rects.map((r) => r.bottom)) + window.scrollY + 12;
