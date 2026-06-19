@@ -398,7 +398,11 @@
       "#1f2937";
     const bgEnd = rootStyle.getPropertyValue("--bg-end").trim() || bgStart;
     const photoUrl = currentPhotoUrl();
-    if (photoUrl && photoUrl !== bgImageSrc) loadBackgroundImage();
+    // Re-sync whenever the photo URL changes — INCLUDING when it becomes "" (switched
+    // back to a solid tone). The old guard `photoUrl && …` skipped the empty case, so
+    // bgImage/bgImageReady kept the last photo and it stayed refracted behind glass
+    // until a reload. loadBackgroundImage() clears that state when the URL is empty.
+    if (photoUrl !== bgImageSrc) loadBackgroundImage();
     const iw = bgImageReady && bgImage ? (bgImage.naturalWidth || bgImage.width || 1) : 0;
     const ih = bgImageReady && bgImage ? (bgImage.naturalHeight || bgImage.height || 1) : 0;
     const key = `${bgStart}|${bgEnd}|${photoUrl}|${bgImageReady ? "ready" : "pending"}|${w}x${h}|${iw}x${ih}`;
