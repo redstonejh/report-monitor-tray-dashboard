@@ -1589,10 +1589,15 @@
       tableEl.setAttribute("aria-label", config.title || "Table");
       const thead = document.createElement("thead");
       const headerTr = document.createElement("tr");
+      // Friendlier labels for the value+delta columns — the parenthetical in each
+      // cell ("25 (-7)") is the delta vs the link's average, so the header carries a
+      // Δ to denote it. Data keys are untouched (saved column configs still match).
+      const HEADER_LABELS = { "ping (ms)": "Ping ms Δ", "loss (%)": "Loss % Δ" };
       for (const field of visibleFields) {
         const th = document.createElement("th");
-        th.textContent = String(field);
-        th.title = String(field);
+        const label = HEADER_LABELS[field] || String(field);
+        th.textContent = label;
+        th.title = label;
         headerTr.appendChild(th);
       }
       thead.appendChild(headerTr);
