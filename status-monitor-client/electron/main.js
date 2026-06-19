@@ -87,6 +87,7 @@ const systemActivity = new Map();
 let isQuitting = false;
 let popoverMode = 'peek';        // 'peek' | 'expanded'
 let popoverPinned = false;
+let popoverPinnedAt = 0;         // when the popover was last pinned (blur-race guard)
 let pointerInPopover = false;
 let pointerInTray = false;
 let hideTimer = null;
@@ -776,9 +777,11 @@ function createWindow() {
     // second click (which is a deliberate, later action).
     if (legendOpen || Date.now() - legendClosedAt < 150) return;
     if (popoverPinned) {
-      // A tray click that pins a hover-opened popover can briefly blur it. Don't let
-      // that immediately close it while the pointer is still on the tray icon.
-      if (pointerInTray) return;
+      // A tray click that pins the popover can briefly blur it; ignore that single
+      // blur for a moment after pinning. A real off-click is a deliberate, later
+      // action, so it still closes the popover. (Don't gate this on pointerInTray —
+      // Windows tray mouse-leave is unreliable and can stick it 'true' forever.)
+      if (Date.now() - popoverPinnedAt < 250) return;
       hidePopover();
       return;
     }
@@ -1196,6 +1199,7 @@ function showExpandedWindow(pinned = false) {
   // is why hover used to look non-acrylic. `pinned` still controls whether the
   // popover stays open after the pointer leaves the tray/popover.
   showPopover('expanded', true, pinned);
+  if (pinned) popoverPinnedAt = Date.now();
 }
 
 // ─── Dashboard window ───────────────────────────────────────────────────────
@@ -1339,7 +1343,15 @@ app.whenReady().then(() => {
       // which read as a jarring close-and-reopen. A click on an already-pinned
       // popover toggles it closed.
       if (popoverPinned) hidePopover();
-      else { popoverPinned = true; cancelHideTimer(); }
+      else {
+        // Hover-opened → pin it in place (no re-show, so no flicker). Assert focus so
+        // a later off-click reliably blurs it and closes it; stamp the pin time so
+        // any immediate blur from this very click is ignored (see the blur handler).
+        popoverPinned = true;
+        popoverPinnedAt = Date.now();
+        cancelHideTimer();
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
+      }
     } else {
       showExpandedWindow(true);
     }
