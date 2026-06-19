@@ -1225,29 +1225,27 @@
           // HP-bar segments stack bottom-up: healthy green, degraded amber, down red.
           // Empty (no-data) slots render as a full-height translucent grey bar.
           //
-          // Sizing the bad bands is a balance of three things:
-          //  1. The TOTAL bad band tracks the bucket's bad SHARE, but never below
-          //     MIN_TOTAL (so a few-bad day still reads "not all green") — green stays
-          //     large for a healthy day, which is the honest picture.
-          //  2. WITHIN the bad band, down vs degraded split by sqrt(COUNT), so the
-          //     more-numerous severity reads BIGGER at a glance (25 degraded clearly
-          //     beats 3 down) — but sqrt compresses it so it's never HUGELY bigger.
-          //  3. Each present severity is floored at MIN_EACH so even a single one is
-          //     visible. A flat per-severity minimum (the old approach) made both clamp
-          //     to the same size on a busy day, hiding that there were more degradeds.
-          const MIN_TOTAL = 10, MIN_EACH = 4;
+          // Sizing the bad bands:
+          //  1. Each present severity is sized DIRECTLY by sqrt(its own COUNT): more of
+          //     a severity reads BIGGER at a glance (6 down clearly beats 1 down; 25
+          //     degraded clearly beats 3 down), and sqrt compresses so it's never
+          //     HUGELY bigger. A lone event clears a small visibility floor (PER_EVENT).
+          //     This is what makes 1-vs-6 distinct even in a SINGLE-severity bar — the
+          //     old flat MIN_TOTAL/MIN_EACH floors clamped 1 and 6 to the same size.
+          //  2. If the bucket's bad SHARE is higher than the count-based band, scale the
+          //     band up to the share (keeping the down:degraded ratio) so a genuinely
+          //     bad low-traffic day still reads bad — green stays large on a healthy day.
+          const PER_EVENT = 4; // % a single bad event occupies (visibility floor)
           const hpShares = (bk) => {
             if (!bk.total) return { ok: 0, degraded: 0, down: 0 };
             const badCount = bk.down + bk.degraded;
             if (!badCount) return { ok: 100, degraded: 0, down: 0 };
-            const badBand = Math.max(MIN_TOTAL, (badCount / bk.total) * 100);
-            const wd = bk.down > 0 ? Math.sqrt(bk.down) : 0;
-            const wg = bk.degraded > 0 ? Math.sqrt(bk.degraded) : 0;
-            const wsum = wd + wg || 1;
-            let down = badBand * (wd / wsum);
-            let degraded = badBand * (wg / wsum);
-            if (bk.down > 0) down = Math.max(down, MIN_EACH);
-            if (bk.degraded > 0) degraded = Math.max(degraded, MIN_EACH);
+            const sized = (c) => (c > 0 ? PER_EVENT * Math.sqrt(c) : 0);
+            let down = sized(bk.down);
+            let degraded = sized(bk.degraded);
+            const shareBand = (badCount / bk.total) * 100;
+            const band = down + degraded;
+            if (band > 0 && shareBand > band) { const s = shareBand / band; down *= s; degraded *= s; }
             if (down + degraded > 100) { const s = 100 / (down + degraded); down *= s; degraded *= s; }
             const r = (n) => Math.round(n * 10) / 10;
             return { ok: r(Math.max(0, 100 - down - degraded)), degraded: r(degraded), down: r(down) };
