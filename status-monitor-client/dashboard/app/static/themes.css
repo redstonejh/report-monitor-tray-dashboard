@@ -6230,6 +6230,23 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
   box-shadow: none;
   pointer-events: none;
 }
+/* Drop the well's padding entirely so the table fills it edge-to-edge and the sticky
+   header sits FLUSH at the very top. The 2px top padding was a gap rows scrolled
+   THROUGH (visible) before the header — pinned to the content-box top — covered them.
+   Removing only the top would leave the sides inset 2px, so the header's square corner
+   wouldn't line up with the well's rounded corner; remove all of it so the rounded
+   corners clip the table uniformly. */
+.runtime-well-widget .runtime-table-library-surface{
+  padding: 0 !important;
+  /* The sticky th only cover the CONTENT area — the scrollbar reserves ~13px on the
+     right, so the rounded top-right corner sits in that gutter, uncovered. Paint an
+     opaque header-colour band across the FULL well width (gutter included) for the top
+     25px via the well's own background, so the gutter + both rounded top corners read
+     as part of the header. Below the band: the normal translucent table surface. */
+  background-image:
+    linear-gradient(180deg, #52596a 0, #52596a 25px, rgba(0, 0, 0, 0) 25px),
+    linear-gradient(180deg, rgba(18, 24, 36, 0.34), rgba(8, 12, 20, 0.28)) !important;
+}
 /* The header is the opaque thead cells themselves (no separate strip): coverage then
    matches the real header-row height EXACTLY, so scrolling rows never peek past the
    top edge, and the well's overflow+radius clips the cells to the curved corners so
