@@ -24,7 +24,9 @@
   const OBJECT_SELECTOR = [
     ".db-panel",
     ".widget-card",
-    ".window-glass-control",
+    // NOTE: the circular top-bar buttons (.window-glass-control) are intentionally
+    // NOT refracted — they keep their static CSS glass only. The WebGL refraction
+    // looked wrong on those small round controls.
     ".app-nav.workspace-chrome.floating-control-bar",
     ".status-detail-popover",
   ].join(", ");
@@ -344,6 +346,13 @@
   };
 
   const currentPhotoUrl = () => {
+    // During a tone PREVIEW (hovering a colour option) the photo panel stays in the
+    // DOM — background-controller only sets the backdrop's .hidden, it doesn't
+    // destroy the panel until the colour is committed (clicked). Treat a hidden
+    // backdrop as "no photo" so the glass clears to the previewed colour instead of
+    // keeping the old photo refracted behind objects.
+    const backdrop = document.querySelector(".workspace-photo-backdrop");
+    if (!backdrop || backdrop.hidden) return "";
     const panel = document.querySelector(".workspace-photo-panel");
     if (!panel) return "";
     return cssUrl(panel.style.backgroundImage || getComputedStyle(panel).backgroundImage || "");
