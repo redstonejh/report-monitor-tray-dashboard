@@ -1068,13 +1068,15 @@ function capturePopoverAnchor() {
   if (capturedAnchorPoint && mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
     return capturedAnchorPoint;
   }
-  // Anchor to the CURSOR — it's reliably on the icon when you hover/click to open,
-  // whether the icon is in the visible taskbar OR the overflow ("expanded tray")
-  // flyout. tray.getBounds() returns the COLLAPSED taskbar position for an
-  // overflowed icon, so anchoring to it made the popover spawn down at the taskbar
-  // instead of next to the flyout (the "spawns lower sometimes"). Captured once and
-  // kept fixed for the session so it doesn't trail the cursor on resize.
-  capturedAnchorPoint = screen.getCursorScreenPoint();
+  const trayBounds = tray.getBounds();
+  const cursorPoint = screen.getCursorScreenPoint();
+  const hasUsableTrayBounds = trayBoundsAreUsable(trayBounds, cursorPoint);
+  capturedAnchorPoint = hasUsableTrayBounds
+    ? {
+        x: trayBounds.x + trayBounds.width / 2,
+        y: trayBounds.y,
+      }
+    : cursorPoint;
   return capturedAnchorPoint;
 }
 
