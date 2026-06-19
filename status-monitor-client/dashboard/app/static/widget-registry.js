@@ -1592,7 +1592,7 @@
       // Friendlier labels for the value+delta columns — the parenthetical in each
       // cell ("25 (-7)") is the delta vs the link's average, so the header carries a
       // Δ to denote it. Data keys are untouched (saved column configs still match).
-      const HEADER_LABELS = { "ping (ms)": "Ping ms Δ", "loss (%)": "Loss % Δ" };
+      const HEADER_LABELS = { "ping (ms)": "Ping ms (Δ)", "loss (%)": "Loss % (Δ)" };
       for (const field of visibleFields) {
         const th = document.createElement("th");
         const label = HEADER_LABELS[field] || String(field);
