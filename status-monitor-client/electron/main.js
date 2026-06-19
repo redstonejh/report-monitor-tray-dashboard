@@ -1702,10 +1702,12 @@ ipcMain.handle('companies:pie', (e, windowMs) => {
     // critical = a SUSTAINED outage right now (>=4 derived-down buckets in a row);
     // the pie auto-highlights these slices red without needing a hover.
     const critical = co.online && trailingDownStreakFromLevels(levels) >= CRITICAL_DOWN_STREAK;
-    // flaky = the yellow counterpart: 4+ derived-down minutes in the last 10 min
-    // that were NOT consecutive. Auto-highlights the slice YELLOW (same mechanism
-    // as `critical` reds it). Mutually exclusive with critical.
-    const flaky = co.online && !critical && isFlaky(levels);
+    // flaky = YELLOW severity, mirroring the tray icon (amber = a degraded/flaky link
+    // OR a link we've lost monitoring on). So: intermittent fails (isFlaky) OR offline.
+    // Auto-highlights the slice YELLOW (same mechanism as `critical` reds it). Offline
+    // slices used to just GREY OUT — de-emphasised, the reverse of what's wanted.
+    // Mutually exclusive with critical.
+    const flaky = !critical && (isFlaky(levels) || co.online === false);
     // criticalCount = how many times this circuit went critical (4-in-a-row) over
     // the window — the deep-red outer tier's tally (shown only when > 0).
     const criticalCount = countCriticalEpisodes(levels);

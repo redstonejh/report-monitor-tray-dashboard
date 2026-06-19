@@ -286,7 +286,7 @@ body.win-acrylic .panel.peek { border-radius: 0; }
   overflow: visible; /* let the hover glow extend past the donut bounds */
 }
 .fleet-pie { width: 100%; height: 100%; display: block; overflow: visible; }
-.fleet-slice { cursor: pointer; transition: opacity 0.18s ease, filter 0.18s ease; }
+.fleet-slice { cursor: pointer; transition: opacity 0.18s ease; }
 /* Rounded slice edges are produced GEOMETRICALLY in the path (roundedRingSlicePath
    in StatusPanel) — only the donut's outer/inner extremes are rounded, so multi-
    band slices have no internal notches. Round joins keep any remaining corners
@@ -300,7 +300,10 @@ body.win-acrylic .panel.peek { border-radius: 0; }
 /* The highlight is ONE outline around the whole slice perimeter (a single overlaid
    path), NOT a stroke per coloured band — so a multi-tier slice gets one clean ring,
    never a box drawn around each third. */
-.fleet-slice-outline { fill: none; stroke: none; pointer-events: none; transition: filter 0.18s ease; }
+/* No filter transition: animating the drop-shadow re-rasterised the SVG each frame,
+   which made the count numbers shimmer/"wiggle" on hover. Instant highlight (same as
+   the static auto-highlight) — no per-frame repaint. */
+.fleet-slice-outline { fill: none; stroke: none; pointer-events: none; }
 .fleet-slice.is-critical .fleet-slice-outline {
   stroke: #ff5b52;
   stroke-width: 2;

@@ -144,7 +144,7 @@ function FleetPie({ query = '' }) {
           return (
             <g
               key={co.id}
-              className={`fleet-slice${co.online === false ? ' offline' : ''}${co.critical ? ' is-critical' : ''}${co.flaky ? ' is-warn' : ''}${co.id === highlightId ? ' is-match' : ''}`}
+              className={`fleet-slice${co.online === false && !co.flaky && !co.critical ? ' offline' : ''}${co.critical ? ' is-critical' : ''}${co.flaky ? ' is-warn' : ''}${co.id === highlightId ? ' is-match' : ''}`}
               onMouseEnter={() => setHovered(co.id)}
               onClick={() => window.electron?.openCompany?.(co.id, windowKey === '1w' ? 'day' : 'hour')}
             >
