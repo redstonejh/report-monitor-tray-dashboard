@@ -1344,13 +1344,14 @@ app.whenReady().then(() => {
       // popover toggles it closed.
       if (popoverPinned) hidePopover();
       else {
-        // Hover-opened → pin it in place (no re-show, so no flicker). Assert focus so
-        // a later off-click reliably blurs it and closes it; stamp the pin time so
-        // any immediate blur from this very click is ignored (see the blur handler).
+        // Hover-opened → pin it in place. NO re-show and NO focus() — the hover
+        // popover is already focused, and focus() here could trigger a relayout/
+        // resize that (now pinned) re-settled the window lower. A later off-click
+        // still blurs and closes it. Stamp the pin time so the brief blur from this
+        // very click is ignored (see the blur handler).
         popoverPinned = true;
         popoverPinnedAt = Date.now();
         cancelHideTimer();
-        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
       }
     } else {
       showExpandedWindow(true);
