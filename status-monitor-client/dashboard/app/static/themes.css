@@ -5459,7 +5459,7 @@ body.workspace-page-swipe-dragging{
 .dashboard-search-input{
   width: 100%;
   height: 32px;
-  margin: 0 0 4px;
+  margin: 0 0 9px;
   padding: 0 11px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 9px;
@@ -5471,12 +5471,30 @@ body.workspace-page-swipe-dragging{
 }
 .dashboard-search-input::placeholder{ color: rgba(255, 255, 255, 0.42); }
 .dashboard-search-input:focus{ border-color: rgba(255, 255, 255, 0.42); background: rgba(255, 255, 255, 0.1); }
-.dashboard-search-results{ max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.dashboard-search-results{ max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; }
+/* Same subtle macOS-style overlay scrollbar as the background picker. */
+.dashboard-search-results{ scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .26) transparent; }
+.dashboard-search-results::-webkit-scrollbar{ width: 10px; }
+.dashboard-search-results::-webkit-scrollbar-track{ background: transparent; }
+.dashboard-search-results::-webkit-scrollbar-thumb{
+  background: rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.dashboard-search-results::-webkit-scrollbar-thumb:hover{ background: rgba(255, 255, 255, .42); background-clip: padding-box; }
 /* Options ARE .company-overflow-item (all colour/hover/appearance comes from there
    — see the rule above). This only adds the name | IP row layout; the doubled
    selector beats the item's display:block regardless of stylesheet order. */
-.company-overflow-item.dashboard-search-result{ display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.dashboard-search-result .res-ip{ font-size: 0.82em; color: rgba(255, 255, 255, 0.5); font-weight: 400; flex: 0 0 auto; }
+/* Name on its own line, IP on the line below with MINIMAL gap; the spacing
+   BETWEEN result pairs comes from the item padding + the list gap (same as the
+   account menu's items). */
+.company-overflow-item.dashboard-search-result{ display: flex; align-items: stretch; }
+/* The name|IP column lives in this DIV (not the button) — a <button> won't grow to
+   fit a flex column, but a div does. gap 2px = the tight name↔IP pair; the 9px
+   spacing BETWEEN result rows comes from .dashboard-search-results gap. */
+.dashboard-search-result .res-lines{ display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-width: 0; }
+.dashboard-search-result .res-ip{ font-size: 0.82em; color: rgba(255, 255, 255, 0.5); font-weight: 400; }
 .dashboard-search-result.is-offline{ opacity: 0.5; }
 .dashboard-search-empty{ padding: 7px 12px; color: rgba(255, 255, 255, 0.5); font-size: 12.5px; }
 
@@ -5527,12 +5545,14 @@ body.workspace-page-swipe-dragging{
   position: absolute; top: calc(100% + 8px); left: 0;
   z-index: calc(var(--z-menu-overlay, 2600) + 30);
   width: 244px; max-height: 72vh; overflow-y: auto;
-  padding: 8px 6px; border-radius: 14px;
+  /* Rim whitespace (padding) == the 9px element gap — the user's "rim equal to
+     element spacing" rule. The 1px border sits outside this whitespace. */
+  padding: 9px 6px; border-radius: 14px;
   background: linear-gradient(180deg, rgba(22, 26, 36, 0.62), rgba(12, 16, 24, 0.55));
   -webkit-backdrop-filter: blur(26px) saturate(140%); backdrop-filter: blur(26px) saturate(140%);
   border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 18px 42px rgba(0, 0, 0, 0.4);
-  display: flex; flex-direction: column; gap: 1px;
+  display: flex; flex-direction: column; gap: 9px;
 }
 /* The legacy .background-tone-popover stays opacity:0/visibility:hidden and is only
    revealed by the portal CSS (which needs .nav-menu-shell — the old nav popover had
@@ -5546,11 +5566,11 @@ body.workspace-page-swipe-dragging{
   pointer-events: auto !important;
   transform: none !important;
 }
-.bg-picker-pop .background-tone-group, .bg-picker-pop .background-photo-group{ display: flex; flex-direction: column; gap: 1px; padding: 2px 0; }
-/* Section labels share the SAME size + weight as the options — they read as
-   headers purely through UPPERCASE + a muted colour, never a different size or
-   bolding (so nothing in the picker looks "slightly different"). */
-.bg-picker-pop .background-tone-label{ padding: 8px 12px 3px; font-size: 13px !important; font-weight: 600 !important; letter-spacing: .02em !important; text-transform: uppercase; color: rgba(255, 255, 255, .5) !important; }
+/* No per-group padding — every option is one equal interval apart (the 1px gap),
+   so group boundaries don't get extra space now that the labels are gone. */
+.bg-picker-pop .background-tone-group, .bg-picker-pop .background-photo-group{ display: flex; flex-direction: column; gap: 9px; padding: 0; margin: 0; border-top: none; }
+/* No section subtitles — the picker is a flat list of options. */
+.bg-picker-pop .background-tone-label{ display: none !important; }
 /* Options reuse the "…" overflow-item treatment EXACTLY: transparent, colour-only
    hover, no native appearance, no outline. (Colour options add a swatch dot.) */
 .bg-picker-pop .background-tone-option,
@@ -5558,27 +5578,37 @@ body.workspace-page-swipe-dragging{
 .bg-picker-pop .glass-fx-toggle{
   appearance: none !important; -webkit-appearance: none !important;
   border: 0 !important; box-shadow: none !important; outline: 0 !important; filter: none !important;
-  background: transparent !important; min-height: 0 !important;
-  padding: 7px 12px !important; margin: 0 !important; border-radius: 8px !important;
-  /* ONE font for every option, full stop. Colour options, photo options and the
-     glass toggle are otherwise styled by three separate rule blocks (lines ~2089,
-     ~3751 at 0,3,0, ~4111) that each set their own size/weight — that's why some
-     were bigger or bolder than others. !important on family+size+weight here makes
-     the single shared rule authoritative, so they are pixel-for-pixel identical. */
-  color: #ffffff !important; font: inherit;
-  font-family: inherit !important; font-size: 13px !important; font-weight: 600 !important; letter-spacing: 0 !important;
+  /* Every row the SAME height (photos were 22, colour rows only 16 → the base
+     colours looked cramped). 22px min unifies the row rhythm with the 9px gaps. */
+  background: transparent !important; min-height: 22px !important;
+  padding: 0 12px !important; margin: 0 !important; border-radius: 8px !important;
+  /* Normalized to the ACCOUNT menu (.auth-menu-item — the source of truth): the
+     SAME 0.95rem / weight 600 and the same muted→white colour, so the background
+     picker, account menu, and search menu all read identically. !important keeps
+     this shared rule authoritative over the legacy per-option blocks. */
+  color: rgba(255, 255, 255, 0.62) !important; font: inherit;
+  font-family: inherit !important; font-size: 0.95rem !important; font-weight: 600 !important; letter-spacing: 0 !important;
   text-align: left; cursor: pointer; white-space: nowrap; transition: color .14s ease;
   display: flex; align-items: center; gap: 9px; width: 100%;
 }
 /* The legacy glass-fx markup colours the "Liquid glass" name near-black (#1f2937).
    Force every text node in the picker white — no grey, no black. */
-.bg-picker-pop .glass-fx-name,
-.bg-picker-pop .glass-fx-toggle{ color: #ffffff !important; }
+.bg-picker-pop .glass-fx-toggle{ color: rgba(255, 255, 255, 0.62) !important; }
+.bg-picker-pop .glass-fx-name{ color: inherit !important; }
 .bg-picker-pop .background-tone-option:hover, .bg-picker-pop .background-photo-option:hover,
 .bg-picker-pop .glass-fx-toggle:hover, .bg-picker-pop .background-tone-option:focus-visible,
 .bg-picker-pop .background-photo-option:focus-visible, .bg-picker-pop .glass-fx-toggle:focus-visible{
-  background: transparent !important; color: #ffffff;
+  background: transparent !important; color: #ffffff !important;
 }
+/* No movement on hover/press — the overlay-layer rule (~3787) nudges options by
+   .5–1px (translateY); colour-only feedback like the account menu, no shift. */
+.bg-picker-pop .background-tone-option,
+.bg-picker-pop .background-photo-option,
+.bg-picker-pop .glass-fx-toggle,
+.bg-picker-pop .background-tone-option:hover, .bg-picker-pop .background-photo-option:hover, .bg-picker-pop .glass-fx-toggle:hover,
+.bg-picker-pop .background-tone-option:active, .bg-picker-pop .background-photo-option:active, .bg-picker-pop .glass-fx-toggle:active,
+.bg-picker-pop .background-tone-option:focus-visible, .bg-picker-pop .background-photo-option:focus-visible, .bg-picker-pop .glass-fx-toggle:focus-visible,
+.bg-picker-pop .background-tone-option.is-selected, .bg-picker-pop .background-photo-option.is-selected{ transform: none !important; }
 /* Selected option: the active background reads as brighter white text ONLY (the
    swatch/thumbnail already shows which one). The legacy is-selected state fills it
    blue (.workspace-menu-overlay-layer .background-tone-option.is-selected) — kill
@@ -5591,16 +5621,39 @@ body.workspace-page-swipe-dragging{
   color: #ffffff !important;
   transform: none !important;
 }
+/* Colour options use the SAME 14×14 rounded-square box symbol as the photo
+   thumbnails (.background-photo-option::before) — just filled with the tone colour
+   instead of an image. Keeps every row's left symbol identical in size/shape. */
 .bg-picker-pop .background-tone-option::before{
-  content: ""; flex: 0 0 auto; width: 13px; height: 13px; border-radius: 50%;
-  background: var(--base-tone, #888); border: 1px solid rgba(255, 255, 255, .3);
+  content: ""; flex: 0 0 auto; width: 14px; height: 14px; border-radius: 4px;
+  background: var(--base-tone, #888); border: 1px solid rgba(148, 163, 184, .38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .20), 0 2px 6px rgba(15, 23, 42, .14);
 }
-/* Liquid-glass toggle pill (green when on — never the legacy blue). */
-.bg-picker-pop .glass-fx-toggle{ justify-content: space-between; }
-.bg-picker-pop .glass-fx-switch{ position: relative; flex: 0 0 auto; width: 34px; height: 18px; border-radius: 999px; background: rgba(255, 255, 255, .18) !important; transition: background .15s ease; }
-.bg-picker-pop .glass-fx-switch::after{ content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s ease; }
-.bg-picker-pop .glass-fx-toggle.is-on .glass-fx-switch{ background: rgba(111, 201, 154, .9) !important; }
-.bg-picker-pop .glass-fx-toggle.is-on .glass-fx-switch::after{ transform: translateX(16px); }
+/* Liquid Glass = a flip-tile toggle in the same 14×14 box symbol as every row.
+   It rests FLAT (crisp 2D, exactly the colour-box size); turning it on spins it
+   once (rotateY 360°) — 3D only for the 0.45s flourish, never at rest, so it
+   doesn't rasterize blurry/small. ON = a liquid-glass chip with a diagonal sheen. */
+.bg-picker-pop .glass-fx-toggle{ justify-content: flex-start; gap: 9px; }
+/* Kill the legacy pill-toggle knob (.glass-fx-switch::before — a 14px white circle
+   positioned absolutely; with no positioned parent it floated over the label as a
+   misaligned white blob). The flat tile below IS the whole control now. */
+.bg-picker-pop .glass-fx-switch::before,
+.bg-picker-pop .glass-fx-switch::after{ content: none !important; display: none !important; }
+.bg-picker-pop .glass-fx-switch{
+  flex: 0 0 auto; width: 14px; height: 14px; border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .10);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .20);
+  transition: background .3s ease, border-color .3s ease, box-shadow .3s ease;
+}
+.bg-picker-pop .glass-fx-toggle.is-on .glass-fx-switch{
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .8) 0%, rgba(255, 255, 255, .14) 36%, rgba(255, 255, 255, 0) 56%),
+    linear-gradient(160deg, rgba(208, 228, 255, .52), rgba(150, 184, 236, .40));
+  border-color: rgba(255, 255, 255, .62);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 -2px 4px rgba(110, 145, 205, .3), 0 1px 3px rgba(20, 30, 60, .28);
+  animation: glassFlip .45s cubic-bezier(.2, .8, .2, 1);
+}
+@keyframes glassFlip{ 0%{ transform: rotateY(0deg); } 100%{ transform: rotateY(360deg); } }
 /* Super-subtle macOS-style overlay scrollbar: a thin translucent pill on a
    transparent track, inset via a transparent border so it floats sleekly; it
    firms up a touch on hover. */

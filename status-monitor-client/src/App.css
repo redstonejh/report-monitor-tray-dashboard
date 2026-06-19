@@ -213,10 +213,11 @@ body.win-acrylic .panel.peek { border-radius: 0; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* One EQUAL comfortable gap between EVERYTHING; content fills the window so the
-     only empty space is this breathing room. */
-  gap: 16px;
-  padding: 16px;
+  /* space-evenly = EVERY gap is equal, including the gap from the top/bottom edge
+     to the first/last row. (No vertical padding — that's what would make the edge
+     gaps differ from the inner gaps.) Horizontal padding only. */
+  justify-content: space-evenly;
+  padding: 0 16px;
   background: linear-gradient(180deg, rgba(31, 41, 55, 0.55), rgba(24, 32, 44, 0.5));
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   backdrop-filter: blur(18px) saturate(135%);
@@ -224,25 +225,13 @@ body.win-acrylic .panel.peek { border-radius: 0; }
   color: var(--text);
   font-size: 11.5px;
 }
-.legend-sec {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55);
-}
-.legend-row { display: flex; align-items: center; gap: 9px; line-height: 1.2; }
-/* The LITERAL tray-icon PNG (from main via toDataURL) — never a recreation. */
+.legend-row { display: flex; align-items: center; gap: 10px; line-height: 1.25; }
+/* Tray-icon PNG (LITERAL, from main) and donut band swatch — same 17px box so the
+   text lines up and the donut colours read as EQUAL-sized keys. */
 .legend-ico { flex: none; width: 17px; height: 17px; display: inline-block; }
 .legend-ico-ph { border-radius: 50%; background: rgba(255, 255, 255, 0.12); }
-/* The labelled donut-slice diagram: one REAL slice drawn with the FleetPie's own
-   path code, equal-thickness rings + horizontal arrows to each band's meaning. */
-.legend-donut { display: block; width: 100%; height: auto; }
-.legend-foot {
-  margin-top: 4px;
-  padding-top: 7px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-soft);
-}
+.legend-swatch { flex: none; width: 17px; height: 17px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2); }
+.legend-divider { height: 1px; background: rgba(255, 255, 255, 0.12); }
 
 /* The dashboard button reads as a clear, clickable glass pill that stands out
    from the plain icon controls, with a gently bouncing chevron. */

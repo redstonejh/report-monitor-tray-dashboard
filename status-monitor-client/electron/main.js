@@ -1166,8 +1166,7 @@ function createDashboardWindow() {
   dashboardWindow = new BrowserWindow({
     width: 1440,
     height: 1000,
-    minWidth: 1024,
-    minHeight: 720,
+    resizable: false,   // fixed size — the grid layout is tuned to this window
     show: false,
     frame: false,
     autoHideMenuBar: true,

@@ -472,7 +472,7 @@ export function initializeBackgroundController({ portalFloatingMenu, restoreFloa
     menu.addEventListener("toggle", () => {
       if (menu.open) {
         popover?.classList.add("open");
-        portalFloatingMenu(popover, trigger, { align: "right", offset: 8 });
+        portalFloatingMenu(popover, trigger, { align: "left", offset: 8 });
         return;
       }
       revertBackgroundPreview();

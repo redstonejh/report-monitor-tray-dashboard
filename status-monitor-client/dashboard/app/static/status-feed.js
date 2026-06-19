@@ -909,12 +909,16 @@ function injectCompanyCss() {
     -webkit-backdrop-filter:blur(26px) saturate(140%); backdrop-filter:blur(26px) saturate(140%);
     border:1px solid rgba(255,255,255,0.22); border-radius:14px; padding:8px 6px;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.24), 0 18px 42px rgba(0,0,0,0.4);
-    display:flex; flex-direction:column; gap:2px; min-width:210px;
+    display:flex; flex-direction:column; gap:9px; min-width:210px;
   }
   .company-overflow-item{
     display:block; appearance:none !important; -webkit-appearance:none !important;
-    padding:7px 12px !important; border:0 !important; background:transparent !important;
+    padding:0 12px !important; border:0 !important; background:transparent !important;
     box-shadow:none !important; outline:0 !important; filter:none !important; min-height:0 !important;
+    /* CRITICAL: these items live in a max-height + overflow-y:auto flex column. With
+       the flex default shrink:1 they get CRUSHED to fit (2-line search rows collapse
+       to one line-height and the text overlaps). shrink:0 makes the list SCROLL. */
+    flex-shrink:0 !important;
     color:rgba(255,255,255,0.6); font:inherit; font-size:0.95rem; font-weight:600;
     text-shadow:var(--dashboard-custom-text-shadow);
     text-align:left; border-radius:8px; cursor:pointer; white-space:nowrap;
@@ -1131,10 +1135,16 @@ function initDashboardSearch() {
       // it already kills the native button appearance/blue active state and uses a
       // colour-only hover. dashboard-search-result only adds the name|IP layout.
       b.className = "company-overflow-item dashboard-search-result" + (m.online ? "" : " is-offline");
+      // A <button> in Chromium will NOT grow to fit a flex/block column of children
+      // (it collapses to one line-height and centres the overflow — lines then
+      // overlap). So the name|IP column lives in a real <div> INSIDE the button. */
+      const lines = document.createElement("div");
+      lines.className = "res-lines";
       const name = document.createElement("span");
       name.textContent = m.label;
-      b.appendChild(name);
-      if (m.host) { const ip = document.createElement("span"); ip.className = "res-ip"; ip.textContent = m.host; b.appendChild(ip); }
+      lines.appendChild(name);
+      if (m.host) { const ip = document.createElement("span"); ip.className = "res-ip"; ip.textContent = m.host; lines.appendChild(ip); }
+      b.appendChild(lines);
       b.addEventListener("click", () => { close(); setActiveCompany(m.id); });
       results.appendChild(b);
     }

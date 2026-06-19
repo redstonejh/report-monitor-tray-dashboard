@@ -233,13 +233,27 @@
     layoutMenu.style.left = `${Math.round(r.right + 6)}px`;
     layoutMenu.style.top = `${Math.round(r.top - 8)}px`;
   };
-  layoutBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    const open = !layoutMenu.classList.contains("open");
-    if (open) positionLayoutMenu();
-    layoutMenu.classList.toggle("open", open);
-    layoutBtn.setAttribute("aria-expanded", String(open));
-  });
+  // Open on HOVER (no click). A short close delay bridges the 6px gap between the
+  // Layout item and the flyout so it doesn't flicker shut on the way over; the
+  // CSS animates the open/close (.auth-submenu / .auth-submenu.open).
+  let layoutCloseTimer = null;
+  const cancelLayoutClose = () => { if (layoutCloseTimer) { clearTimeout(layoutCloseTimer); layoutCloseTimer = null; } };
+  const openLayoutMenu = () => {
+    cancelLayoutClose();
+    positionLayoutMenu();
+    layoutMenu.classList.add("open");
+    layoutBtn.setAttribute("aria-expanded", "true");
+  };
+  const scheduleLayoutClose = () => {
+    cancelLayoutClose();
+    layoutCloseTimer = window.setTimeout(() => { closeLayoutMenu(); layoutCloseTimer = null; }, 150);
+  };
+  layoutBtn.addEventListener("mouseenter", openLayoutMenu);
+  layoutBtn.addEventListener("mouseleave", scheduleLayoutClose);
+  layoutMenu.addEventListener("mouseenter", cancelLayoutClose);
+  layoutMenu.addEventListener("mouseleave", scheduleLayoutClose);
+  // Click still opens (touch / keyboard activation), but hover is the norm.
+  layoutBtn.addEventListener("click", (e) => { e.stopPropagation(); openLayoutMenu(); });
   layoutMenu.querySelector(".auth-layout-save").addEventListener("click", (e) => {
     e.stopPropagation();
     flashLabel(e.currentTarget, layoutSave() ? "Saved ✓" : "Unavailable");
@@ -504,7 +518,7 @@
          background, text rgba .62 → white). Never a filled/blue hover. */
       .auth-profile-menu {
         position: absolute; top: calc(100% + 8px); left: 0; width: 220px;
-        display: none; flex-direction: column; gap: 1px; padding: 8px 6px; border-radius: 14px;
+        display: none; flex-direction: column; gap: 9px; padding: 9px 6px; border-radius: 14px;
         background: linear-gradient(180deg, rgba(22, 26, 36, 0.62), rgba(12, 16, 24, 0.55));
         -webkit-backdrop-filter: blur(26px) saturate(140%);
         backdrop-filter: blur(26px) saturate(140%);
@@ -512,8 +526,16 @@
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 18px 42px rgba(0, 0, 0, 0.4);
       }
       .auth-profile-cluster.open .auth-profile-menu { display: flex; }
-      .auth-profile-head { display: flex; flex-direction: column; padding: 4px 12px 8px; }
-      .auth-profile-name { font-size: 14px; font-weight: 700; color: #ffffff; }
+      /* THE SPACING MODEL (read before touching gap/padding here):
+         hover is colour-only (transparent bg), so item padding draws NOTHING — it is
+         pure invisible spacing. To make edge-gap == inter-gap (the user's hard rule),
+         ALL vertical spacing lives in ONE place: the menu gap. Items/head carry NO
+         vertical padding. Edge gap = border(1) + padding-block(8) = 9 == gap(9).
+         Want looser/tighter? Change gap to N and padding-block to N-1, together. */
+      .auth-profile-head { display: flex; flex-direction: column; padding: 0 12px; }
+      /* Match the menu items' size (0.95rem) — the name was smaller than the
+         items below it. Bold still sets it apart as the header. */
+      .auth-profile-name { font-size: 0.95rem; font-weight: 700; color: #ffffff; }
       .auth-role-badge {
         align-self: flex-start; font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
         text-transform: uppercase; padding: 1px 8px; border-radius: 999px;
@@ -523,7 +545,7 @@
         appearance: none; -webkit-appearance: none;
         display: flex; align-items: center; justify-content: flex-start;
         text-align: left; border: 0; outline: 0; box-shadow: none;
-        border-radius: 8px; padding: 7px 12px; margin: 0; width: 100%; cursor: pointer;
+        border-radius: 8px; padding: 0 12px; margin: 0; width: 100%; cursor: pointer;
         background: transparent; color: rgba(255, 255, 255, 0.62);
         font: inherit; font-size: 0.95rem; font-weight: 600; white-space: nowrap;
         transition: color 0.14s ease;
@@ -541,15 +563,24 @@
       .auth-layout[aria-expanded="true"] .auth-submenu-caret { color: #ffffff; }
       .auth-submenu {
         position: fixed; top: 0; left: 0; min-width: 150px;
-        display: none; flex-direction: column; gap: 1px; padding: 8px 6px; border-radius: 14px;
+        /* Always laid out (fixed) — opens/closes by fading + sliding in from the
+           left, NOT a display toggle (so it can animate smoothly on hover). */
+        display: flex; flex-direction: column; gap: 9px; padding: 9px 6px; border-radius: 14px;
         background: linear-gradient(180deg, rgba(22, 26, 36, 0.62), rgba(12, 16, 24, 0.55));
         -webkit-backdrop-filter: blur(26px) saturate(140%);
         backdrop-filter: blur(26px) saturate(140%);
         border: 1px solid rgba(255, 255, 255, 0.22);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 18px 42px rgba(0, 0, 0, 0.4);
         z-index: calc(var(--z-menu-overlay, 2600) + 22);
+        opacity: 0; visibility: hidden; pointer-events: none;
+        transform: translateX(-6px) scale(0.97); transform-origin: left top;
+        transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.18s;
       }
-      .auth-submenu.open { display: flex; }
+      .auth-submenu.open {
+        opacity: 1; visibility: visible; pointer-events: auto;
+        transform: translateX(0) scale(1);
+        transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
 
       .auth-modal-backdrop {
         position: fixed; inset: 0; z-index: 100001;
