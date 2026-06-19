@@ -763,9 +763,12 @@ function createWindow() {
 
   mainWindow.on('blur', () => {
     if (mainWindow.webContents.isDevToolsOpened()) return;
-    // The legend window is open (or just closed by this very click): keep the
-    // popover up. The FIRST off-click closes the legend; the SECOND closes this.
-    if (legendOpen || Date.now() - legendClosedAt < 400) return;
+    // The legend window is open: keep the popover up (the legend stole our focus).
+    // Closing the legend returns focus here, so the SECOND off-click blurs the
+    // popover and runs the dismiss below. The short recency window only absorbs any
+    // focus churn from that refocus — it is NOT long enough to swallow a real
+    // second click (which is a deliberate, later action).
+    if (legendOpen || Date.now() - legendClosedAt < 150) return;
     if (popoverPinned) {
       hidePopover();
       return;
@@ -861,6 +864,11 @@ function ensureLegendWindow() {
   legendWindow.on('blur', () => {
     if (legendWindow && legendWindow.webContents.isDevToolsOpened()) return;
     hideLegendWindow();
+    // Return focus to the popover so the NEXT off-click blurs IT and closes the
+    // dashboard. The legend stole focus from the popover when it opened and the
+    // popover never got it back — so without this it could never receive a second
+    // blur, and the dashboard wouldn't close on the second off-click.
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) mainWindow.focus();
   });
   legendWindow.on('close', (e) => { if (!isQuitting) { e.preventDefault(); hideLegendWindow(); } });
   return legendWindow;
