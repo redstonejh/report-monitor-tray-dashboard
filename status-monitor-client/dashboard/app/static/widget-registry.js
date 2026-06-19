@@ -1222,24 +1222,32 @@
               data: ordered.map((bk) => ({ value: 100, itemStyle: { color: bk.empty ? EMPTY_GREY : pingColour(bk), borderRadius: 3 }, ...bucketMeta(bk) })),
             }];
           }
-          // HP-bar segments stack bottom-up: healthy green, degraded amber,
-          // down red — each proportional to its share of the bucket. Empty
-          // (no-data) slots render as a full-height translucent grey bar.
+          // HP-bar segments stack bottom-up: healthy green, degraded amber, down red.
+          // Empty (no-data) slots render as a full-height translucent grey bar.
           //
-          // Exaggeration: a few bad pings in a big bucket would be a near-invisible
-          // sliver, so any non-zero degraded/down share is bumped to a MINIMUM
-          // visible band (carved out of the green share, never overflowing 100), so
-          // amber/red read at a glance even when there were only a few.
-          //
-          // The SAME minimum for both, so a lone down isn't exaggerated bigger than a
-          // lone degraded — one of each is visible and they read at equal size.
-          const MIN_BAD = 10;
+          // Sizing the bad bands is a balance of three things:
+          //  1. The TOTAL bad band tracks the bucket's bad SHARE, but never below
+          //     MIN_TOTAL (so a few-bad day still reads "not all green") — green stays
+          //     large for a healthy day, which is the honest picture.
+          //  2. WITHIN the bad band, down vs degraded split by sqrt(COUNT), so the
+          //     more-numerous severity reads BIGGER at a glance (25 degraded clearly
+          //     beats 3 down) — but sqrt compresses it so it's never HUGELY bigger.
+          //  3. Each present severity is floored at MIN_EACH so even a single one is
+          //     visible. A flat per-severity minimum (the old approach) made both clamp
+          //     to the same size on a busy day, hiding that there were more degradeds.
+          const MIN_TOTAL = 10, MIN_EACH = 4;
           const hpShares = (bk) => {
             if (!bk.total) return { ok: 0, degraded: 0, down: 0 };
-            let down = (bk.down / bk.total) * 100;
-            let degraded = (bk.degraded / bk.total) * 100;
-            if (down > 0) down = Math.max(down, MIN_BAD);
-            if (degraded > 0) degraded = Math.max(degraded, MIN_BAD);
+            const badCount = bk.down + bk.degraded;
+            if (!badCount) return { ok: 100, degraded: 0, down: 0 };
+            const badBand = Math.max(MIN_TOTAL, (badCount / bk.total) * 100);
+            const wd = bk.down > 0 ? Math.sqrt(bk.down) : 0;
+            const wg = bk.degraded > 0 ? Math.sqrt(bk.degraded) : 0;
+            const wsum = wd + wg || 1;
+            let down = badBand * (wd / wsum);
+            let degraded = badBand * (wg / wsum);
+            if (bk.down > 0) down = Math.max(down, MIN_EACH);
+            if (bk.degraded > 0) degraded = Math.max(degraded, MIN_EACH);
             if (down + degraded > 100) { const s = 100 / (down + degraded); down *= s; degraded *= s; }
             const r = (n) => Math.round(n * 10) / 10;
             return { ok: r(Math.max(0, 100 - down - degraded)), degraded: r(degraded), down: r(down) };
