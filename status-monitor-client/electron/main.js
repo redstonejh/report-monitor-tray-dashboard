@@ -1068,15 +1068,13 @@ function capturePopoverAnchor() {
   if (capturedAnchorPoint && mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
     return capturedAnchorPoint;
   }
-  const trayBounds = tray.getBounds();
-  const cursorPoint = screen.getCursorScreenPoint();
-  const hasUsableTrayBounds = trayBoundsAreUsable(trayBounds, cursorPoint);
-  capturedAnchorPoint = hasUsableTrayBounds
-    ? {
-        x: trayBounds.x + trayBounds.width / 2,
-        y: trayBounds.y,
-      }
-    : cursorPoint;
+  // Anchor to the CURSOR — it's reliably on the icon when you hover/click to open,
+  // whether the icon is in the visible taskbar OR the overflow ("expanded tray")
+  // flyout. tray.getBounds() returns the COLLAPSED taskbar position for an
+  // overflowed icon, so anchoring to it made the popover spawn down at the taskbar
+  // instead of next to the flyout (the "spawns lower sometimes"). Captured once and
+  // kept fixed for the session so it doesn't trail the cursor on resize.
+  capturedAnchorPoint = screen.getCursorScreenPoint();
   return capturedAnchorPoint;
 }
 
@@ -1115,16 +1113,9 @@ function boundsForTrayAnchor(height = null) {
 
   if (anchorNearTop) {
     lastAnchorEdge = 'top';
-    // Sit just below the top taskbar — a fixed reference, not the variable anchor y.
-    y = workArea.y + POPOVER_ANCHOR_GAP;
+    y = anchorPoint.y + POPOVER_ANCHOR_GAP;
   } else {
     lastAnchorEdge = 'bottom';
-    // Anchor the BOTTOM to the work-area edge (just above the taskbar), NOT the
-    // anchor's y. tray.getBounds() is unreliable (overflow flyout) and falls back to
-    // the cursor, which sits a bit lower than the icon — that made the popover
-    // sometimes spawn lower. The work-area edge is constant, so the vertical position
-    // is now consistent. x still follows the tray/cursor.
-    y = workArea.y + workArea.height - targetHeight - POPOVER_ANCHOR_GAP;
   }
 
   x = Math.round(Math.min(Math.max(x, workArea.x), workArea.x + workArea.width - width));
