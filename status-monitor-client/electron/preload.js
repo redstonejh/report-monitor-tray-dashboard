@@ -44,6 +44,9 @@ contextBridge.exposeInMainWorld('electron', {
   // Legend ("i") opens as a separate window to the left of the popover.
   toggleLegend: () => ipcRenderer.invoke('legend:toggle'),
   closeLegend: () => ipcRenderer.invoke('legend:close'),
+  // The invisible full-screen dismiss scrim (shown while the legend is open)
+  // reports off-clicks here so the dashboard can do its layered dismiss.
+  scrimClick: () => ipcRenderer.send('scrim:click'),
   // The exact tray-icon PNGs (as data URLs) for the legend key.
   getTrayIcons: () => ipcRenderer.invoke('tray-icons:get'),
   onPopoverMode: (cb) => ipcRenderer.on('window:mode', (_e, mode) => cb(mode)),

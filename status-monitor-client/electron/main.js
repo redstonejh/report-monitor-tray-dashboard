@@ -103,6 +103,12 @@ let capturedAnchorPoint = null;
 let legendWindow = null;
 let legendOpen = false;
 let legendClosedAt = 0;
+// Invisible full-screen click-catcher shown while the legend is open. On Windows the
+// popover can't pull focus back after an off-click lands on the desktop, so a second
+// off-click would never reach it via blur. This scrim catches those off-clicks
+// directly (it sits below the popover/legend but above everything else) to drive the
+// layered dismiss: 1st off-click closes the legend, 2nd closes the dashboard.
+let dismissScrim = null;
 const LEGEND_W = 256; // SAME size as the popover window (POPOVER_WIDTH × its height)
 const LEGEND_H = 319; // measured popover window height — content fills it exactly, no wasted space
 
@@ -821,6 +827,7 @@ function resetToHoverBaseline() {
 
 function hidePopover() {
   hideLegendWindow();
+  hideDismissScrim();
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.hide();
   }
@@ -860,15 +867,12 @@ function ensureLegendWindow() {
   } else {
     legendWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`), { search: 'legend=1' });
   }
-  // Click anywhere off the legend → it loses focus → close just the legend.
+  // Legend loses focus only when the user clicks the POPOVER itself (off-clicks are
+  // caught by the dismiss scrim, which is non-activating and doesn't move focus).
+  // Closing here keeps the scrim up so the next off-click still closes the dashboard.
   legendWindow.on('blur', () => {
     if (legendWindow && legendWindow.webContents.isDevToolsOpened()) return;
     hideLegendWindow();
-    // Return focus to the popover so the NEXT off-click blurs IT and closes the
-    // dashboard. The legend stole focus from the popover when it opened and the
-    // popover never got it back — so without this it could never receive a second
-    // blur, and the dashboard wouldn't close on the second off-click.
-    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) mainWindow.focus();
   });
   legendWindow.on('close', (e) => { if (!isQuitting) { e.preventDefault(); hideLegendWindow(); } });
   return legendWindow;
@@ -889,7 +893,60 @@ function showLegendWindow() {
   if (y + LEGEND_H > area.y + area.height - 4) y = area.y + area.height - LEGEND_H - 4;
   w.setBounds({ x: Math.round(x), y: Math.round(y), width: LEGEND_W, height: LEGEND_H });
   legendOpen = true;
-  w.show(); // focus it so a click elsewhere fires its blur (and closes it)
+  w.show(); // focus it so a click ON THE POPOVER fires its blur (and closes it)
+  showDismissScrim(); // catch OFF-clicks for the layered dismiss
+}
+
+// ─── Dismiss scrim (catches off-clicks while the legend is open) ───────────────
+function dismissScrimOpts() {
+  return {
+    show: false, frame: false, transparent: true, resizable: false, skipTaskbar: true,
+    alwaysOnTop: true, hasShadow: false, focusable: false, backgroundColor: '#00000000',
+    thickFrame: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false, contextIsolation: true,
+    },
+  };
+}
+
+// Inlined as a data URL (NOT a file): electron-forge's Vite build only emits the JS
+// entry points to .vite/build, so a static scrim.html next to the source isn't there
+// at runtime. The preload still applies, so window.electron.scrimClick() is available.
+const SCRIM_HTML =
+  '<!doctype html><html><head><meta charset="utf-8">' +
+  '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'">' +
+  '<style>html,body{margin:0;padding:0;width:100vw;height:100vh;background:transparent;overflow:hidden;cursor:default}</style></head>' +
+  '<body><script>window.addEventListener("mousedown",function(){try{window.electron&&window.electron.scrimClick();}catch(e){}},true);</script></body></html>';
+
+function ensureDismissScrim() {
+  if (dismissScrim && !dismissScrim.isDestroyed()) return dismissScrim;
+  dismissScrim = new BrowserWindow(dismissScrimOpts());
+  dismissScrim.setIgnoreMouseEvents(false);
+  dismissScrim.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(SCRIM_HTML));
+  dismissScrim.on('close', (e) => { if (!isQuitting) { e.preventDefault(); hideDismissScrim(); } });
+  return dismissScrim;
+}
+
+function showDismissScrim() {
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
+  const w = ensureDismissScrim();
+  // Cover the union of every display so an off-click on any monitor is caught.
+  const ds = screen.getAllDisplays();
+  const x = Math.min(...ds.map((d) => d.bounds.x));
+  const y = Math.min(...ds.map((d) => d.bounds.y));
+  const right = Math.max(...ds.map((d) => d.bounds.x + d.bounds.width));
+  const bottom = Math.max(...ds.map((d) => d.bounds.y + d.bounds.height));
+  w.setBounds({ x, y, width: right - x, height: bottom - y });
+  w.setAlwaysOnTop(true); // below the popover/legend ('screen-saver' level)
+  w.showInactive();       // never steal focus
+  // Keep the popover and legend ABOVE the scrim so they stay clickable.
+  if (legendWindow && !legendWindow.isDestroyed() && legendWindow.isVisible()) legendWindow.moveTop();
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.moveTop();
+}
+
+function hideDismissScrim() {
+  if (dismissScrim && !dismissScrim.isDestroyed() && dismissScrim.isVisible()) dismissScrim.hide();
 }
 
 function hideLegendWindow() {
@@ -1429,6 +1486,13 @@ ipcMain.handle('legend:toggle', (e) => {
   return { ok: true };
 });
 ipcMain.handle('legend:close', () => { hideLegendWindow(); return { ok: true }; });
+
+// Off-click reported by the dismiss scrim → layered dismiss. The FIRST off-click
+// (legend still open) closes only the legend; the SECOND closes the dashboard.
+ipcMain.on('scrim:click', () => {
+  if (legendOpen) { hideLegendWindow(); return; }
+  hidePopover();
+});
 
 // The legend window shows the LITERAL tray icons as its key — hand it the exact
 // nativeImages the tray uses, as PNG data URLs (not a CSS recreation).
