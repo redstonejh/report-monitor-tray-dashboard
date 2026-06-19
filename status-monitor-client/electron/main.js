@@ -1115,9 +1115,16 @@ function boundsForTrayAnchor(height = null) {
 
   if (anchorNearTop) {
     lastAnchorEdge = 'top';
-    y = anchorPoint.y + POPOVER_ANCHOR_GAP;
+    // Sit just below the top taskbar — a fixed reference, not the variable anchor y.
+    y = workArea.y + POPOVER_ANCHOR_GAP;
   } else {
     lastAnchorEdge = 'bottom';
+    // Anchor the BOTTOM to the work-area edge (just above the taskbar), NOT the
+    // anchor's y. tray.getBounds() is unreliable (overflow flyout) and falls back to
+    // the cursor, which sits a bit lower than the icon — that made the popover
+    // sometimes spawn lower. The work-area edge is constant, so the vertical position
+    // is now consistent. x still follows the tray/cursor.
+    y = workArea.y + workArea.height - targetHeight - POPOVER_ANCHOR_GAP;
   }
 
   x = Math.round(Math.min(Math.max(x, workArea.x), workArea.x + workArea.width - width));
@@ -1344,14 +1351,14 @@ app.whenReady().then(() => {
       // popover toggles it closed.
       if (popoverPinned) hidePopover();
       else {
-        // Hover-opened → pin it in place. NO re-show and NO focus() — the hover
-        // popover is already focused, and focus() here could trigger a relayout/
-        // resize that (now pinned) re-settled the window lower. A later off-click
-        // still blurs and closes it. Stamp the pin time so the brief blur from this
-        // very click is ignored (see the blur handler).
+        // Hover-opened → pin it in place (no re-show, so no flicker). focus() is
+        // required: the tray click blurs the popover, and without re-focusing it a
+        // later off-click wouldn't blur it and it'd never close. Stamp the pin time
+        // so the brief blur from THIS click is ignored (see the blur handler).
         popoverPinned = true;
         popoverPinnedAt = Date.now();
         cancelHideTimer();
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.focus();
       }
     } else {
       showExpandedWindow(true);
