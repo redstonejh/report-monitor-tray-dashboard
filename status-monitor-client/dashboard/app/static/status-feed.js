@@ -1000,6 +1000,12 @@ function openOverflowMenu(side, anchor) {
 // Five visible = the active company centred with two stepped tiers per side.
 const VISIBLE_COMPANY_TABS = 5;
 
+// Historical (taken-off-the-network) connections are hidden from the dashboard's
+// tabs / overflow / search — EXCEPT the one currently open, so opening one from the
+// popover's shovel dropdown still shows it.
+function visibleCompanies() {
+  return companyState.companies.filter((c) => !c.historical || c.id === companyState.active);
+}
 function renderCompanyTabs() {
   injectCompanyCss();
   const wsBar = document.querySelector(".workspace-tab-bar");
@@ -1016,7 +1022,7 @@ function renderCompanyTabs() {
     bar.querySelector(".company-overflow-left").addEventListener("click", (e) => { e.stopPropagation(); openOverflowMenu("left", e.currentTarget); });
     bar.querySelector(".company-overflow-right").addEventListener("click", (e) => { e.stopPropagation(); openOverflowMenu("right", e.currentTarget); });
   }
-  const all = companyState.companies;
+  const all = visibleCompanies();
   const n = all.length;
   let active = all.findIndex((c) => c.id === companyState.active);
   if (active < 0) active = 0;
@@ -1130,7 +1136,7 @@ function initDashboardSearch() {
     const q = input.value.trim().toLowerCase();
     results.innerHTML = "";
     // Show the FULL circuit list by default (empty query); typing filters it down.
-    const all = companyState.companies
+    const all = visibleCompanies()
       .map((c) => ({ id: c.id, label: conciseLabel(c.label), host: String(c.host || ""), online: c.online !== false }));
     const matches = q
       ? all.filter((c) => c.label.toLowerCase().includes(q) || c.host.toLowerCase().includes(q))

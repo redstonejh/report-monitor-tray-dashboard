@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('electron', {
   // Tray pie: per-company past-24h condition mix, and slice click-through that
   // opens the dashboard on that company's tab.
   getCompaniesPie: (windowMs) => ipcRenderer.invoke('companies:pie', windowMs),
+  // Connections once tracked but now taken off the MQTT network (the historical roster).
+  getHistoricalCompanies: () => ipcRenderer.invoke('companies:historical'),
   openCompany: (companyId, chartDepth) => ipcRenderer.invoke('dashboard:open-company', companyId, chartDepth),
 
   // Current dashboard background environment (tone colors + optional photo)

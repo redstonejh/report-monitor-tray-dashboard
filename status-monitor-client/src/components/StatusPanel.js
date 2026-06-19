@@ -194,6 +194,70 @@ function FleetPie({ query = '' }) {
   );
 }
 
+// Bottom-right dropdown of connections once tracked but now TAKEN OFF the network
+// (the agent is alive but no longer publishing that connection's checks). They're
+// hidden from the donut + main dashboard; their full history is preserved. Clicking
+// one opens the main dashboard on that connection. Renders nothing while empty.
+function HistoricalMenu() {
+  const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => window.electron?.getHistoricalCompanies?.().then((list) => {
+      if (!cancelled && Array.isArray(list)) setItems(list);
+    }).catch(() => {});
+    load();
+    const id = setInterval(load, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+  // The shovel is always present in the bottom-right; an empty dropdown just says so.
+  return (
+    <div className="historical-menu" onMouseLeave={() => setOpen(false)}>
+      {open && (
+        <div className="historical-list">
+          {items.length === 0 ? (
+            <div className="historical-empty">No historical connections</div>
+          ) : (
+            items.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className="historical-item"
+                title={`${c.label}${c.host ? ' · ' + c.host : ''} — no longer on the network`}
+                onClick={() => { setOpen(false); window.electron?.openCompany?.(c.id, 'hour'); }}
+              >
+                <span className="historical-name">{conciseLabel(c.label)}</span>
+                {c.host && <span className="historical-ip">{c.host}</span>}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+      <button
+        type="button"
+        className={`icon-btn historical-fab${open ? ' is-active' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        title={`Inactive connections (${items.length}) — no longer on the network`}
+        aria-label="Inactive connections"
+      >
+        {/* Little shovel — "dig up" the historical record. Stroke icon, same family
+            as the other popover .icon-btn glyphs. */}
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+             strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {/* Garden spade, tilted ~22° to dig lower-left: triangular D-handle grip +
+              shaft + a square-mouth blade with a FLAT digging edge (the flat bottom &
+              the foot-tread top edge are what stop it reading as a spoon). */}
+          <g transform="rotate(-18 12 12)">
+            <path d="M8.5 4h7" />
+            <path d="M12 4v9" />
+            <path d="M7 13h10l-.6 5.4a3 3 0 0 1-2.9 2.6h-3a3 3 0 0 1-2.9-2.6z" />
+          </g>
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export default function StatusPanel({ mode = 'expanded', fleetQuery = '' }) {
   const { status, detail, checkedAt, connectionState } = useStatusStore();
   const { projectId } = useSettingsStore();
@@ -234,6 +298,7 @@ export default function StatusPanel({ mode = 'expanded', fleetQuery = '' }) {
   return (
     <div className="status-hero neutral">
       <FleetPie query={fleetQuery} />
+      <HistoricalMenu />
     </div>
   );
 }

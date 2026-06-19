@@ -493,11 +493,17 @@ function allowedCompanyIds() {
 function companyList() {
   const out = new Map();
   for (const r of roster.values()) {
-    out.set(r.id, { id: r.id, label: r.label, status: 'offline', online: false, checks: 0 });
+    out.set(r.id, { id: r.id, label: r.label, status: 'offline', online: false, checks: 0, historical: false, lastSeen: r.lastSeen || 0 });
   }
   for (const e of companies.values()) {
     const online = companyOnline(e);
     const lastPing = e.pings.length ? e.pings[e.pings.length - 1] : null;
+    const lastSeen = lastPing && lastPing.checkedAt ? Date.parse(lastPing.checkedAt) : 0;
+    // HISTORICAL ("taken off the network"): the monitoring agent is still alive
+    // (online) but it has stopped publishing checks for THIS connection — i.e. the
+    // explorer removed it from monitoring. A whole-agent outage (online === false,
+    // e.g. Port 8000) is NOT historical — that's just offline, it may come back.
+    const historical = online && lastSeen > 0 && (Date.now() - lastSeen) >= ONLINE_MS;
     out.set(e.id, {
       id: e.id,
       label: e.label,
@@ -505,6 +511,8 @@ function companyList() {
       online,
       checks: e.lastByCheck.size,
       host: (lastPing && lastPing.host) || '', // target IP, for search-by-IP
+      historical,
+      lastSeen,
     });
   }
   const allowed = allowedCompanyIds();
@@ -1403,6 +1411,12 @@ ipcMain.handle('status:get', () => statusSnapshot());
 
 // Multi-company API for the dashboard tabs.
 ipcMain.handle('companies:get', () => companyList());
+// Connections once tracked but now taken off the network (agent alive, but no longer
+// publishing this connection's checks). Hidden from the donut + dashboard; surfaced in
+// the popover's historical dropdown. Their full ping history is preserved (companies
+// are never deleted), so opening one still shows its record.
+ipcMain.handle('companies:historical', () =>
+  companyList().filter((c) => c.historical).sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0)));
 
 // viewer name → its source IP (derived from each location's own circuit).
 ipcMain.handle('viewers:ips', () => {
@@ -1673,7 +1687,9 @@ ipcMain.handle('companies:pie', (e, windowMs) => {
   // Optional time filter (tray donut 1hr / 1d / 1w). Default = the retained 24h.
   const w = Number(windowMs);
   const useWindow = Number.isFinite(w) && w > 0 && w !== PERSIST_WINDOW_MS;
-  return companyList().map((co) => {
+  // Historical (taken-off-the-network) connections are surfaced in the popover's
+  // historical dropdown instead, never as donut slices.
+  return companyList().filter((co) => !co.historical).map((co) => {
     const entry = companies.get(co.id);
     if (!entry) {
       return { id: co.id, label: co.label, host: co.host || '', online: co.online, healthy: 0, degraded: 0, down: 0, total: 0, viewers: 1, critical: false, flaky: false, criticalCount: 0 };

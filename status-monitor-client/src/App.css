@@ -371,6 +371,38 @@ body.win-acrylic .panel.peek { border-radius: 0; }
 .status-hero.red     { --accent: var(--red); }
 .status-hero.neutral { --accent: var(--neutral); }
 
+/* Bottom-right "Inactive" dropdown: connections once tracked, now taken off the
+   network. Hidden from the donut/dashboard; opens the dashboard on that connection. */
+.status-hero { position: relative; }
+/* Mirror of .legend-fab (bottom-LEFT) on the RIGHT — the shovel is just another
+   .icon-btn; this only places the menu + its dropdown. */
+.historical-menu {
+  position: absolute; right: 8px; bottom: 8px; z-index: 7;
+  display: flex; flex-direction: column; align-items: flex-end;
+  -webkit-app-region: no-drag;
+}
+.historical-list {
+  margin-bottom: 6px; max-height: 184px; overflow-y: auto; min-width: 150px; max-width: 220px;
+  display: flex; flex-direction: column; gap: 1px; padding: 6px; border-radius: 12px;
+  background: linear-gradient(180deg, rgba(22, 26, 36, 0.82), rgba(12, 16, 24, 0.76));
+  -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 16px 36px rgba(0, 0, 0, 0.45);
+}
+.historical-item {
+  appearance: none; -webkit-appearance: none; border: 0; background: transparent;
+  color: rgba(255, 255, 255, 0.62); font: inherit; text-align: left; cursor: pointer;
+  padding: 5px 9px; border-radius: 8px; display: flex; flex-direction: column; gap: 1px;
+  transition: color 0.14s ease;
+}
+.historical-item:hover { color: #ffffff; }
+.historical-name { font-size: 0.86rem; font-weight: 600; white-space: nowrap; }
+.historical-ip { font-size: 0.72rem; color: rgba(255, 255, 255, 0.45); }
+.historical-empty {
+  padding: 6px 9px; font-size: 0.8rem; color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap; text-align: center;
+}
+
 /* Donut time filters — plain clickable text under the pie (never a box/pill). The
    active window is brighter with a thin underline; the rest are muted. Colour-only,
    matching the dashboard's text-style time filter. */
