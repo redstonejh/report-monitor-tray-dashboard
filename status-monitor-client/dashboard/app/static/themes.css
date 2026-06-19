@@ -6299,6 +6299,22 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
 .runtime-well-widget .widget-content-well.widget-library-surface{
   scrollbar-width: none;
 }
+/* …except TABLES, which get the SAME sleek translucent overlay scrollbar as the
+   search popover and background picker. Higher specificity (adds the table class)
+   beats the hide-rule above; only table wells are affected. */
+.runtime-well-widget .widget-content-well.widget-library-surface.runtime-table-library-surface{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .26) transparent;
+}
+.runtime-table-library-surface::-webkit-scrollbar{ width: 10px; height: 10px; }
+.runtime-table-library-surface::-webkit-scrollbar-track{ background: transparent; }
+.runtime-table-library-surface::-webkit-scrollbar-thumb{
+  background: rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.runtime-table-library-surface::-webkit-scrollbar-thumb:hover{ background: rgba(255, 255, 255, .42); background-clip: padding-box; }
 /* Tooltip and level-strip text stay on their well-aware vars, which the
  * block above pins light — nothing else changes. */
 
