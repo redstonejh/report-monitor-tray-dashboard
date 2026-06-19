@@ -977,7 +977,15 @@ function openOverflowMenu(side, anchor) {
     const item = document.createElement("button");
     item.type = "button";
     item.className = "company-overflow-item" + (co.online === false ? " is-offline" : "");
-    item.textContent = conciseLabel(co.label);
+    // Name + IP stacked, matching the dashboard search-menu entries.
+    const lines = document.createElement("div");
+    lines.className = "res-lines";
+    const name = document.createElement("span");
+    name.textContent = conciseLabel(co.label);
+    lines.appendChild(name);
+    const host = String(co.host || "");
+    if (host) { const ip = document.createElement("span"); ip.className = "res-ip"; ip.textContent = host; lines.appendChild(ip); }
+    item.appendChild(lines);
     item.title = co.online === false ? `${co.label} — offline` : co.label;
     item.addEventListener("click", () => { closeOverflowMenu(); setActiveCompany(id); });
     menu.appendChild(item);

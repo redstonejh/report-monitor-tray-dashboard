@@ -5489,12 +5489,14 @@ body.workspace-page-swipe-dragging{
 /* Name on its own line, IP on the line below with MINIMAL gap; the spacing
    BETWEEN result pairs comes from the item padding + the list gap (same as the
    account menu's items). */
-.company-overflow-item.dashboard-search-result{ display: flex; align-items: stretch; }
+/* Applies to BOTH the search results AND the "…" company-overflow entries (both are
+   .company-overflow-item) so they read identically — name on top, IP below. */
+.company-overflow-item:has(.res-lines){ display: flex; align-items: stretch; }
 /* The name|IP column lives in this DIV (not the button) — a <button> won't grow to
-   fit a flex column, but a div does. gap 2px = the tight name↔IP pair; the 9px
-   spacing BETWEEN result rows comes from .dashboard-search-results gap. */
-.dashboard-search-result .res-lines{ display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-width: 0; }
-.dashboard-search-result .res-ip{ font-size: 0.82em; color: rgba(255, 255, 255, 0.5); font-weight: 400; }
+   fit a flex column, but a div does. gap 2px = the tight name↔IP pair; the row
+   spacing comes from the list gap. */
+.company-overflow-item .res-lines{ display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-width: 0; }
+.company-overflow-item .res-ip{ font-size: 0.82em; color: rgba(255, 255, 255, 0.5); font-weight: 400; }
 .dashboard-search-result.is-offline{ opacity: 0.5; }
 .dashboard-search-empty{ padding: 7px 12px; color: rgba(255, 255, 255, 0.5); font-size: 12.5px; }
 
