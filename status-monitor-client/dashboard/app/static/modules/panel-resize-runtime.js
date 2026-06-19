@@ -53,6 +53,9 @@ export const bindPanelResizeRuntime = ({
   setToolPointerCapture,
 }) => {
   const beginPanelResize = (event, resizeEdge = "right") => {
+    // Manual panel resizing disabled for ALL accounts (see widget-resize-runtime.js).
+    // Implementation preserved; window.DASHBOARD_MANUAL_RESIZE_ENABLED = true restores it.
+    if (window.DASHBOARD_MANUAL_RESIZE_ENABLED !== true) return;
     if (panel.classList.contains("db-panel-pinned") || panel.dataset.locked === "true" || panel.dataset.resizable === "false") return;
     clearToolsCloseTimer();
     if (panel.classList.contains("group-selected") && groupTransformItems(panel).length > 1) {

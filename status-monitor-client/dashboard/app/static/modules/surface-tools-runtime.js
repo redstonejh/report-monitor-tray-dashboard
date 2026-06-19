@@ -86,7 +86,10 @@ export function initializeSurfaceToolsRuntime({
     target?.removeAttribute?.("data-dashboard-cursor");
     if (surfaceCursorState.target === target) surfaceCursorState.target = null;
   };
-  const canSurfaceObjectResize = (item) => Boolean(item &&
+  const canSurfaceObjectResize = (item) => Boolean(
+    // Manual resizing is disabled for ALL accounts, so the resize edge-cursor never
+    // shows either (window.DASHBOARD_MANUAL_RESIZE_ENABLED = true restores it).
+    window.DASHBOARD_MANUAL_RESIZE_ENABLED === true && item &&
     !item.classList?.contains("db-panel-pinned") &&
     item.dataset?.locked !== "true" &&
     item.dataset?.resizable !== "false");

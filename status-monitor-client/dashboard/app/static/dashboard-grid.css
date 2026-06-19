@@ -1803,7 +1803,15 @@ body.panel-resize-active .db-panel:not(.db-panel-dragging):not(.dashboard-active
   opacity: .95;
   pointer-events: auto;
   background: rgba(255, 255, 255, .12);
-}.panel-tools{
+}
+/* Manual resizing is disabled for ALL accounts — hide every resize affordance (the
+   corner handle and the tools-drawer resize button). The JS gates live in
+   widget-/panel-/group-resize-runtime.js. To restore: remove this rule and set
+   window.DASHBOARD_MANUAL_RESIZE_ENABLED = true. */
+.panel-resize-handle{
+  display: none !important;
+}
+.panel-tools{
   --panel-lock-bg: rgba(248, 250, 252, .12);
   --panel-lock-fg: rgba(248, 250, 252, .86);
   --panel-lock-border: rgba(248, 250, 252, .26);

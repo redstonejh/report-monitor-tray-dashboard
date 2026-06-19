@@ -332,6 +332,8 @@ export const createGroupResizeRuntime = (deps = {}) => {
 
 
   const runGroupResize = ({ layout, source, event, onCommit, onEnd }) => {
+    // Manual group resizing disabled for ALL accounts (see widget-resize-runtime.js).
+    if (window.DASHBOARD_MANUAL_RESIZE_ENABLED !== true) return false;
     const members = groupTransformItems(source)
       .filter((member) => member === source || !member.classList.contains("db-panel-pinned"))
       .filter((member) => member.dataset.locked !== "true" && member.dataset.resizable !== "false");

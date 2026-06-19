@@ -47,6 +47,10 @@ export const bindWidgetResizeRuntime = ({
   setSuppressWidgetClickUntil,
 }) => {
   const beginWidgetResize = (event, resizeEdge = "right") => {
+    // Manual widget resizing (corner/edge drag + the tools-drawer resize handle) is
+    // disabled for ALL accounts. The full resize implementation below is intentionally
+    // left intact — set window.DASHBOARD_MANUAL_RESIZE_ENABLED = true to restore it.
+    if (window.DASHBOARD_MANUAL_RESIZE_ENABLED !== true) return;
     if (widget.classList.contains("db-panel-pinned") || widget.dataset.locked === "true" || widget.dataset.resizable === "false") return;
     clearCloseTimer();
     if (widget.classList.contains("group-selected") && groupTransformItems(widget).length > 1) {
