@@ -1230,13 +1230,16 @@
           // sliver, so any non-zero degraded/down share is bumped to a MINIMUM
           // visible band (carved out of the green share, never overflowing 100), so
           // amber/red read at a glance even when there were only a few.
-          const MIN_DOWN = 15, MIN_DEGRADED = 10;
+          //
+          // The SAME minimum for both, so a lone down isn't exaggerated bigger than a
+          // lone degraded — one of each is visible and they read at equal size.
+          const MIN_BAD = 10;
           const hpShares = (bk) => {
             if (!bk.total) return { ok: 0, degraded: 0, down: 0 };
             let down = (bk.down / bk.total) * 100;
             let degraded = (bk.degraded / bk.total) * 100;
-            if (down > 0) down = Math.max(down, MIN_DOWN);
-            if (degraded > 0) degraded = Math.max(degraded, MIN_DEGRADED);
+            if (down > 0) down = Math.max(down, MIN_BAD);
+            if (degraded > 0) degraded = Math.max(degraded, MIN_BAD);
             if (down + degraded > 100) { const s = 100 / (down + degraded); down *= s; degraded *= s; }
             const r = (n) => Math.round(n * 10) / 10;
             return { ok: r(Math.max(0, 100 - down - degraded)), degraded: r(degraded), down: r(down) };
