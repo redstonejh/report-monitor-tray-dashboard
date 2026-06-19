@@ -776,6 +776,9 @@ function createWindow() {
     // second click (which is a deliberate, later action).
     if (legendOpen || Date.now() - legendClosedAt < 150) return;
     if (popoverPinned) {
+      // A tray click that pins a hover-opened popover can briefly blur it. Don't let
+      // that immediately close it while the pointer is still on the tray icon.
+      if (pointerInTray) return;
       hidePopover();
       return;
     }
@@ -1330,8 +1333,13 @@ app.whenReady().then(() => {
 
   // LEFT click toggles the popover near the tray icon.
   tray.on('click', () => {
-    if (mainWindow && mainWindow.isVisible() && popoverPinned) {
-      hidePopover();
+    if (mainWindow && mainWindow.isVisible()) {
+      // Already open. A hover-opened popover isn't pinned yet — a click should just
+      // PIN it so it stays put. The old code re-showed it (positionWindow + show),
+      // which read as a jarring close-and-reopen. A click on an already-pinned
+      // popover toggles it closed.
+      if (popoverPinned) hidePopover();
+      else { popoverPinned = true; cancelHideTimer(); }
     } else {
       showExpandedWindow(true);
     }
