@@ -6223,26 +6223,27 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
   top: 0;
   z-index: 1;
   display: block;
-  height: 24px;
-  margin-bottom: -24px;
-  /* OPAQUE strip (no backdrop-filter) so scrolling rows don't show through. The well
-     is translucent glass over the dashboard background, so its EFFECTIVE colour is far
-     lighter than the raw tint — sampled at ~rgb(82,89,106). Match that so the header
-     reads as part of the table. Rounded TOP corners follow the well's 10px curve. */
-  background: #52596a;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.16);
+  height: 0;
+  margin-bottom: 0;
+  /* Strip removed — the opaque th cells below now ARE the header (see note). */
+  background: transparent;
+  box-shadow: none;
   pointer-events: none;
 }
+/* The header is the opaque thead cells themselves (no separate strip): coverage then
+   matches the real header-row height EXACTLY, so scrolling rows never peek past the
+   top edge, and the well's overflow+radius clips the cells to the curved corners so
+   nothing bleeds round the rounded edges. Opaque colour = the table's EFFECTIVE glass
+   colour over the dashboard background (sampled ~rgb(82,89,106)), so it reads as part
+   of the table. The -1px inset highlight is the subtle header/body divider. */
 .runtime-well-widget .runtime-table thead th{
   position: sticky;
   top: 0;
   z-index: 3;
-  background: transparent !important;
+  background: #52596a !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
-  box-shadow: none !important;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.16) !important;
   border-bottom: 0 !important;
 }
 /* Windowed (virtualized) tables: rows must be a uniform height for the spacer
