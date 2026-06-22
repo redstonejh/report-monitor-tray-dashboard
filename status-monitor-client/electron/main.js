@@ -553,6 +553,79 @@ function statusSnapshot() {
 }
 
 let overallBroadcastAt = 0;
+
+// ─── Ticketing emission ───────────────────────────────────────────────────────
+// The companion ticketing app stores tickets as retained MQTT docs on tickets/<id>.
+// The monitor is the ONLY automatic creator: on a sustained-outage (red) transition
+// it publishes ONE retained ticket. Detection mirrors the tray-red rule exactly.
+const companyRedState = new Map(); // companyId -> { red, episodeKey }
+const ticketCache = new Map();     // ticketId -> retained ticket doc (from tickets/#)
+
+function publishTicketEvent(topic, obj, { retain = false } = {}) {
+  if (!mqttClient) return;
+  try { mqttClient.publish(topic, JSON.stringify(obj), { qos: 1, retain }); } catch { /* offline */ }
+}
+
+// Deterministic id from the episode key so every monitor instance that observes the
+// same outage writes the SAME retained topic — N publishers collapse to one ticket.
+function ticketIdFromEpisode(episodeKey) {
+  return episodeKey.replace(/[^a-zA-Z0-9_.-]/g, '_');
+}
+
+function maybeCreateTicket(entry, episodeKey, host) {
+  const id = ticketIdFromEpisode(episodeKey);
+  if (ticketCache.has(id)) return; // already created (this or another instance)
+  const nowIso = new Date().toISOString();
+  const doc = {
+    id, episodeKey,
+    companyId: entry.id, companyLabel: entry.label, host: host || '',
+    severity: 'red', state: 'open', createdAt: nowIso,
+    assignee: null, assignedBy: null, claimedBy: null,
+    recoveredAt: null, resolvedAt: null, resolvedBy: null,
+    updatedAt: Date.now(), version: 1,
+    history: [{ at: nowIso, by: 'system', action: 'created',
+      detail: `Sustained outage detected (${CRITICAL_DOWN_STREAK}+ consecutive down minutes)` }],
+  };
+  ticketCache.set(id, doc);                       // optimistic: dedup before the retained echo
+  publishTicketEvent(`tickets/${id}`, doc, { retain: true });
+}
+
+// Record recovery WITHOUT closing the ticket (a human resolves it). Merge only the
+// machine-owned fields onto the current retained doc — never touch assignee/claim/state.
+function markTicketRecovered(episodeKey) {
+  const id = ticketIdFromEpisode(episodeKey);
+  const cur = ticketCache.get(id);
+  if (!cur || cur.state === 'resolved' || cur.recoveredAt) return;
+  const nowIso = new Date().toISOString();
+  const doc = { ...cur, recoveredAt: nowIso, updatedAt: Date.now(), version: (cur.version || 0) + 1,
+    history: [...(cur.history || []), { at: nowIso, by: 'system', action: 'recovered', detail: 'Connection recovered' }] };
+  ticketCache.set(id, doc);
+  publishTicketEvent(`tickets/${id}`, doc, { retain: true });
+}
+
+// Fires once per outage episode on the rising edge (->red); records recovery only on
+// a genuine red->green while STILL ONLINE (an agent going offline is not a recovery).
+function detectTicketTransitions() {
+  for (const e of companies.values()) {
+    const online = companyOnline(e);
+    const { levels } = derivedFor(e);
+    const streak = trailingDownStreakFromLevels(levels);
+    const isRed = online && streak >= CRITICAL_DOWN_STREAK;
+    const prev = companyRedState.get(e.id) || { red: false, episodeKey: null };
+    if (isRed && !prev.red) {
+      const startMs = levels[levels.length - streak].ms; // first down-minute of the run (stable across the episode)
+      const episodeKey = `${e.id}:${new Date(startMs).toISOString()}`;
+      companyRedState.set(e.id, { red: true, episodeKey });
+      const lastPing = e.pings.length ? e.pings[e.pings.length - 1] : null;
+      maybeCreateTicket(e, episodeKey, (lastPing && lastPing.host) || '');
+    } else if (prev.red && online && streak < CRITICAL_DOWN_STREAK) {
+      companyRedState.set(e.id, { red: false, episodeKey: null });
+      if (prev.episodeKey) markTicketRecovered(prev.episodeKey);
+    }
+    // prev.red && !online: leave pending — no false "recovery" when an agent dies.
+  }
+}
+
 function connectMqtt() {
   if (mqttClient) {
     mqttClient.end(true);
@@ -574,9 +647,23 @@ function connectMqtt() {
     // (the connection tests) live under connections/<subject>/<proj>/<sys>/<id>;
     // each agent's liveness comes from <proj>/<sys>/heartbeat.
     mqttClient.subscribe(['+/+/checks/+', 'connections/#', '+/+/heartbeat'], { qos: 0 });
+    // Shared ticket store for the companion ticketing app: keep a live cache of the
+    // retained ticket docs so we can dedup creation and merge recovery without
+    // clobbering human edits (claim/assign/resolve).
+    mqttClient.subscribe('tickets/#', { qos: 1 });
   });
 
   mqttClient.on('message', (topic, message) => {
+    // Retained ticket docs (tickets/<id>) feed the shared ticket cache. Handle this
+    // BEFORE the generic JSON.parse so an empty-payload retained clear acts as a
+    // tombstone rather than being dropped as unparseable.
+    if (topic.startsWith('tickets/')) {
+      const id = topic.slice('tickets/'.length);
+      if (!message || message.length === 0) ticketCache.delete(id);
+      else { try { ticketCache.set(id, JSON.parse(message.toString())); } catch { /* ignore */ } }
+      return;
+    }
+
     let payload;
     try { payload = JSON.parse(message.toString()); } catch { return; }
     const parts = topic.split('/');
@@ -619,6 +706,7 @@ function connectMqtt() {
       currentStatus = overallSnapshot();
       updateTray(currentStatus.status);
       broadcastToRenderer(currentStatus);
+      detectTicketTransitions();
     }
   });
 
