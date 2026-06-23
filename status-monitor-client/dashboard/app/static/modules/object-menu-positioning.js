@@ -7,7 +7,7 @@ const rectSnapshot = (rect) => ({
   height: rect.height,
 });
 
-export const stableElementRect = (element) => {
+const stableElementRect = (element) => {
   if (!element?.isConnected || typeof element.getBoundingClientRect !== "function") return null;
   const style = window.getComputedStyle(element);
   if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) <= 0.01) return null;
@@ -21,7 +21,7 @@ export const stableElementRect = (element) => {
   return rectSnapshot(rect);
 };
 
-export const objectMenuAnchorRect = (owner) => {
+const objectMenuAnchorRect = (owner) => {
   const rect = stableElementRect(owner);
   if (!rect) return null;
   return {
@@ -34,12 +34,12 @@ export const objectMenuAnchorRect = (owner) => {
   };
 };
 
-export const clampViewportCoord = (value, size, gutter) => {
+const clampViewportCoord = (value, size, gutter) => {
   const max = Math.max(gutter, window.innerWidth - size - gutter);
   return Math.max(gutter, Math.min(value, max));
 };
 
-export const clampViewportTop = (value, size, gutter) => {
+const clampViewportTop = (value, size, gutter) => {
   const max = Math.max(gutter, window.innerHeight - size - gutter);
   return Math.max(gutter, Math.min(value, max));
 };

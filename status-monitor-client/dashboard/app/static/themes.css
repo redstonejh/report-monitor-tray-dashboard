@@ -15,88 +15,6 @@
   box-shadow: 0 2px 10px rgba(15, 23, 42, .06);
   backdrop-filter: blur(14px);
   overflow: visible;
-}.app-nav-brand{
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--ink-strong);
-  min-width: 0;
-}.app-nav-brand strong{
-  display: block;
-  font-size: 20px;
-  font-weight: var(--ui-text-weight);
-}.app-nav-brand small,
-.nav-status-item small{
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 11px;
-}.app-logo{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  background: linear-gradient(145deg, #0f172a, #2563eb);
-  color: #fff;
-  font-size: 18px;
-  font-weight: var(--ui-text-weight);
-  letter-spacing: 0;
-  box-shadow: 0 12px 26px rgba(37, 99, 235, .24);
-}.settings-brand-group{
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}.settings-brand-switch{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 52px;
-  padding: 0 24px;
-  border: 1.5px solid #93c5fd;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(135deg, #2563eb, #0f4ed8);
-  color: #fff;
-  font-size: 18px;
-  font-weight: var(--ui-text-weight);
-  letter-spacing: .02em !important;
-  text-decoration: none;
-  box-shadow:
-    0 12px 28px rgba(37, 99, 235, .28),
-    0 0 24px rgba(96, 165, 250, .18),
-    inset 0 1px 0 rgba(255, 255, 255, .28);
-  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .15s ease;
-}.settings-brand-switch:hover,
-.settings-brand-switch:focus-visible{
-  transform: translateY(-1px);
-  border-color: #bfdbfe;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: #fff;
-  box-shadow:
-    0 14px 32px rgba(37, 99, 235, .34),
-    0 0 30px rgba(96, 165, 250, .24),
-    inset 0 1px 0 rgba(255, 255, 255, .34);
-}.settings-brand-switch:active{
-  transform: translateY(1px);
-}.settings-brand-copy{
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}.settings-brand-copy strong{
-  overflow: hidden;
-  color: var(--ink-strong);
-  font-size: 20px;
-  font-weight: var(--ui-text-weight);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}.settings-brand-copy small{
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }.app-nav-status,
 .app-nav-actions{
   display: flex;
@@ -104,69 +22,6 @@
   gap: 10px;
 }.app-nav-status{
   justify-content: center;
-}.app-nav-actions{
-  justify-content: flex-end;
-}.app-nav-actions form{
-  margin: 0;
-}.nav-status-item{
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--line-soft);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
-  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
-}.nav-status-item strong{
-  display: block;
-  max-width: 260px;
-  overflow: hidden;
-  color: var(--ink-strong);
-  font-size: 12px;
-  font-weight: var(--ui-text-weight);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}.nav-icon,
-.btn-icon{
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-}.nav-icon{
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  background: var(--blue-soft);
-}.nav-icon::before,
-.btn-icon::before,
-.icon-btn::before,
-.empty-illustration::before{
-  content: "";
-  display: block;
-  width: 16px;
-  height: 16px;
-  background: currentColor;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-}.nav-icon-sync{ color: var(--ok); background: var(--ok-soft); }.nav-icon-sync::before{
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16'/%3E%3Cpath d='M16 16h5v5'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16'/%3E%3Cpath d='M16 16h5v5'/%3E%3C/svg%3E");
-}.btn-icon-settings::before{
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E");
-}.cmd-btn{
-  gap: var(--space-8);
-  border-radius: 14px;
-  box-shadow: 0 2px 10px rgba(37, 99, 235, .16);
-}.cmd-btn-danger{
-  box-shadow: 0 2px 10px rgba(220, 38, 38, .18);
 }.panel-reset-button,
 .panel-undo-button,
 .panel-add-button,
@@ -177,7 +32,6 @@
   justify-content: center;
   min-height: 44px;
   height: 44px;
-  padding: 4px;
   border: 1px solid var(--line-soft);
   border-radius: 14px;
   background: var(--surface);
@@ -185,11 +39,6 @@
   box-shadow: 0 2px 10px rgba(15, 23, 42, .06);
   cursor: pointer;
   transition: background .16s ease, border-color .16s ease, box-shadow .16s ease, color .16s ease, transform .16s ease;
-}.panel-reset-button,
-.panel-undo-button,
-.panel-add-button,
-.layout-slot-button,
-.layout-slot-trigger{
   width: auto;
   min-width: 76px;
   padding: 0 14px;
@@ -282,88 +131,6 @@
   align-items: center;
   gap: var(--space-6);
   padding: 0;
-}.layout-slot-picker{
-  position: relative;
-  display: inline-flex;
-}.layout-slot-trigger{
-  min-width: 104px;
-  padding-right: 28px;
-  color: var(--ink-strong);
-}.layout-slot-trigger::after{
-  content: "";
-  position: absolute;
-  right: 12px;
-  width: 7px;
-  height: 7px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-  opacity: .72;
-  transition: transform .16s ease;
-}.layout-slot-trigger[aria-expanded="true"]::after{
-  transform: translateY(2px) rotate(225deg);
-}.layout-slot-menu{
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: var(--z-dropdown);
-  display: grid;
-  gap: var(--space-6);
-  min-width: 138px;
-  --layout-slot-menu-max-height: min(320px, calc(100vh - 140px));
-  max-height: 0;
-  padding: 8px;
-  border: 1px solid var(--line-soft);
-  border-radius: 14px;
-  background: var(--surface);
-  box-shadow: 0 2px 10px rgba(15, 23, 42, .06);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-4px) scale(.98);
-  transform-origin: top left;
-  overflow: hidden;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  transition:
-    opacity .14s ease,
-    transform .16s cubic-bezier(.2, .8, .2, 1),
-    max-height .22s cubic-bezier(.2, .8, .2, 1),
-    padding .16s ease,
-    visibility 0s linear .16s;
-}.layout-slot-menu.open{
-  max-height: var(--layout-slot-menu-max-height);
-  overflow-y: auto;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
-  transition-delay: 0s;
-}.layout-slot-menu button{
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--muted-strong);
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: var(--ui-text-weight);
-  line-height: 1;
-  text-align: center;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, .04);
-  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease, color .16s ease, transform .16s ease;
-}.layout-slot-menu button:hover,
-.layout-slot-menu button:focus-visible,
-.layout-slot-menu button.is-active{
-  border-color: #bfdbfe;
-  background: var(--surface-soft);
-  color: var(--blue);
-  box-shadow: 0 4px 14px rgba(37, 99, 235, .12);
-  transform: translateY(-1px);
 }.layout-slot-button{
   min-width: 58px;
   padding: 0 12px;
@@ -386,18 +153,6 @@
 .layout-slot-trigger:focus-visible{
   outline: 3px solid rgba(37, 99, 235, .20);
   outline-offset: 2px;
-}.app-nav:not(.settings-nav) .nav-status-item:hover,
-.app-nav:not(.settings-nav) .nav-status-item:focus-within{
-  transform: translateY(-1px);
-  border-color: #bfdbfe;
-  background: #f7fbff;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, .12), 0 1px 0 rgba(255, 255, 255, .72) inset;
-}.settings-nav .nav-status-item:hover,
-.settings-nav .nav-status-item:focus-within{
-  transform: translateY(-1px);
-  border-color: #bfdbfe;
-  background: #f7fbff;
-  box-shadow: 0 10px 24px rgba(37, 99, 235, .12), 0 1px 0 rgba(255, 255, 255, .72) inset;
 }.app-nav:not(.settings-nav) .cmd-btn:hover,
 .app-nav:not(.settings-nav) .cmd-btn:focus-visible,
 .app-nav:not(.settings-nav) .panel-reset-button:hover,
@@ -413,12 +168,6 @@
 .app-nav:not(.settings-nav) .layout-slot-trigger:hover,
 .app-nav:not(.settings-nav) .layout-slot-trigger:focus-visible{
   transform: translateY(-1px);
-}.app-nav:not(.settings-nav) .cmd-btn:hover,
-.app-nav:not(.settings-nav) .cmd-btn:focus-visible{
-  box-shadow: 0 10px 24px rgba(37, 99, 235, .24), 0 0 18px rgba(96, 165, 250, .14);
-}.app-nav:not(.settings-nav) .cmd-btn-danger:hover,
-.app-nav:not(.settings-nav) .cmd-btn-danger:focus-visible{
-  box-shadow: 0 10px 24px rgba(220, 38, 38, .26), 0 0 18px rgba(248, 113, 113, .16);
 }.app-nav:not(.settings-nav) .nav-status-item:active,
 .app-nav:not(.settings-nav) .cmd-btn:active,
 .app-nav:not(.settings-nav) .panel-reset-button:active,
@@ -437,7 +186,7 @@
   box-shadow: 0 2px 10px rgba(15, 23, 42, .06);
 }.stat-card:hover{
   box-shadow: 0 10px 24px rgba(37, 99, 235, .12), 0 1px 0 rgba(255, 255, 255, .62) inset;
-}.stat-danger{ background: color-mix(in srgb, var(--surface) 86%, #dc2626 14%); }.stat-warn{ background: color-mix(in srgb, var(--surface) 86%, #f59e0b 14%); }.empty-state{
+}.empty-state{
   display: grid;
   place-items: center;
   gap: var(--space-5);
@@ -452,80 +201,10 @@
 }.empty-state small{
   max-width: 310px;
   line-height: 1.32;
-}.empty-illustration{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 16px;
-  background: var(--blue-soft);
-  color: var(--blue);
-  box-shadow: 0 10px 24px rgba(37, 99, 235, .14);
-}.empty-illustration::before{
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15V6'/%3E%3Cpath d='M18.5 18.5 21 21'/%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M3 12h12'/%3E%3Cpath d='M3 18h9'/%3E%3Ccircle cx='17' cy='17' r='3'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15V6'/%3E%3Cpath d='M18.5 18.5 21 21'/%3E%3Cpath d='M3 6h18'/%3E%3Cpath d='M3 12h12'/%3E%3Cpath d='M3 18h9'/%3E%3Ccircle cx='17' cy='17' r='3'/%3E%3C/svg%3E");
 }.empty-action{
   color: var(--blue);
   font-size: 12px;
   font-weight: var(--ui-text-weight);
-}.esc-timeline-empty{
-  padding: 12px;
-}.timeline-dot{
-  display: none;
-}.secret-control{
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: var(--space-6);
-  align-items: center;
-}.secret-control input{
-  width: 100%;
-}.icon-btn{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 48px;
-  height: 34px;
-  padding: 0 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--muted-strong);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: var(--ui-text-weight);
-  letter-spacing: 0;
-  outline: 0;
-  transition: background .14s ease, border-color .14s ease, color .14s ease, box-shadow .14s ease, transform .14s ease;
-}.icon-btn:hover{
-  border-color: #b0bdd0;
-  background: #f1f5f9;
-  color: var(--ink-strong);
-  box-shadow: none;
-}.icon-btn:focus,
-.icon-btn:active{
-  outline: none;
-  box-shadow: none;
-  background: #fff;
-  border-color: var(--line);
-}.secret-control .icon-btn::before{
-  display: none;
-  content: none;
-}.secret-toggle.revealed{
-  border-color: #b0bdd0;
-  background: #f1f5f9;
-  color: var(--muted-strong);
-}.field-error,
-.field-hint{
-  display: block;
-  min-height: 16px;
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.35;
-}.field-error{ color: var(--red); }.input-invalid{
-  border-color: #fca5a5 !important;
-  box-shadow: 0 0 0 4px rgba(220, 38, 38, .10) !important;
 }.toast-stack{
   position: fixed;
   right: 20px;
@@ -555,53 +234,6 @@
   border-color: #fde68a;
   background: #fffbeb;
   color: #92400e;
-}.parse-warning{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
-  padding: 14px 16px;
-  border: 1px solid #fde68a;
-  border-radius: 16px;
-  background: #fffbeb;
-  color: #92400e;
-  box-shadow: 0 2px 10px rgba(217, 119, 6, .08);
-}.parse-warning strong{
-  display: block;
-  color: #78350f;
-  font-size: 13px;
-}.parse-warning small,
-.parse-warning li{
-  color: #92400e;
-  font-size: 12px;
-}.parse-warning details{
-  min-width: 220px;
-  font-size: 12px;
-}.parse-warning summary{
-  cursor: pointer;
-  font-weight: var(--ui-text-weight);
-}.parse-warning ul{
-  margin: 8px 0 0;
-  padding-left: 18px;
-}.parse-warning a{
-  color: #92400e;
-  font-size: 12px;
-  font-weight: var(--ui-text-weight);
-  white-space: nowrap;
-}.save-spinner{
-  display: none;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, .55);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin .8s linear infinite;
-}.cmd-btn.is-saving .save-spinner{
-  display: inline-block;
-}.settings-form.is-dirty .sticky-save{
-  border-color: #fde68a;
-  box-shadow: 0 10px 28px rgba(217, 119, 6, .14);
 }
 
 @keyframes spin {to{ transform: rotate(360deg); }
@@ -629,30 +261,11 @@ table{
 }h3{
   font-size: 16px;
   line-height: 1.25;
-}.app-nav-brand strong{
-  font-size: 18px;
-  font-weight: var(--ui-text-weight);
-  line-height: 1.15;
-}.app-nav-brand small,
-.nav-status-item small,
-.range-note,
-.field-hint,
-.field-error{
-  font-size: 12px;
-  line-height: 1.35;
-}.nav-status-item strong{
-  font-size: 13px;
-  line-height: 1.25;
 }.cmd-btn,
 .preset-btn,
 .empty-action,
 .icon-btn{
   font-size: 13px;
-  font-weight: var(--ui-text-weight);
-  line-height: 1;
-}.cmd-badge,
-.cmd-range-pill{
-  font-size: 12px;
   font-weight: var(--ui-text-weight);
   line-height: 1;
 }.stat-val{
@@ -676,27 +289,6 @@ table{
   font-weight: var(--ui-text-weight);
   line-height: 1;
   letter-spacing: 0 !important;
-}.al-table{
-  font-size: 13px;
-}.al-table th{
-  padding: 10px 16px;
-}.al-table td{
-  padding: 12px 16px;
-  font-size: 13px;
-  line-height: 1.35;
-}.al-date,
-.al-date a,
-.al-host,
-.al-status{
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.35;
-}.al-date a,
-.al-host{
-  font-weight: var(--ui-text-weight);
-}.al-status{
-  color: var(--muted-strong);
-  font-weight: var(--ui-text-weight);
 }.toast,
 .parse-warning strong,
 .parse-warning small,
@@ -705,23 +297,6 @@ table{
 .parse-warning a{
   font-family: inherit;
   letter-spacing: 0 !important;
-}.form-section,
-.settings-form,
-.preview-result{
-  font-size: 14px;
-}.form-section label,
-.settings-form label{
-  font-size: 13px;
-  font-weight: var(--ui-text-weight);
-  line-height: 1.35;
-}.form-section input,
-.form-section select,
-.form-section textarea,
-.settings-form input,
-.settings-form select,
-.settings-form textarea{
-  font-size: 14px;
-  line-height: 1.35;
 }
 
 @media (max-width: 1100px) {.app-nav{
@@ -735,169 +310,11 @@ table{
 
 @media (max-width: 720px) {.app-nav{
     padding: 12px;
-  }.settings-brand-group{
-    width: 100%;
-    flex-wrap: wrap;
-  }.nav-status-item,
-.app-nav-actions .cmd-btn{
-    width: 100%;
-  }.secret-control{
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 980px) {.stat-band{ grid-template-columns: repeat(3, 1fr); }
-}/* ── Dashboard switcher ─────────────────────────────────────────────────── */ .app-nav-brand-group{
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}.app-nav:not(.settings-nav){
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}.app-nav:not(.settings-nav) > .app-nav-status{
-  display: flex;
-  order: 2;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex: 0 0 auto;
-}.app-nav:not(.settings-nav) > .app-nav-actions{
-  display: flex;
-  order: 3;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex: 0 0 auto;
-}.app-nav:not(.settings-nav) > .app-nav-brand-group{
-  display: flex;
-  order: 1;
-  margin-right: auto;
-  flex: 0 0 auto;
-}.dash-switcher{
-  position: relative;
-  flex-shrink: 0;
-}button.dash-switch-btn{
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-6);
-  min-height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--ink-strong);
-  font: inherit;
-  font-size: 12px;
-  font-weight: var(--ui-text-weight);
-  cursor: pointer;
-  box-shadow: none;
-  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease, transform .15s ease;
-}button.dash-switch-btn:hover{
-  border-color: #bfdbfe;
-  background: var(--surface-soft);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, .10);
-}button.dash-switch-hero{
-  min-height: 54px;
-  padding: 0 24px;
-  gap: 10px;
-  border: 1.5px solid #93c5fd;
-  background: linear-gradient(135deg, #2563eb, #0f4ed8);
-  color: #fff;
-  font-size: 18px;
-  font-weight: var(--ui-text-weight);
-  letter-spacing: .02em !important;
-  box-shadow:
-    0 12px 28px rgba(37, 99, 235, .28),
-    0 0 24px rgba(96, 165, 250, .18),
-    inset 0 1px 0 rgba(255, 255, 255, .28);
-}button.dash-switch-hero:hover{
-  transform: translateY(-1px);
-  border-color: #bfdbfe;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  box-shadow:
-    0 14px 32px rgba(37, 99, 235, .34),
-    0 0 30px rgba(96, 165, 250, .24),
-    inset 0 1px 0 rgba(255, 255, 255, .34);
-}button.dash-switch-hero:active{
-  transform: translateY(1px);
-}.dash-switch-menu{
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: var(--z-popover);
-  min-width: 210px;
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(-6px) scale(.98);
-  transform-origin: top left;
-  transition:
-    opacity .14s ease,
-    transform .18s cubic-bezier(.2, .8, .2, 1),
-    visibility 0s linear .18s;
-}.dash-switch-menu.open{
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
-  transition:
-    opacity .12s ease,
-    transform .18s cubic-bezier(.2, .8, .2, 1),
-    visibility 0s linear 0s;
-}.dash-switch-opt{
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 12px;
-  color: var(--ink-strong);
-  text-decoration: none;
-  transition: background .12s ease;
-}.dash-switch-opt:hover{
-  background: var(--surface-soft);
-}.dash-switch-opt strong{
-  display: block;
-  font-size: 13px;
-  font-weight: var(--ui-text-weight);
-}.dash-switch-opt small{
-  display: block;
-  margin-top: 1px;
-  color: var(--muted);
-  font-size: 11px;
-}.dash-switch-opt-active strong{
-  color: var(--blue);
-}.dash-switch-opt-active:hover{
-  background: var(--surface-soft);
-}.dsw-active-check{
-  margin-left: auto;
-  padding-left: 6px;
-  color: var(--blue);
-  font-size: 13px;
-  font-weight: var(--ui-text-weight);
-}/* Compact icons used inside the switcher dropdown */ .dsw-icon{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: var(--ui-text-weight);
-  color: #fff;
-  letter-spacing: 0;
-}.stat-purple{
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-}.stat-purple .stat-val{ color: #7c3aed; }/* Screenshot-stable rendering: keep dashboard details explicit instead of relying on OS/native layers. */ .db-panel-body,
+}/* ── Dashboard switcher ─────────────────────────────────────────────────── */ /* Compact icons used inside the switcher dropdown */ /* Screenshot-stable rendering: keep dashboard details explicit instead of relying on OS/native layers. */ .db-panel-body,
 .esc-feed,
 .table-scroll{
   scrollbar-width: thin;
@@ -973,36 +390,6 @@ body::-webkit-scrollbar-thumb:hover{
     0 2px 10px rgba(15, 23, 42, calc(.06 * var(--surface-white-mix-compensation))),
     0 0 0 1px color-mix(in srgb, var(--glass-border) 36%, transparent);
   transform: translateY(-1px);
-}.db-panel.db-panel-custom-color > .db-panel-hd{
-  --panel-header-control-bg: color-mix(in srgb, var(--surface-raised) 52%, var(--panel-accent) 48%);
-  --panel-header-control-fg: var(--panel-accent-text);
-  --panel-header-control-border: color-mix(in srgb, var(--panel-accent) 50%, white);
-  --panel-header-control-glow: rgba(var(--panel-accent-rgb), calc(.34 * var(--surface-white-mix-compensation)));
-  background: linear-gradient(90deg,
-    rgba(var(--panel-accent-rgb), calc(.44 * var(--surface-white-mix-compensation))),
-    rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-white-mix-compensation)))
-  );
-  border-color: color-mix(in srgb, var(--panel-accent) 46%, white);
-  box-shadow: none;
-}.db-panel.db-panel-custom-color > .db-panel-hd:hover,
-.db-panel.db-panel-custom-color > .db-panel-hd:focus-visible{
-  background: linear-gradient(90deg,
-    rgba(var(--panel-accent-rgb), calc(.46 * var(--surface-white-mix-compensation))),
-    rgba(var(--panel-accent-rgb), calc(.26 * var(--surface-white-mix-compensation)))
-  );
-  border-color: color-mix(in srgb, var(--panel-accent) 48%, white);
-  box-shadow: none;
-}.db-panel.db-panel-custom-color > .db-panel-hd .db-panel-title{
-  color: var(--panel-accent-text);
-}.db-panel.db-panel-custom-color > .db-panel-hd::before,
-.db-panel.db-panel-custom-color > .db-panel-hd .db-panel-count{
-  background: var(--panel-header-control-bg);
-  border-color: var(--panel-header-control-border);
-  color: var(--panel-header-control-fg);
-  box-shadow:
-    0 7px 16px rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-saturation-compensation))),
-    0 0 12px rgba(var(--panel-accent-rgb), calc(.16 * var(--surface-saturation-compensation))),
-    inset 0 1px 0 rgba(255, 255, 255, calc(.20 * var(--surface-white-mix-compensation)));
 }.db-panel.db-panel-custom-color .panel-pin-toggle,
 .db-panel.db-panel-custom-color .panel-settings-toggle,
 .db-panel.db-panel-custom-color .panel-tool-button{
@@ -1021,39 +408,11 @@ body::-webkit-scrollbar-thumb:hover{
   outline: 0 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-}.db-panel.db-panel-custom-color .panel-tool-drawer{
-  background: color-mix(in srgb, var(--surface-raised) 92%, var(--panel-accent) 8%);
-  border-color: rgba(var(--panel-accent-rgb), .46);
-  box-shadow: var(--panel-drawer-shadow, 0 14px 32px rgba(15, 23, 42, .18));
 }.db-panel.db-panel-tools-open .panel-settings-toggle,
 .widget-card.widget-tools-open .panel-settings-toggle{
   background: color-mix(in srgb, var(--panel-lock-bg) 75%, var(--panel-hover-tint));
   border-color: currentColor;
   box-shadow: var(--panel-control-active-shadow);
-}.db-panel.db-panel-custom-color > .db-panel-hd{
-  --panel-chrome-bg: linear-gradient(90deg,
-    rgba(var(--panel-accent-rgb), calc(.44 * var(--surface-white-mix-compensation))),
-    rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-white-mix-compensation)))
-  );
-  --panel-chrome-hover-bg: linear-gradient(90deg,
-    rgba(var(--panel-accent-rgb), calc(.46 * var(--surface-white-mix-compensation))),
-    rgba(var(--panel-accent-rgb), calc(.26 * var(--surface-white-mix-compensation)))
-  );
-  --panel-chrome-surface: var(--surface);
-  --panel-chrome-border: var(--panel-material-rim, color-mix(in srgb, var(--glass-border) 86%, var(--panel-accent) calc(5% * var(--surface-saturation-compensation))));
-  --panel-chrome-hover-border: var(--panel-material-rim-hover, color-mix(in srgb, var(--glass-border) 78%, var(--panel-accent) calc(8% * var(--surface-saturation-compensation))));
-  --panel-header-control-bg: color-mix(in srgb, var(--surface-raised) 50%, var(--panel-accent) 50%) !important;
-  --panel-header-control-fg: var(--panel-accent-text) !important;
-  --panel-header-control-border: color-mix(in srgb, var(--panel-accent) 55%, var(--panel-hover-tint)) !important;
-  --panel-header-control-glow: rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-saturation-compensation))) !important;
-  --panel-lock-bg: color-mix(in srgb, var(--surface-raised) 62%, var(--panel-accent) 38%) !important;
-  --panel-lock-fg: var(--panel-accent-text) !important;
-  --panel-lock-border: rgba(var(--panel-accent-rgb), calc(.54 * var(--surface-saturation-compensation))) !important;
-  --panel-lock-glow: rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-saturation-compensation))) !important;
-  --panel-drawer-bg: rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-white-mix-compensation))) !important;
-  background: var(--panel-chrome-bg), var(--panel-chrome-surface) !important;
-  border-color: var(--panel-chrome-border) !important;
-  box-shadow: none !important;
 }.db-panel.db-panel-custom-color > .db-panel-hd:hover,
 .db-panel.db-panel-custom-color > .db-panel-hd:focus-visible{
   background: var(--panel-chrome-hover-bg), var(--panel-chrome-surface) !important;
@@ -1061,15 +420,12 @@ body::-webkit-scrollbar-thumb:hover{
   box-shadow: none !important;
 }.db-panel.db-panel-custom-color.db-panel-collapsed > .db-panel-hd{
   border-bottom-width: 0 !important;
-}.db-panel.db-panel-custom-color > .db-panel-hd .db-panel-title{
-  color: var(--panel-accent-text) !important;
 }.db-panel.db-panel-custom-color > .db-panel-hd::before,
 .db-panel.db-panel-custom-color > .db-panel-hd .db-panel-count{
   background: var(--panel-header-control-bg) !important;
   border-color: var(--panel-header-control-border) !important;
   color: var(--panel-header-control-fg) !important;
-  box-shadow:
-    0 8px 18px rgba(var(--panel-accent-rgb), calc(.22 * var(--surface-saturation-compensation))),
+  box-shadow: 0 8px 18px rgba(var(--panel-accent-rgb), calc(.22 * var(--surface-saturation-compensation))),
     0 0 12px rgba(var(--panel-accent-rgb), calc(.14 * var(--surface-saturation-compensation))),
     inset 0 1px 0 rgba(255, 255, 255, calc(.20 * var(--surface-white-mix-compensation))) !important;
 }.db-panel.db-panel-custom-color > .db-panel-hd::after{
@@ -1142,37 +498,12 @@ body::-webkit-scrollbar-thumb:hover{
 }.db-panel.db-panel-custom-color .panel-tool-drawer{
   background: color-mix(in srgb, var(--surface-raised) 92%, var(--panel-accent) 8%) !important;
   border-color: rgba(var(--panel-accent-rgb), .46) !important;
-  box-shadow:
-    var(--panel-drawer-shadow, 0 14px 32px rgba(15, 23, 42, .18)) !important;
-}.db-panel.db-panel-custom-color .al-table th{
-  background: color-mix(in srgb, var(--surface-raised) 72%, var(--panel-accent) 28%) !important;
-  border-color: rgba(var(--panel-accent-rgb), .28) !important;
+  box-shadow: var(--panel-drawer-shadow, 0 14px 32px rgba(15, 23, 42, .18)) !important;
 }.db-panel.db-panel-custom-color .db-panel-body{
   scrollbar-color: color-mix(in srgb, var(--panel-accent) 62%, var(--muted)) transparent;
 }.db-panel.db-panel-custom-color .db-panel-body::-webkit-scrollbar-thumb{
   background: color-mix(in srgb, var(--panel-accent) 54%, var(--muted)) !important;
-}/* Compact dashboard nav: icon-only status and action controls. */ .app-nav:not(.settings-nav) > .app-nav-brand-group{
-  display: flex;
-  order: 1;
-  margin-left: 0;
-  margin-right: auto;
-}.app-nav:not(.settings-nav) > .app-nav-status{
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-left: 0;
-  flex: 0 0 auto;
-}.app-nav:not(.settings-nav) .nav-status-icon-only{
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  justify-content: center;
-  gap: 0;
-  padding: 0;
-}.nav-status-menu{
+}/* Compact dashboard nav: icon-only status and action controls. */ .nav-status-menu{
   position: relative;
   display: inline-flex;
   flex: 0 0 auto;
@@ -1181,28 +512,6 @@ body::-webkit-scrollbar-thumb:hover{
   cursor: pointer;
 }.nav-status-menu > summary::-webkit-details-marker{
   display: none;
-}.app-nav:not(.settings-nav) .nav-status-icon-only .nav-icon{
-  width: 30px;
-  height: 30px;
-  border-radius: 11px;
-}.app-nav:not(.settings-nav) .nav-status-good{
-  border-color: color-mix(in srgb, var(--ok) 38%, var(--line-soft));
-}.app-nav:not(.settings-nav) .nav-status-bad{
-  border-color: color-mix(in srgb, var(--red) 42%, var(--line-soft));
-}.app-nav:not(.settings-nav) .nav-status-good .nav-icon{
-  color: var(--ok);
-  background: var(--ok-soft);
-}.app-nav:not(.settings-nav) .nav-status-bad .nav-icon{
-  color: var(--red);
-  background: var(--red-soft);
-}.app-nav:not(.settings-nav) .nav-status-good:hover,
-.app-nav:not(.settings-nav) .nav-status-good:focus-within{
-  border-color: color-mix(in srgb, var(--ok) 58%, white);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--ok) 20%, transparent), 0 1px 0 rgba(255, 255, 255, .72) inset;
-}.app-nav:not(.settings-nav) .nav-status-bad:hover,
-.app-nav:not(.settings-nav) .nav-status-bad:focus-within{
-  border-color: color-mix(in srgb, var(--red) 58%, white);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--red) 20%, transparent), 0 1px 0 rgba(255, 255, 255, .72) inset;
 }.nav-status-popover{
   position: absolute;
   top: calc(100% + 10px);
@@ -1268,88 +577,6 @@ body::-webkit-scrollbar-thumb:hover{
   font-weight: var(--ui-text-weight);
   overflow-wrap: anywhere;
   text-align: right;
-}.nav-status-connected{
-  margin-bottom: 12px;
-  padding: 10px 11px;
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-soft) 76%, transparent);
-}.nav-status-connected span{
-  display: block;
-  margin-bottom: 4px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: var(--ui-text-weight);
-  letter-spacing: .05em;
-  text-transform: uppercase;
-}.nav-status-connected b{
-  display: block;
-  min-width: 0;
-  color: var(--ink-strong);
-  font-size: 12px;
-  font-weight: var(--ui-text-weight);
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}.nav-status-checklist{
-  display: grid;
-  gap: var(--space-8);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}.nav-status-check{
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 22px;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: var(--ui-text-weight);
-}.nav-status-check-icon{
-  position: relative;
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-pill);
-}.nav-status-check-icon::before{
-  content: "";
-  width: 10px;
-  height: 10px;
-  background: currentColor;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-}.nav-status-check-ok{
-  color: color-mix(in srgb, var(--ok) 82%, var(--ink-strong));
-}.nav-status-check-ok .nav-status-check-icon{
-  border: 1px solid color-mix(in srgb, var(--ok) 52%, transparent);
-  background: var(--ok-soft);
-}.nav-status-check-ok .nav-status-check-icon::before{
-  mask-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5.35 10.15 2.2 7l1.05-1.05 2.1 2.1 5.4-5.4L11.8 3.7l-6.45 6.45Z'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5.35 10.15 2.2 7l1.05-1.05 2.1 2.1 5.4-5.4L11.8 3.7l-6.45 6.45Z'/%3E%3C/svg%3E");
-}.nav-status-check-missing{
-  color: color-mix(in srgb, var(--red) 82%, var(--ink-strong));
-}.nav-status-check-missing .nav-status-check-icon{
-  border: 1px solid color-mix(in srgb, var(--red) 52%, transparent);
-  background: var(--red-soft);
-}.nav-status-check-missing .nav-status-check-icon::before{
-  mask-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m7 5.94 2.47-2.47 1.06 1.06L8.06 7l2.47 2.47-1.06 1.06L7 8.06l-2.47 2.47-1.06-1.06L5.94 7 3.47 4.53l1.06-1.06L7 5.94Z'/%3E%3C/svg%3E");
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m7 5.94 2.47-2.47 1.06 1.06L8.06 7l2.47 2.47-1.06 1.06L7 8.06l-2.47 2.47-1.06-1.06L5.94 7 3.47 4.53l1.06-1.06L7 5.94Z'/%3E%3C/svg%3E");
-}.app-nav:not(.settings-nav) .cmd-btn-icon-only{
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  border-radius: 14px;
-}.app-nav:not(.settings-nav) .cmd-btn-icon-only .btn-icon::before{
-  width: 17px;
-  height: 17px;
 }/* Panel menu keyboard focus: keep the circular styling,
 but make focus unmistakable. */ .panel-tool-drawer .panel-tool-button:focus-visible,
 .panel-settings-toggle:focus-visible{
@@ -1477,6 +704,7 @@ but make focus unmistakable. */ .panel-tool-drawer .panel-tool-button:focus-visi
   box-shadow:
     var(--panel-drawer-shadow, 0 14px 32px rgba(15, 23, 42, .18));
 }/* Dashboard top bar polish: match the soft widget/panel control language. */ .app-nav:not(.settings-nav){
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1488,8 +716,7 @@ but make focus unmistakable. */ .panel-tool-drawer .panel-tool-button:focus-visi
   border: 1.5px solid color-mix(in srgb, var(--line) 78%, white);
   border-radius: 18px;
   background: color-mix(in srgb, var(--surface-raised) 92%, white);
-  box-shadow:
-    0 16px 34px rgba(15, 23, 42, .10),
+  box-shadow: 0 16px 34px rgba(15, 23, 42, .10),
     0 1px 0 rgba(255, 255, 255, .76) inset;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -1498,18 +725,16 @@ but make focus unmistakable. */ .panel-tool-drawer .panel-tool-button:focus-visi
 .app-nav:not(.settings-nav) > .app-nav-actions{
   order: initial;
   margin: 0;
-}.app-nav:not(.settings-nav) > .app-nav-brand-group{
-  flex: 0 0 auto;
 }.app-nav:not(.settings-nav) > .app-nav-status{
+  order: 2;
+  display: flex;
+  align-items: center;
+  margin-left: 0;
   flex: 1 1 auto;
   justify-content: center;
   gap: var(--space-8);
   min-width: 0;
   position: static;
-}.app-nav:not(.settings-nav) > .app-nav-actions{
-  flex: 0 0 auto;
-  justify-content: flex-end;
-  gap: var(--space-8);
 }.app-nav:not(.settings-nav) .layout-slot-controls{
   gap: var(--space-6);
   padding: 4px;
@@ -1517,15 +742,6 @@ but make focus unmistakable. */ .panel-tool-drawer .panel-tool-button:focus-visi
   border-radius: 16px;
   background: color-mix(in srgb, var(--surface-soft) 72%, white);
   box-shadow: 0 2px 10px rgba(15, 23, 42, .045);
-}.app-nav:not(.settings-nav) button.dash-switch-hero{
-  min-height: 46px;
-  padding: 0 18px;
-  border-radius: 16px;
-  font-size: 15px;
-  letter-spacing: 0 !important;
-  box-shadow:
-    0 10px 24px rgba(37, 99, 235, .22),
-    inset 0 1px 0 rgba(255, 255, 255, .26);
 }.app-nav:not(.settings-nav) .panel-reset-button,
 .app-nav:not(.settings-nav) .panel-undo-button,
 .app-nav:not(.settings-nav) .panel-add-button,
@@ -1542,10 +758,6 @@ but make focus unmistakable. */ .panel-tool-drawer .panel-tool-button:focus-visi
   box-shadow:
     0 4px 12px rgba(15, 23, 42, .07),
     0 1px 0 rgba(255, 255, 255, .72) inset;
-}.app-nav:not(.settings-nav) .layout-slot-trigger{
-  min-width: 96px;
-  padding: 0 28px 0 13px;
-  color: var(--ink-strong);
 }.app-nav:not(.settings-nav) .layout-slot-button,
 .app-nav:not(.settings-nav) .panel-reset-button,
 .app-nav:not(.settings-nav) .panel-undo-button{
@@ -1557,24 +769,6 @@ but make focus unmistakable. */ .panel-tool-drawer .panel-tool-button:focus-visi
   width: 38px;
   min-width: 38px;
   padding: 0;
-}.app-nav:not(.settings-nav) .nav-status-icon-only .nav-icon{
-  width: 24px;
-  height: 24px;
-  border-radius: 9px;
-}.app-nav:not(.settings-nav) .cmd-btn-icon-only{
-  border-color: color-mix(in srgb, var(--blue) 36%, var(--line-soft));
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: #fff;
-  box-shadow:
-    0 10px 22px rgba(37, 99, 235, .22),
-    inset 0 1px 0 rgba(255, 255, 255, .24);
-}.app-nav:not(.settings-nav) .cmd-btn-danger{
-  border-color: color-mix(in srgb, var(--red) 44%, #fecaca);
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  color: #fff;
-  box-shadow:
-    0 10px 22px rgba(220, 38, 38, .22),
-    inset 0 1px 0 rgba(255, 255, 255, .22);
 }.app-nav:not(.settings-nav) .layout-slot-menu,
 .app-nav:not(.settings-nav) .panel-add-menu,
 .app-nav:not(.settings-nav) .dash-switch-menu,
@@ -1614,16 +808,6 @@ but make focus unmistakable. */ .panel-tool-drawer .panel-tool-button:focus-visi
   box-shadow:
     0 10px 22px rgba(37, 99, 235, .12),
     0 1px 0 rgba(255, 255, 255, .76) inset;
-}.app-nav:not(.settings-nav) .cmd-btn-icon-only:hover,
-.app-nav:not(.settings-nav) .cmd-btn-icon-only:focus-visible{
-  box-shadow:
-    0 12px 26px rgba(37, 99, 235, .28),
-    inset 0 1px 0 rgba(255, 255, 255, .28);
-}.app-nav:not(.settings-nav) .cmd-btn-danger:hover,
-.app-nav:not(.settings-nav) .cmd-btn-danger:focus-visible{
-  box-shadow:
-    0 12px 26px rgba(220, 38, 38, .30),
-    inset 0 1px 0 rgba(255, 255, 255, .25);
 }.panel-layout > .db-panel.group-selected{
   outline: 1.5px solid color-mix(in srgb, var(--panel-accent, var(--blue)) 62%, rgba(255, 255, 255, .72));
   outline-offset: 5px;
@@ -1828,56 +1012,6 @@ body.group-transform-active .group-transform-member{
   box-shadow: 0 20px 44px rgba(15, 23, 42, .34), inset 0 1px 0 rgba(255, 255, 255, .16);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-}.settings-nav{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 74px;
-  margin: 0 0 18px;
-  padding: 12px 14px;
-  border: 1.5px solid var(--glass-border);
-  border-radius: 18px;
-  background: var(--glass-surface-strong);
-  box-shadow: var(--shadow-glass);
-}.settings-nav .app-nav-brand-group,
-.settings-nav .app-nav-actions{
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}.settings-nav .app-nav-brand-group > div{
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}.settings-nav .app-nav-brand-group strong{
-  color: var(--ink-strong);
-  font-size: 20px;
-  font-weight: var(--ui-text-weight);
-  line-height: 1.1;
-}.settings-nav .app-nav-brand-group small{
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: var(--ui-text-weight);
-}.settings-brand-switch,
-.dash-switch-hero,
-.cmd-btn,
-.cmd-btn-icon-only{
-  border: 1.5px solid color-mix(in srgb, var(--blue) 46%, var(--glass-border));
-  background: linear-gradient(135deg, color-mix(in srgb, var(--blue) 90%, white), var(--blue));
-  color: #fff;
-  box-shadow:
-    0 12px 28px color-mix(in srgb, var(--blue) 28%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, .26);
-}.settings-brand-switch:hover,
-.settings-brand-switch:focus-visible,
-.cmd-btn:hover,
-.cmd-btn:focus-visible{
-  border-color: color-mix(in srgb, var(--blue) 42%, white);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--blue) 78%, white), var(--blue-hover));
-  box-shadow:
-    0 14px 32px color-mix(in srgb, var(--blue) 34%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, .30);
 }.background-tone-trigger,
 .panel-reset-button,
 .panel-undo-button,
@@ -1920,68 +1054,6 @@ body.group-transform-active .group-transform-member{
   box-shadow:
     0 12px 26px color-mix(in srgb, var(--blue) 16%, transparent),
     inset 0 1px 0 var(--glass-highlight);
-}.form-section,
-.table-section{
-  padding: 24px;
-  border: 1.5px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--glass-surface-strong) 88%, var(--surface-soft));
-}.section-heading{
-  display: grid;
-  gap: var(--space-6);
-  margin-bottom: 18px;
-}.section-heading h2{
-  font-size: 20px;
-  font-weight: var(--ui-text-weight);
-}.section-heading p{
-  max-width: 620px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: var(--ui-text-weight);
-}.form-grid input,
-.form-grid select,
-.form-grid textarea{
-  border: 1.5px solid var(--field-border);
-  border-radius: 14px;
-  background: var(--field-bg);
-  box-shadow:
-    inset 0 1px 0 var(--glass-highlight),
-    0 8px 20px rgba(15, 23, 42, .045);
-  transition:
-    border-color var(--motion-fast),
-    box-shadow var(--motion-fast),
-    background var(--motion-fast),
-    color var(--motion-fast);
-}.form-grid input:hover,
-.form-grid select:hover,
-.form-grid textarea:hover{
-  border-color: color-mix(in srgb, var(--blue) 28%, var(--field-border));
-  background: color-mix(in srgb, var(--field-bg) 88%, var(--surface-raised));
-}.form-grid input:focus,
-.form-grid select:focus,
-.form-grid textarea:focus{
-  border-color: color-mix(in srgb, var(--blue) 72%, var(--field-border));
-  background: color-mix(in srgb, var(--field-bg) 82%, var(--surface-raised));
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--blue) 14%, transparent),
-    0 12px 26px color-mix(in srgb, var(--blue) 10%, transparent),
-    inset 0 1px 0 var(--glass-highlight);
-}.settings-save-bar{
-  position: sticky;
-  bottom: 18px;
-  z-index: calc(var(--z-header) - 1);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 10px 12px 10px 16px;
-  border: 1.5px solid var(--glass-border);
-  border-radius: var(--radius-pill);
-}.settings-save-bar span{
-  color: var(--muted-strong);
-  font-size: 12px;
-  font-weight: var(--ui-text-weight);
 }.sync-note,
 .notice.error{
   border: 1.5px solid color-mix(in srgb, var(--blue) 34%, var(--glass-border));
@@ -1989,35 +1061,6 @@ body.group-transform-active .group-transform-member{
   background: color-mix(in srgb, var(--glass-surface-strong) 82%, var(--blue-soft));
   color: var(--ink-strong);
   box-shadow: var(--shadow-control);
-}.confirm-dialog{
-  border: 1.5px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 20px;
-}.confirm-dialog::backdrop{
-  background: rgba(15, 23, 42, .28);
-  backdrop-filter: blur(8px);
-}.confirm-dialog-head{
-  color: var(--muted-strong);
-  letter-spacing: .03em;
-}.confirm-dialog-danger{
-  border-color: color-mix(in srgb, var(--red) 46%, var(--glass-border));
-  background: linear-gradient(135deg, color-mix(in srgb, var(--red) 82%, white), var(--red));
-  color: #fff;
-}.appearance-controls{
-  display: grid;
-  gap: 14px;
-}.appearance-control-group{
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1.5px solid var(--glass-border);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--glass-surface) 82%, transparent);
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
-}.background-preset-grid{
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-8);
 }.background-tone-menu{
   position: relative;
   display: inline-flex;
@@ -2187,65 +1230,12 @@ body.group-transform-active .group-transform-member{
   border-radius: 12px;
 }
 
-@media (max-width: 720px) {.settings-nav,
-.settings-save-bar{
-    align-items: stretch;
-    flex-wrap: wrap;
-    border-radius: 18px;
-  }.settings-save-bar{
-    position: static;
-  }.background-tone-popover{
+@media (max-width: 720px) {.background-tone-popover{
     right: auto;
     left: 0;
     transform-origin: top left;
   }
-}/* Spatial workspace chrome: calm floating operating surface. */ .app-nav.workspace-chrome{
-  position: sticky;
-  top: 12px;
-  z-index: var(--z-header);
-  display: grid;
-  grid-template-columns: minmax(210px, max-content) minmax(0, 1fr) max-content;
-  align-items: center;
-  gap: clamp(12px, 2vw, 26px);
-  margin: 0 auto 22px;
-  padding: 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--glass-border) 48%, transparent);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--blue) 11%, transparent) 0 42%, transparent 58%),
-    linear-gradient(180deg, color-mix(in srgb, var(--glass-surface-strong) 82%, white), color-mix(in srgb, var(--glass-surface) 70%, transparent));
-  box-shadow:
-    0 22px 60px rgba(15, 23, 42, .10),
-    0 2px 10px rgba(15, 23, 42, .05),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 72%, transparent);
-  backdrop-filter: blur(26px) saturate(1.18);
-  -webkit-backdrop-filter: blur(26px) saturate(1.18);
-  isolation: isolate;
-}.app-nav.workspace-chrome::before{
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  inset: 1px 22px auto;
-  z-index: 0;
-  height: 1px;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--glass-highlight) 78%, transparent), transparent);
-}.app-nav.workspace-chrome > .app-nav-brand-group,
-.app-nav.workspace-chrome > .app-nav-status,
-.app-nav.workspace-chrome > .app-nav-actions{
-  min-width: 0;
-  position: relative;
-  z-index: 1;
-}.app-nav.workspace-chrome > .app-nav-brand-group{
-  justify-content: flex-start;
-}.app-nav.workspace-chrome > .app-nav-status{
-  display: flex;
-  justify-content: center;
-  gap: clamp(10px, 1.6vw, 20px);
-  min-width: 0;
-}.app-nav.workspace-chrome > .app-nav-actions{
-  justify-content: flex-end;
-}.app-nav.workspace-chrome .workspace-command-island{
+}/* Spatial workspace chrome: calm floating operating surface. */ .app-nav.workspace-chrome .workspace-command-island{
   min-height: 0;
   padding: 0;
   border: 0;
@@ -2254,33 +1244,6 @@ body.group-transform-active .group-transform-member{
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-}.app-nav.workspace-chrome .workspace-identity-island{
-  gap: var(--space-8);
-}.app-nav.workspace-chrome .dash-switcher{
-  min-width: 0;
-}.app-nav.workspace-chrome button.dash-switch-hero{
-  min-height: 42px;
-  padding: 0 13px;
-  border: 0;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--glass-surface-strong) 42%, transparent);
-  color: var(--ink-strong);
-  box-shadow: none;
-  font-size: 14px;
-  font-weight: var(--ui-text-weight);
-}.app-nav.workspace-chrome button.dash-switch-hero:hover,
-.app-nav.workspace-chrome button.dash-switch-hero:focus-visible{
-  background: color-mix(in srgb, var(--glass-surface-strong) 64%, var(--blue-soft));
-  box-shadow:
-    0 12px 28px color-mix(in srgb, var(--blue) 10%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 72%, transparent);
-}.app-nav.workspace-chrome .layout-slot-controls{
-  gap: var(--space-5);
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
 }.app-nav.workspace-chrome .layout-slot-trigger,
 .app-nav.workspace-chrome .layout-slot-button,
 .app-nav.workspace-chrome .panel-undo-button,
@@ -2298,9 +1261,6 @@ body.group-transform-active .group-transform-member{
   box-shadow: none;
   font-size: 12px;
   font-weight: var(--ui-text-weight);
-}.app-nav.workspace-chrome .layout-slot-trigger{
-  min-width: 80px;
-  color: var(--ink-strong);
 }.app-nav.workspace-chrome .layout-slot-button,
 .app-nav.workspace-chrome .panel-undo-button,
 .app-nav.workspace-chrome .panel-reset-button,
@@ -2309,27 +1269,6 @@ body.group-transform-active .group-transform-member{
   padding-inline: 10px;
 }.app-nav.workspace-chrome .composition-command-island{
   isolation: isolate;
-}.app-nav.workspace-chrome .composition-add-button{
-  width: 42px;
-  min-width: 42px;
-  height: 42px;
-  min-height: 42px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 24%, color-mix(in srgb, white 42%, transparent), transparent 38%),
-    color-mix(in srgb, var(--blue) 18%, var(--glass-surface-strong));
-  color: color-mix(in srgb, var(--blue) 82%, var(--ink-strong));
-  box-shadow:
-    0 14px 34px color-mix(in srgb, var(--blue) 18%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 82%, transparent);
-  font-size: 22px;
-  font-weight: var(--ui-text-weight);
-}.app-nav.workspace-chrome .chrome-add-glyph{
-  display: block;
-  line-height: 1;
-  transform: translateY(-1px);
 }.app-nav.workspace-chrome .composition-add-button:hover,
 .app-nav.workspace-chrome .composition-add-button:focus-visible{
   background:
@@ -2339,10 +1278,6 @@ body.group-transform-active .group-transform-member{
   box-shadow:
     0 18px 42px color-mix(in srgb, var(--blue) 24%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 88%, transparent);
-}.app-nav.workspace-chrome .workspace-mode-button[aria-pressed="true"]{
-  background: color-mix(in srgb, var(--blue) 13%, transparent);
-  color: color-mix(in srgb, var(--blue) 86%, var(--ink-strong));
-  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--blue) 54%, transparent);
 }.app-nav.workspace-chrome .background-tone-trigger,
 .app-nav.workspace-chrome .nav-status-icon-only,
 .app-nav.workspace-chrome .cmd-btn-icon-only{
@@ -2369,33 +1304,6 @@ body.group-transform-active .group-transform-member{
   box-shadow:
     0 12px 28px color-mix(in srgb, var(--blue) 10%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 74%, transparent);
-}.app-nav.workspace-chrome .panel-add-menu,
-.app-nav.workspace-chrome .layout-slot-menu,
-.app-nav.workspace-chrome .dash-switch-menu,
-.app-nav.workspace-chrome .nav-status-popover,
-.app-nav.workspace-chrome .background-tone-popover{
-  z-index: var(--z-navbar-dropdown);
-  border-color: color-mix(in srgb, var(--glass-border) 62%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--glass-surface-strong) 88%, white), color-mix(in srgb, var(--glass-surface) 90%, transparent));
-  box-shadow:
-    0 24px 68px rgba(15, 23, 42, .16),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 80%, transparent);
-  backdrop-filter: blur(24px) saturate(1.16);
-  -webkit-backdrop-filter: blur(24px) saturate(1.16);
-}.app-nav.workspace-chrome .panel-add-menu{
-  right: 50%;
-  min-width: 184px;
-  transform: translate(50%, 8px) scale(.98);
-}.app-nav.workspace-chrome .panel-add-menu-label{
-  padding: 4px 8px 0;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: var(--ui-text-weight);
-  line-height: 1;
-  text-transform: uppercase;
-}.app-nav.workspace-chrome .panel-add-menu.open{
-  transform: translate(50%, 0) scale(1);
 }.app-nav.workspace-chrome .panel-add-menu:not(.open),
 .app-nav.workspace-chrome .layout-slot-menu:not(.open){
   max-height: 0;
@@ -2405,39 +1313,6 @@ body.group-transform-active .group-transform-member{
 .app-nav.workspace-chrome .layout-slot-menu button,
 .app-nav.workspace-chrome .dash-switch-opt{
   border-radius: 13px;
-}.settings-nav{
-  position: sticky;
-  top: 12px;
-  z-index: var(--z-header);
-  margin-bottom: 24px;
-  border-color: color-mix(in srgb, var(--glass-border) 54%, transparent);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--blue) 10%, transparent) 0 38%, transparent 58%),
-    linear-gradient(180deg, color-mix(in srgb, var(--glass-surface-strong) 84%, white), color-mix(in srgb, var(--glass-surface) 76%, transparent));
-  box-shadow:
-    0 20px 56px rgba(15, 23, 42, .10),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 74%, transparent);
-  backdrop-filter: blur(24px) saturate(1.14);
-  -webkit-backdrop-filter: blur(24px) saturate(1.14);
-}.settings-nav .settings-brand-switch,
-.settings-nav .cmd-btn,
-.settings-nav .background-tone-trigger{
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}.settings-nav .settings-brand-switch:hover,
-.settings-nav .settings-brand-switch:focus-visible,
-.settings-nav .cmd-btn:hover,
-.settings-nav .cmd-btn:focus-visible,
-.settings-nav .background-tone-trigger:hover,
-.settings-nav .background-tone-trigger:focus-visible{
-  background: color-mix(in srgb, var(--glass-surface-strong) 62%, var(--blue-soft));
-  box-shadow:
-    0 12px 28px color-mix(in srgb, var(--blue) 10%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 74%, transparent);
-}.settings-form{
-  gap: 22px;
 }.form-section,
 .appearance-control-group,
 .settings-save-bar{
@@ -2450,48 +1325,32 @@ body.group-transform-active .group-transform-member{
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 78%, transparent);
   backdrop-filter: blur(24px) saturate(1.12);
   -webkit-backdrop-filter: blur(24px) saturate(1.12);
-}.form-section{
-  padding: clamp(22px, 3vw, 30px);
-}.section-heading{
-  margin-bottom: 18px;
-}.fl-wrap input{
-  min-height: 48px;
-  border-color: color-mix(in srgb, var(--glass-border) 68%, transparent);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--glass-surface-strong) 58%, transparent);
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 68%, transparent),
-    0 10px 26px rgba(15, 23, 42, .04);
-}.fl-wrap input:focus{
-  border-color: color-mix(in srgb, var(--blue) 42%, var(--glass-border));
-  background: color-mix(in srgb, var(--glass-surface-strong) 78%, white);
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--blue) 12%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 78%, transparent);
 }.appearance-control-group{
+  display: grid;
+  gap: 10px;
+  border: 1.5px solid var(--glass-border);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--glass-surface) 82%, transparent);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
   padding: 16px;
-}.settings-save-bar{
-  bottom: 18px;
-  padding: 12px 14px;
 }.confirm-dialog{
+  border: 1.5px solid var(--glass-border);
   border-color: color-mix(in srgb, var(--glass-border) 60%, transparent);
   border-radius: 28px;
   padding: 22px;
-  background:
-    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--red) 8%, transparent) 0 36%, transparent 58%),
+  background: radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--red) 8%, transparent) 0 36%, transparent 58%),
     linear-gradient(180deg, color-mix(in srgb, var(--glass-surface-strong) 88%, white), color-mix(in srgb, var(--glass-surface) 88%, transparent));
-  box-shadow:
-    0 32px 90px rgba(15, 23, 42, .22),
+  box-shadow: 0 32px 90px rgba(15, 23, 42, .22),
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 82%, transparent);
   backdrop-filter: blur(26px) saturate(1.16);
   -webkit-backdrop-filter: blur(26px) saturate(1.16);
 }.confirm-dialog::backdrop{
-  background:
-    radial-gradient(circle at 50% 22%, rgba(255, 255, 255, .16), transparent 42%),
+  background: radial-gradient(circle at 50% 22%, rgba(255, 255, 255, .16), transparent 42%),
     rgba(15, 23, 42, .30);
   backdrop-filter: blur(10px) saturate(1.08);
   -webkit-backdrop-filter: blur(10px) saturate(1.08);
 }.confirm-dialog-head{
+  color: var(--muted-strong);
   margin-bottom: 14px;
   letter-spacing: .05em;
 }.confirm-dialog-close,
@@ -2505,8 +1364,7 @@ body.group-transform-active .group-transform-member{
   border-color: color-mix(in srgb, var(--red) 26%, var(--glass-border));
   background: color-mix(in srgb, var(--red) 14%, var(--glass-surface-strong));
   color: color-mix(in srgb, var(--red) 74%, var(--ink-strong));
-  box-shadow:
-    0 12px 30px color-mix(in srgb, var(--red) 16%, transparent),
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--red) 16%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 58%, transparent);
 }.confirm-dialog-danger:hover,
 .confirm-dialog-danger:focus-visible{
@@ -2518,99 +1376,38 @@ body.group-transform-active .group-transform-member{
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 64%, transparent);
 }
 
-@media (max-width: 1180px) {.app-nav.workspace-chrome{
-    grid-template-columns: 1fr auto;
-  }.app-nav.workspace-chrome > .app-nav-status{
+@media (max-width: 1180px) {.app-nav.workspace-chrome > .app-nav-status{
     grid-column: 1 / -1;
     order: 3;
     justify-content: flex-start;
   }
 }
 
-@media (max-width: 760px) {.app-nav.workspace-chrome{
-    grid-template-columns: 1fr;
-    align-items: stretch;
-    border-radius: 24px;
-  }.app-nav.workspace-chrome > .app-nav-brand-group,
+@media (max-width: 760px) {.app-nav.workspace-chrome > .app-nav-brand-group,
 .app-nav.workspace-chrome > .app-nav-status,
 .app-nav.workspace-chrome > .app-nav-actions{
     width: 100%;
   }.app-nav.workspace-chrome > .app-nav-status{
     flex-wrap: wrap;
     justify-content: center;
-  }.app-nav.workspace-chrome .workspace-command-island{
-    width: auto;
-    flex-wrap: nowrap;
   }.app-nav.workspace-chrome .layout-command-island{
     flex: 1 1 100%;
     justify-content: center;
-  }.app-nav.workspace-chrome .layout-slot-controls{
-    flex-wrap: wrap;
-    justify-content: center;
-  }.app-nav.workspace-chrome .appearance-command-island{
-    margin-left: 0;
-    justify-content: flex-end;
   }
 }/* Atmospheric chrome evolution: remove the slab,
-keep the workspace first. */ .app-nav.workspace-chrome{
-  gap: clamp(18px, 3vw, 42px);
-  margin: 0 auto 30px;
-  padding: 2px 8px 18px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  isolation: isolate;
-}.app-nav.workspace-chrome::before{
+keep the workspace first. */ .app-nav.workspace-chrome::before{
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
   inset: -22px 12% auto;
   height: 88px;
   border-radius: var(--radius-pill);
-  background:
-    radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--blue) 13%, transparent), transparent 64%),
+  background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--blue) 13%, transparent), transparent 64%),
     linear-gradient(90deg, transparent, color-mix(in srgb, var(--glass-highlight) 28%, transparent), transparent);
   filter: blur(18px);
   opacity: .72;
   transform: translateZ(0);
-}.app-nav.workspace-chrome::after{
-  content: "";
-  position: absolute;
-  left: 24%;
-  right: 24%;
-  bottom: 2px;
-  height: 1px;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--blue) 24%, transparent), transparent);
-  opacity: .64;
-  pointer-events: none;
-}.app-nav.workspace-chrome > .app-nav-brand-group,
-.app-nav.workspace-chrome > .app-nav-status,
-.app-nav.workspace-chrome > .app-nav-actions{
-  position: relative;
-  z-index: 1;
-}.app-nav.workspace-chrome > .app-nav-status{
-  align-items: center;
-  gap: clamp(12px, 2.5vw, 32px);
-}.app-nav.workspace-chrome .workspace-identity-island{
-  padding: 4px 6px 4px 5px;
-  border: 1px solid color-mix(in srgb, var(--glass-border) 42%, transparent);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 18% 12%, color-mix(in srgb, white 28%, transparent), transparent 44%),
-    color-mix(in srgb, var(--glass-surface-strong) 54%, transparent);
-  box-shadow:
-    0 18px 44px rgba(15, 23, 42, .09),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 60%, transparent);
-  backdrop-filter: blur(22px) saturate(1.12);
-  -webkit-backdrop-filter: blur(22px) saturate(1.12);
-}.app-nav.workspace-chrome button.dash-switch-hero{
-  min-height: 40px;
-  background: transparent;
-  box-shadow: none;
-}.app-nav.workspace-chrome button.dash-switch-hero:hover,
-.app-nav.workspace-chrome button.dash-switch-hero:focus-visible{
-  background: color-mix(in srgb, var(--glass-surface-strong) 38%, var(--blue-soft));
 }.app-nav.workspace-chrome .layout-command-island{
   opacity: .62;
   transform: translateY(-5px);
@@ -2621,8 +1418,6 @@ keep the workspace first. */ .app-nav.workspace-chrome{
 .app-nav.workspace-chrome .layout-command-island:focus-within{
   opacity: 1;
   transform: translateY(-6px);
-}.app-nav.workspace-chrome .layout-slot-controls{
-  gap: 2px;
 }.app-nav.workspace-chrome .layout-slot-trigger,
 .app-nav.workspace-chrome .layout-slot-button,
 .app-nav.workspace-chrome .panel-undo-button{
@@ -2637,19 +1432,22 @@ keep the workspace first. */ .app-nav.workspace-chrome{
 }.app-nav.workspace-chrome .composition-command-island{
   transform: translateY(9px);
 }.app-nav.workspace-chrome .composition-add-button{
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  font-size: 22px;
+  font-weight: var(--ui-text-weight);
   position: relative;
   width: 48px;
   min-width: 48px;
   height: 48px;
   min-height: 48px;
   overflow: visible;
-  background:
-    radial-gradient(circle at 34% 24%, color-mix(in srgb, white 48%, transparent), transparent 38%),
+  background: radial-gradient(circle at 34% 24%, color-mix(in srgb, white 48%, transparent), transparent 38%),
     radial-gradient(circle at 50% 70%, color-mix(in srgb, var(--blue) 26%, transparent), transparent 58%),
     color-mix(in srgb, var(--glass-surface-strong) 62%, transparent);
   color: color-mix(in srgb, var(--blue) 80%, var(--ink-strong));
-  box-shadow:
-    0 20px 52px color-mix(in srgb, var(--blue) 24%, transparent),
+  box-shadow: 0 20px 52px color-mix(in srgb, var(--blue) 24%, transparent),
     0 8px 18px rgba(15, 23, 42, .08),
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 84%, transparent);
   backdrop-filter: blur(22px) saturate(1.2);
@@ -2664,6 +1462,8 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   pointer-events: none;
   z-index: -1;
 }.app-nav.workspace-chrome .chrome-add-glyph{
+  display: block;
+  line-height: 1;
   font-size: 26px;
   font-weight: var(--ui-text-weight);
   transform: translateY(-2px);
@@ -2671,14 +1471,6 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   gap: 3px;
   opacity: .78;
   transform: translateY(1px);
-}.app-nav.workspace-chrome .appearance-command-island{
-  gap: 2px;
-  opacity: .78;
-  padding: 3px;
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--glass-surface-strong) 24%, transparent);
-  backdrop-filter: blur(18px) saturate(1.08);
-  -webkit-backdrop-filter: blur(18px) saturate(1.08);
 }.app-nav.workspace-chrome .appearance-command-island:hover,
 .app-nav.workspace-chrome .appearance-command-island:focus-within,
 .app-nav.workspace-chrome .mode-command-island:hover,
@@ -2698,25 +1490,9 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   min-width: 36px;
   height: 36px;
   min-height: 36px;
-}.app-nav.workspace-chrome .workspace-mode-button{
-  height: 35px;
-  min-height: 35px;
-  padding-inline: 9px;
-  font-size: 11px;
-}.app-nav.workspace-chrome .workspace-mode-button[aria-pressed="true"]{
-  background:
-    radial-gradient(circle at 50% 100%, color-mix(in srgb, var(--blue) 18%, transparent), transparent 70%),
-    color-mix(in srgb, var(--glass-surface-strong) 34%, transparent);
-  box-shadow:
-    0 10px 24px color-mix(in srgb, var(--blue) 10%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, var(--blue) 42%, transparent);
-}.app-nav.workspace-chrome .panel-add-menu{
-  margin-top: 8px;
 }
 
-@media (max-width: 1180px) {.app-nav.workspace-chrome{
-    padding-bottom: 14px;
-  }.app-nav.workspace-chrome > .app-nav-status{
+@media (max-width: 1180px) {.app-nav.workspace-chrome > .app-nav-status{
     gap: 14px;
   }.app-nav.workspace-chrome .layout-command-island,
 .app-nav.workspace-chrome .composition-command-island{
@@ -2724,13 +1500,8 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   }
 }
 
-@media (max-width: 760px) {.app-nav.workspace-chrome{
-    padding: 0 0 18px;
-  }.app-nav.workspace-chrome::before{
+@media (max-width: 760px) {.app-nav.workspace-chrome::before{
     inset: -20px 0 auto;
-  }.app-nav.workspace-chrome .workspace-identity-island,
-.app-nav.workspace-chrome .appearance-command-island{
-    width: 100%;
   }.app-nav.workspace-chrome .layout-command-island{
     opacity: .9;
   }
@@ -2754,10 +1525,8 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   padding: 10px 12px;
   border: 1.5px solid color-mix(in srgb, var(--line) 64%, rgba(255, 255, 255, .78));
   border-radius: var(--radius-md);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--glass-surface-strong) 88%, var(--surface-raised)), color-mix(in srgb, var(--glass-surface) 76%, var(--surface-soft)));
-  box-shadow:
-    var(--shadow-card),
+  background: linear-gradient(180deg, color-mix(in srgb, var(--glass-surface-strong) 88%, var(--surface-raised)), color-mix(in srgb, var(--glass-surface) 76%, var(--surface-soft)));
+  box-shadow: var(--shadow-card),
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 74%, transparent);
   backdrop-filter: blur(22px) saturate(1.12);
   -webkit-backdrop-filter: blur(22px) saturate(1.12);
@@ -2767,14 +1536,17 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   content: none;
   display: none;
 }.app-nav.workspace-chrome::after{
+  left: 24%;
+  right: 24%;
+  bottom: 2px;
+  height: 1px;
   content: "";
   display: block;
   position: absolute;
   inset: 1px;
   z-index: 0;
   border-radius: inherit;
-  background:
-    repeating-linear-gradient(
+  background: repeating-linear-gradient(
       90deg,
       color-mix(in srgb, var(--ink-strong) 4%, transparent) 0 1px,
       transparent 1px 4px
@@ -2793,12 +1565,10 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   opacity: .34;
   mix-blend-mode: soft-light;
   pointer-events: none;
-  mask-image:
-    linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%),
+  mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%),
     linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
   mask-composite: intersect;
-  -webkit-mask-image:
-    linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%),
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 7%, black 93%, transparent 100%),
     linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
   -webkit-mask-composite: source-in;
 }.app-nav.workspace-chrome > .app-nav-brand-group,
@@ -2809,13 +1579,12 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   display: flex;
   align-items: center;
   min-width: 0;
-}.app-nav.workspace-chrome > .app-nav-brand-group{
-  justify-content: flex-start;
 }.app-nav.workspace-chrome > .app-nav-status{
+  display: flex;
+  min-width: 0;
+  align-items: center;
   justify-content: center;
   gap: var(--space-8);
-}.app-nav.workspace-chrome > .app-nav-actions{
-  justify-content: flex-end;
 }.app-nav.workspace-chrome .workspace-command-island,
 .app-nav.workspace-chrome .layout-slot-controls{
   display: inline-flex;
@@ -2837,10 +1606,12 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   opacity: 1;
   transform: none;
 }.app-nav.workspace-chrome .layout-slot-controls{
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  gap: 2px;
   min-height: var(--navbar-control-height);
-}.app-nav.workspace-chrome .workspace-identity-island{
-  justify-content: flex-start;
-  padding-inline: 0;
 }.app-nav.workspace-chrome .dash-switcher,
 .app-nav.workspace-chrome .layout-slot-picker,
 .app-nav.workspace-chrome .panel-add-picker,
@@ -2872,56 +1643,6 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   line-height: 1;
   transform: none;
   transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
-}.app-nav.workspace-chrome button.dash-switch-hero,
-.app-nav.workspace-chrome .layout-slot-trigger{
-  color: var(--ink-strong);
-  font-weight: var(--ui-text-weight);
-}.app-nav.workspace-chrome button.dash-switch-hero{
-  width: auto;
-  min-width: 128px;
-  max-width: 166px;
-  gap: 0;
-  justify-content: flex-start;
-  padding-inline: 12px 13px;
-  text-align: left;
-}.app-nav.workspace-chrome .layout-slot-trigger{
-  position: relative;
-  min-width: 82px;
-  gap: 0;
-  justify-content: center;
-  padding-inline: 14px;
-}.app-nav.workspace-chrome .layout-slot-trigger::after{
-  content: none;
-  display: none;
-}.app-nav.workspace-chrome .dash-identity-copy,
-.app-nav.workspace-chrome .dash-switch-label,
-.app-nav.workspace-chrome .layout-slot-label{
-  display: inline-block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}.app-nav.workspace-chrome .dash-identity-copy{
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  line-height: 1.05;
-}.app-nav.workspace-chrome .dash-identity-name,
-.app-nav.workspace-chrome .dash-identity-email{
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}.app-nav.workspace-chrome .dash-identity-name{
-  color: var(--ink-strong);
-  font-size: 11.5px;
-  font-weight: var(--ui-text-weight);
-}.app-nav.workspace-chrome .dash-identity-email{
-  color: color-mix(in srgb, var(--muted-strong) 72%, transparent);
-  font-size: 9.5px;
-  font-weight: var(--ui-text-weight);
 }.app-nav.workspace-chrome .layout-slot-button,
 .app-nav.workspace-chrome .panel-reset-button,
 .app-nav.workspace-chrome .workspace-mode-button{
@@ -3072,29 +1793,28 @@ keep the workspace first. */ .app-nav.workspace-chrome{
 .app-nav.workspace-chrome .dash-switch-menu,
 .app-nav.workspace-chrome .nav-status-popover,
 .app-nav.workspace-chrome .background-tone-popover{
+  border-color: color-mix(in srgb, var(--glass-border) 62%, transparent);
   z-index: var(--z-navbar-dropdown);
   border: 1px solid color-mix(in srgb, var(--line) 62%, rgba(255, 255, 255, .72));
   border-radius: var(--radius-sm);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--glass-surface-strong) 94%, var(--surface-raised)), color-mix(in srgb, var(--glass-surface) 86%, var(--surface-soft)));
-  box-shadow:
-    var(--shadow-glass),
+  background: linear-gradient(180deg, color-mix(in srgb, var(--glass-surface-strong) 94%, var(--surface-raised)), color-mix(in srgb, var(--glass-surface) 86%, var(--surface-soft)));
+  box-shadow: var(--shadow-glass),
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 76%, transparent);
   backdrop-filter: blur(22px) saturate(1.12);
   -webkit-backdrop-filter: blur(22px) saturate(1.12);
 }.app-nav.workspace-chrome .panel-add-menu{
+  right: 50%;
   top: calc(100% + 8px);
   left: 0;
   min-width: 172px;
   margin-top: 0;
   transform: translateY(-4px) scale(.98);
   transform-origin: top left;
-}.app-nav.workspace-chrome .panel-add-menu.open{
-  transform: translateY(0) scale(1);
 }.app-nav.workspace-chrome .panel-add-menu:not(.open){
   padding-top: 0;
   padding-bottom: 0;
 }.app-nav.workspace-chrome .panel-add-menu.open{
+  transform: translateY(0) scale(1);
   max-height: var(--panel-add-menu-max-height, calc(100vh - 120px));
   padding-top: 8px;
   padding-bottom: 8px;
@@ -3112,24 +1832,9 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   overscroll-behavior: contain;
   padding-right: 2px;
   scrollbar-width: thin;
-}.object-add-category,
-.object-add-subcategory{
-  position: relative;
 }.object-add-category-trigger,
 .object-add-subcategory-trigger{
   position: relative;
-}.object-add-category-trigger::after,
-.object-add-subcategory-trigger::after{
-  content: "";
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  border-top: 1.5px solid currentColor;
-  border-right: 1.5px solid currentColor;
-  opacity: .62;
-  transform: translateY(-50%) rotate(45deg);
 }.object-add-submenu{
   position: absolute;
   top: 0;
@@ -3168,44 +1873,6 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   transition-delay: 0s;
 }.object-add-chart-submenu{
   min-width: 184px;
-}.app-nav.workspace-chrome .layout-slot-menu{
-  min-width: 226px;
-  --layout-slot-menu-max-height: min(68vh, 560px);
-  overscroll-behavior: contain;
-  padding: 6px;
-  background:
-    linear-gradient(180deg, rgba(248, 251, 255, .97), rgba(237, 244, 252, .95));
-  scrollbar-width: thin;
-}.app-nav.workspace-chrome .layout-slot-menu:not(.open){
-  padding-top: 0;
-  padding-bottom: 0;
-}.app-nav.workspace-chrome .layout-slot-menu.open{
-  max-height: var(--layout-slot-menu-max-height);
-  overflow-y: auto;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transform: translateY(0) scale(1);
-  padding-top: 6px;
-  padding-bottom: 6px;
-}.app-nav.workspace-chrome .layout-slot-menu .layout-source-option{
-  background: color-mix(in srgb, #eef4fb 88%, white);
-  color: var(--ink-strong);
-}.layout-source-group{
-  display: grid;
-  gap: var(--space-5);
-}.layout-source-group + .layout-source-group{
-  margin-top: 7px;
-  padding-top: 7px;
-  border-top: 1px solid color-mix(in srgb, var(--line) 44%, transparent);
-}.layout-source-heading{
-  padding: 2px 8px 1px;
-  color: color-mix(in srgb, var(--ink-muted) 94%, var(--ink));
-  font-size: 10px;
-  font-weight: var(--ui-text-weight);
-  letter-spacing: 0;
-  line-height: 1.2;
-  text-transform: uppercase;
 }.app-nav.workspace-chrome .panel-add-action,
 .app-nav.workspace-chrome .widget-add-action,
 .app-nav.workspace-chrome .divider-add-action,
@@ -3234,18 +1901,6 @@ keep the workspace first. */ .app-nav.workspace-chrome{
   text-align: left;
   cursor: pointer;
   transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
-}.app-nav.workspace-chrome .dash-switch-opt{
-  border: 1px solid color-mix(in srgb, #aeb8c4 46%, transparent);
-  min-height: 48px;
-  padding-block: 7px;
-  align-items: center;
-}.app-nav.workspace-chrome .dash-switch-opt:disabled{
-  cursor: default;
-  opacity: .62;
-}.app-nav.workspace-chrome .dash-switch-opt:disabled:hover{
-  background: color-mix(in srgb, #d9dfe7 58%, var(--glass-surface) 42%);
-  color: var(--ink);
-  transform: none;
 }.widget-workbench-panel{
   border: 1px solid color-mix(in srgb, var(--line) 62%, rgba(255, 255, 255, .72));
   border-radius: var(--radius-sm);
@@ -3444,8 +2099,9 @@ keep the workspace first. */ .app-nav.workspace-chrome{
 }
 
 @media (max-width: 1180px) {.app-nav.workspace-chrome{
+    padding-bottom: 14px;
     grid-template-columns: 1fr;
-  }.app-nav.workspace-chrome > .app-nav-brand-group,
+}.app-nav.workspace-chrome > .app-nav-brand-group,
 .app-nav.workspace-chrome > .app-nav-status,
 .app-nav.workspace-chrome > .app-nav-actions{
     justify-content: center;
@@ -3455,13 +2111,17 @@ keep the workspace first. */ .app-nav.workspace-chrome{
 }
 
 @media (max-width: 760px) {.app-nav.workspace-chrome{
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    border-radius: 24px;
     padding: 10px;
-  }.app-nav.workspace-chrome .workspace-command-island{
+}.app-nav.workspace-chrome .workspace-command-island{
     flex-wrap: wrap;
     width: 100%;
-  }.app-nav.workspace-chrome .layout-slot-controls{
+}.app-nav.workspace-chrome .layout-slot-controls{
+    justify-content: center;
     flex-wrap: wrap;
-  }
+}
 }/* Final compact-control interaction normalization. Keep large workspace objects on their own hover language. */ .app-nav.workspace-chrome .layout-slot-menu button:hover,
 .app-nav.workspace-chrome .panel-add-action:hover,
 .app-nav.workspace-chrome .widget-add-action:hover,
@@ -3597,17 +2257,6 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
 .panel-layout > .db-panel:has(:is(.panel-tools, .panel-tool-drawer, button, input, select, textarea, [contenteditable="true"]):hover)::before,
 .panel-layout > .db-panel:has(:is(.panel-tools, .panel-tool-drawer, input, select, textarea, [contenteditable="true"]):focus-within)::before{
   opacity: 0 !important;
-}.panel-layout > .db-panel:has(:is(.panel-tools, .panel-tool-drawer, button, input, select, textarea, [contenteditable="true"]):hover):not(.db-panel-dragging):not(.dashboard-active-resize),
-.panel-layout > .db-panel:has(:is(.panel-tools, .panel-tool-drawer, input, select, textarea, [contenteditable="true"]):focus-within):not(.db-panel-dragging):not(.dashboard-active-resize){
-  background: var(--surface) !important;
-  border-color: var(--line) !important;
-  box-shadow: var(--shadow-card) !important;
-  transform: none !important;
-}.panel-layout > .db-panel.db-panel-custom-color:has(:is(.panel-tools, .panel-tool-drawer, button, input, select, textarea, [contenteditable="true"]):hover):not(.db-panel-dragging):not(.dashboard-active-resize),
-.panel-layout > .db-panel.db-panel-custom-color:has(:is(.panel-tools, .panel-tool-drawer, input, select, textarea, [contenteditable="true"]):focus-within):not(.db-panel-dragging):not(.dashboard-active-resize){
-  border-color: color-mix(in srgb, var(--panel-accent) 38%, var(--line)) !important;
-  box-shadow: var(--shadow-card) !important;
-  transform: none !important;
 }/* Floating glass menu system: navbar/dropdown surfaces only. */ .workspace-menu-overlay-layer{
   position: fixed;
   inset: 0;
@@ -3654,15 +2303,6 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
   box-shadow: var(--shadow-glass);
   backdrop-filter: blur(18px) saturate(1.12);
   -webkit-backdrop-filter: blur(18px) saturate(1.12);
-}:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .dash-switch-menu.nav-menu-shell{
-  min-width: 224px;
-  padding: 7px;
-  border-radius: 18px;
-}:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .layout-slot-menu.nav-menu-shell{
-  min-width: 246px;
-  --layout-slot-menu-max-height: min(var(--menu-portal-max-height, 72vh), 580px);
-  padding: 8px;
-  overscroll-behavior: contain;
 }:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .panel-add-menu.nav-menu-shell{
   min-width: 184px;
   padding: 8px;
@@ -3699,29 +2339,6 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
   visibility: visible;
   pointer-events: auto;
   transition-delay: 0s;
-}:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .layout-slot-menu.nav-menu-shell:not(.open){
-  max-height: 0;
-  overflow: hidden;
-  padding-top: 0;
-  padding-bottom: 0;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    opacity .14s ease,
-    transform .16s cubic-bezier(.2, .8, .2, 1),
-    max-height .22s cubic-bezier(.2, .8, .2, 1),
-    padding .16s ease,
-    visibility 0s linear .16s;
-}:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .layout-slot-menu.nav-menu-shell.open{
-  max-height: var(--layout-slot-menu-max-height);
-  overflow-y: auto;
-  padding-top: 8px;
-  padding-bottom: 8px;
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  transition-delay: 0s;
 }:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .panel-add-menu.nav-menu-shell.menu-scroll.submenu-active{
   overflow: visible;
 }:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .panel-add-menu.nav-menu-shell.menu-scroll.submenu-active > .object-add-browser{
@@ -3732,22 +2349,6 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
   min-width: 168px;
   gap: var(--space-5);
   overflow: visible;
-}.glass-menu-section{
-  position: relative;
-  display: grid;
-  gap: var(--space-5);
-}.glass-menu-section + .glass-menu-section{
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--glass-border) 52%, transparent);
-}.layout-source-heading{
-  padding: 1px 8px 2px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: var(--ui-text-weight);
-  letter-spacing: 0;
-  line-height: 1.2;
-  text-transform: none;
 }:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) :is(.glass-menu-item, .layout-slot-menu button, .dash-switch-opt, .background-tone-option){
   position: relative;
   box-sizing: border-box;
@@ -3774,12 +2375,6 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
     box-shadow .14s ease,
     color .14s ease,
     transform .14s ease;
-}:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .dash-switch-opt{
-  min-height: 48px;
-  align-items: center;
-  gap: 9px;
-  padding-block: 7px;
-  text-decoration: none;
 }:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .dash-switch-opt small,
 :is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .nav-status-popover dd,
 :is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) .background-tone-label{
@@ -3807,16 +2402,6 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
     inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 46%, transparent),
     inset 0 2px 7px color-mix(in srgb, var(--blue) 10%, rgba(15, 23, 42, .08));
   transform: translateY(1px);
-}:is(.app-nav.workspace-chrome, .workspace-menu-overlay-layer) :is(.dash-switch-opt:disabled, .dash-switch-opt:disabled:hover, .dash-switch-opt:disabled:active){
-  cursor: default;
-  opacity: .68;
-  border-color: color-mix(in srgb, var(--glass-border) 42%, transparent);
-  background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
-  color: var(--muted);
-  box-shadow:
-    0 1px 3px rgba(15, 23, 42, .035),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 34%, transparent);
-  transform: none;
 }.object-add-category,
 .object-add-subcategory{
   position: relative;
@@ -3826,6 +2411,15 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
   padding-right: 28px;
 }.object-add-category-trigger::after,
 .object-add-subcategory-trigger::after{
+  content: "";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: translateY(-50%) rotate(45deg);
   right: 11px;
   opacity: .58;
 }.object-add-submenu.glass-submenu-panel{
@@ -3952,10 +2546,6 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
   --panel-lock-border: var(--object-control-border);
   --panel-lock-glow: var(--object-control-glow);
   --panel-control-hover-border: var(--object-control-hover-border);
-}.db-panel{
-  background: var(--object-shell-surface) !important;
-  border-color: var(--object-shell-rim) !important;
-  box-shadow: var(--object-shell-shadow) !important;
 }.db-panel::after,
 .widget-layout > .widget-card:not(.db-panel-pinned)::after,
 .panel-internal-widget-grid > .widget-card:not(.db-panel-pinned)::after{
@@ -4007,21 +2597,6 @@ never geometry or layout state. */ .dashboard-layout-grid .widget-card[data-lod]
   box-shadow: var(--object-shell-shadow) !important;
 }.db-panel.db-panel-collapsed > .db-panel-body{
   border-top-width: 0 !important;
-}.db-panel:hover,
-.db-panel:focus-within,
-.db-panel.db-panel-collapsed:hover,
-.db-panel.db-panel-collapsed:focus-within,
-.db-panel.db-panel-tools-open:hover,
-.db-panel.db-panel-tools-open:focus-within{
-  border-color: var(--object-shell-rim-hover) !important;
-  box-shadow: var(--object-shell-hover-shadow) !important;
-}.db-panel:hover,
-.db-panel:focus-within{
-  background: var(--object-shell-surface) !important;
-}.db-panel > .db-panel-hd:hover,
-.db-panel > .db-panel-hd:focus-visible{
-  background: var(--object-shell-hover-bg) !important;
-  border-color: var(--object-shell-rim-hover) !important;
 }.db-panel.db-panel-custom-color,
 .db-panel.db-panel-custom-color > .db-panel-hd,
 .widget-layout > .widget-card.db-panel-custom-color,
@@ -4269,21 +2844,6 @@ and dividers for one * shared translucent recipe: low base alpha + diagonal shee
     inset 1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
     inset -1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
     inset 0 -1px 0 rgba(255, 255, 255, 0.10);
-}.db-panel:hover,
-.db-panel:focus-within,
-.db-panel.db-panel-collapsed:hover,
-.db-panel.db-panel-collapsed:focus-within,
-.db-panel.db-panel-tools-open:hover,
-.db-panel.db-panel-tools-open:focus-within{
-  background:
-    linear-gradient(150deg,
-      rgba(255, 255, 255, 0.14) 0%,
-      rgba(255, 255, 255, 0.04) 30%,
-      rgba(255, 255, 255, 0.02) 58%,
-      rgba(255, 255, 255, 0.06) 100%
-    ),
-    rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, calc(var(--glass-photo-rim-alpha) + 0.12));
 }.db-panel-hd{
   background:
     linear-gradient(180deg,
@@ -4292,32 +2852,10 @@ and dividers for one * shared translucent recipe: low base alpha + diagonal shee
     ),
     rgba(255, 255, 255, 0.03);
   border-bottom-color: rgba(255, 255, 255, 0.30);
-}.db-panel-body{
-  background: transparent;
-  border-top-color: rgba(255, 255, 255, 0.24);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 1px 0 0 rgba(255, 255, 255, 0.10),
-    inset -1px 0 0 rgba(255, 255, 255, 0.10),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }/* The single biggest contributor to "open panel still foggy": the body's * own diffusion ::before paints var(--panel-content-diffusion),
 a * corner-fading white gradient peaking at rgba(255,255,255,.45),
 at * opacity:.55 (dashboard-grid.css:4090). At ~.25 alpha across the * top-left it dominates everything painted below. Knock its opacity * down so it remains a faint sheen,
-not a fog. */ .db-panel-body::before{
-  opacity: 0.10;
-}.db-panel-body > .panel-empty-state{
-  /* elementsFromPoint diagnostic at the panel body center showed this
-   * card is the topmost painter in every post-drop phase — its 6%+10%
-   * white fill is the "white slab" the user sees over light photos.
-   * Drop the fill entirely; keep dashed border + label so the
-   * affordance still reads. No backdrop-filter so no haze halo. */
-  background: transparent !important;
-  background-color: transparent !important;
-  border-color: rgba(255, 255, 255, 0.36) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}.widget-layout > .widget-card{
+not a fog. */ .widget-layout > .widget-card{
   background:
     linear-gradient(150deg,
       rgba(255, 255, 255, var(--glass-photo-sheen-alpha)) 0%,
@@ -4367,15 +2905,7 @@ not a fog. */ .db-panel-body::before{
     inset 0 -1px 0 rgba(255, 255, 255, 0.08),
     inset 1px 0 0 rgba(255, 255, 255, 0.12),
     inset -1px 0 0 rgba(255, 255, 255, 0.12);
-}/* The little dot/node inside the divider also paints a tinted * near-opaque mix from dashboard-grid.css:2894-2906. Make it a glass * bead instead so the divider strip doesn't have a single solid mark * sitting in the middle of an otherwise translucent surface. */ .workspace-divider .workspace-divider-node{
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.06)),
-    rgba(255, 255, 255, 0.10);
-  border-color: rgba(255, 255, 255, 0.42);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.30);
-}/* Workspace-object title typography (the "458" font system) applied to
+}/* The little dot/node inside the divider also paints a tinted * near-opaque mix from dashboard-grid.css:2894-2906. Make it a glass * bead instead so the divider strip doesn't have a single solid mark * sitting in the middle of an otherwise translucent surface. */ /* Workspace-object title typography (the "458" font system) applied to
 panel titles, divider titles, and object labels. Open panel title,
 collapsed panel title, and divider title all share `.db-panel-title`. */
 .db-panel-title,
@@ -4484,20 +3014,7 @@ so add a matching-specificity override. */ .runtime-chart-widget > .runtime-char
   background: transparent;
   border-color: transparent;
   box-shadow: none;
-}.runtime-well-widget .widget-content-well.widget-library-surface{
-  --widget-content-fg: var(--shared-well-fg);
-  --widget-content-title: var(--shared-well-fg);
-  --widget-content-muted: var(--shared-well-muted);
-  --widget-content-meta: var(--shared-well-meta);
-  --widget-content-meta-strong: var(--shared-well-fg);
-  --widget-content-meta-quiet: var(--shared-well-meta);
-  background: var(--widget-library-surface-bg);
-  border-color: var(--widget-library-surface-border);
-  box-shadow: var(--widget-library-surface-shadow);
-  color: var(--widget-library-fg);
-}/* Empty-state: keep only the text-shadow polish. backdrop-filter was * the source of a fuzzy halo around the card; fill + filter are killed * in the rule above so the empty-state no longer reads as a slab. */ .db-panel-body > .panel-empty-state{
-  text-shadow: var(--glass-photo-text-shadow);
-}/* ── Object-shell material override for object glass material ── * * themes.css:5171-5307 introduces a unified "object shell" system that * paints panels,
+}/* Empty-state: keep only the text-shadow polish. backdrop-filter was * the source of a fuzzy halo around the card; fill + filter are killed * in the rule above so the empty-state no longer reads as a slab. */ /* ── Object-shell material override for object glass material ── * * themes.css:5171-5307 introduces a unified "object shell" system that * paints panels,
 panel headers,
 workspace widgets,
 panel-contained * widgets,
@@ -4509,16 +3026,14 @@ so every * surface lands at ~64% white — too opaque for photo-glass even on to
 just composited over a * transparent surface instead of 64% white. */ .db-panel{
   background: rgba(255, 255, 255, 0.03) !important;
   border-color: rgba(255, 255, 255, var(--glass-photo-rim-alpha)) !important;
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, var(--glass-photo-drop-shadow-alpha)),
+  box-shadow: 0 18px 42px rgba(0, 0, 0, var(--glass-photo-drop-shadow-alpha)),
     inset 0 1px 0 rgba(255, 255, 255, var(--glass-photo-rim-highlight-alpha)),
     inset 1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
     inset -1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
     inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
 }.db-panel:hover,
 .db-panel:focus-within{
-  background:
-    linear-gradient(150deg,
+  background: linear-gradient(150deg,
       rgba(255, 255, 255, 0.14) 0%,
       rgba(255, 255, 255, 0.04) 30%,
       rgba(255, 255, 255, 0.02) 58%,
@@ -4536,30 +3051,15 @@ just composited over a * transparent surface instead of 64% white. */ .db-panel{
   box-shadow: none !important;
 }.db-panel > .db-panel-hd:hover,
 .db-panel > .db-panel-hd:focus-visible{
-  background:
-    linear-gradient(180deg,
+  background: linear-gradient(180deg,
       rgba(255, 255, 255, 0.18) 0%,
       rgba(255, 255, 255, 0.04) 100%
     ),
     rgba(255, 255, 255, 0.04) !important;
   border-color: rgba(255, 255, 255, 0.36) !important;
-}.widget-layout > .widget-card,
-.panel-internal-widget-grid > .widget-card{
-  background: rgba(255, 255, 255, 0.03) !important;
-  border-color: rgba(255, 255, 255, var(--glass-photo-rim-alpha)) !important;
-  box-shadow:
-    0 14px 30px rgba(0, 0, 0, calc(var(--glass-photo-drop-shadow-alpha) - 0.04)),
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-photo-rim-highlight-alpha)),
-    inset 1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
-    inset -1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
-}.widget-layout > .widget-card.db-panel-custom-color,
-.panel-internal-widget-grid > .widget-card.db-panel-custom-color{
-  background: rgba(255, 255, 255, 0.03) !important;
 }/* Custom-color WIDGETS and objects — keep the accent wash; these are * the colored objects (the contained "409", workspace stat tiles, * objects). Drop only the opaque white surface backing. */ .widget-layout > .widget-card.db-panel-custom-color,
 .panel-internal-widget-grid > .widget-card.db-panel-custom-color{
-  background:
-    var(--object-shell-wash),
+  background: var(--object-shell-wash),
     rgba(255, 255, 255, 0.04) !important;
 }/* Drop-flash root cause: themes.css:5374-5384 paints `background: * var(--object-shell-bg) !important` on custom-color widgets with the * extra `.widget-runtime-meaning` OR `.widget-tools-open` class. Those * classes are permanent on stat / runtime widgets and stick to the * dragged widget through the drop transition,
 so the rule's (0,5,1) * specificity beat the round-8 photo-glass override at (0,4,1) and * slammed the widget to ~0.64-alpha shell white. Match-and-beat with * the same selector list at (0,6,1)/(0,7,1) so widgets never flash to * the opaque shell either while drag tools are open or once they're * runtime-active. */ .widget-layout > .widget-card.db-panel-custom-color.widget-runtime-meaning,
@@ -4574,8 +3074,29 @@ so the rule's (0,5,1) * specificity beat the round-8 photo-glass override at (0,
     var(--object-shell-wash),
     rgba(255, 255, 255, 0.04) !important;
 }/* Custom-color panel HEADER — keep the accent wash too so the header * stays more colored than the body. */ .db-panel.db-panel-custom-color > .db-panel-hd{
-  background:
-    var(--object-shell-wash),
+  --panel-chrome-bg: linear-gradient(90deg,
+    rgba(var(--panel-accent-rgb), calc(.44 * var(--surface-white-mix-compensation))),
+    rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-white-mix-compensation)))
+  );
+  --panel-chrome-hover-bg: linear-gradient(90deg,
+    rgba(var(--panel-accent-rgb), calc(.46 * var(--surface-white-mix-compensation))),
+    rgba(var(--panel-accent-rgb), calc(.26 * var(--surface-white-mix-compensation)))
+  );
+  --panel-chrome-surface: var(--surface);
+  --panel-chrome-border: var(--panel-material-rim, color-mix(in srgb, var(--glass-border) 86%, var(--panel-accent) calc(5% * var(--surface-saturation-compensation))));
+  --panel-chrome-hover-border: var(--panel-material-rim-hover, color-mix(in srgb, var(--glass-border) 78%, var(--panel-accent) calc(8% * var(--surface-saturation-compensation))));
+  --panel-header-control-bg: color-mix(in srgb, var(--surface-raised) 50%, var(--panel-accent) 50%) !important;
+  --panel-header-control-fg: var(--panel-accent-text) !important;
+  --panel-header-control-border: color-mix(in srgb, var(--panel-accent) 55%, var(--panel-hover-tint)) !important;
+  --panel-header-control-glow: rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-saturation-compensation))) !important;
+  --panel-lock-bg: color-mix(in srgb, var(--surface-raised) 62%, var(--panel-accent) 38%) !important;
+  --panel-lock-fg: var(--panel-accent-text) !important;
+  --panel-lock-border: rgba(var(--panel-accent-rgb), calc(.54 * var(--surface-saturation-compensation))) !important;
+  --panel-lock-glow: rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-saturation-compensation))) !important;
+  --panel-drawer-bg: rgba(var(--panel-accent-rgb), calc(.24 * var(--surface-white-mix-compensation))) !important;
+  border-color: var(--panel-chrome-border) !important;
+  box-shadow: none !important;
+  background: var(--object-shell-wash),
     rgba(255, 255, 255, 0.04) !important;
 }/* Custom-color panel CONTAINER — drop the accent wash entirely so the
 * body shows photo detail without the lavender/blue wash bleeding
@@ -4585,6 +3106,11 @@ so the rule's (0,5,1) * specificity beat the round-8 photo-glass override at (0,
   background: rgba(255, 255, 255, 0.03) !important;
 }/* Open panel body: keep it the calmest surface in the system. Drop the * lavender-tinted --panel-content-surface that custom-color panels * still set on the body,
 knock the diffusion ::before down further. */ .db-panel-body{
+  border-top-color: rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 1px 0 0 rgba(255, 255, 255, 0.10),
+    inset -1px 0 0 rgba(255, 255, 255, 0.10),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
   background: transparent !important;
 }.db-panel-body::before{
   opacity: 0.05 !important;
@@ -4639,8 +3165,7 @@ so this override must too. Selector specificity is * matched and lifted by the l
  *   }* * Selector specificity (0, 9, 0) with !important. The :has() parent selector triggers from live descendant hover/focus, so even diagnostics can miss the paint diff,
 because the same paint computed in both states only * because my synthetic widget wasn't actually receiving :hover at * the moment of capture in the way the user's real cursor was. * * Match the full selector list at higher specificity and pin * everything to the rest paint. The same rule block also targets panels with active tools (button/input/etc * :hover or :focus-within) — covered by the same override. */ .panel-layout > .db-panel:has(:is(.panel-tools, .panel-tool-drawer, button, input, select, textarea, [contenteditable="true"]):hover):not(.db-panel-dragging):not(.dashboard-active-resize),
 .panel-layout > .db-panel:has(:is(.panel-tools, .panel-tool-drawer, input, select, textarea, [contenteditable="true"]):focus-within):not(.db-panel-dragging):not(.dashboard-active-resize){
-  background:
-    linear-gradient(150deg,
+  background: linear-gradient(150deg,
       rgba(255, 255, 255, 0.10) 0%,
       rgba(255, 255, 255, 0.03) 30%,
       rgba(255, 255, 255, 0) 58%,
@@ -4648,24 +3173,22 @@ because the same paint computed in both states only * because my synthetic widge
     ),
     rgba(255, 255, 255, 0.04) !important;
   border-color: rgba(255, 255, 255, var(--glass-photo-rim-alpha)) !important;
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, var(--glass-photo-drop-shadow-alpha)),
+  box-shadow: 0 18px 42px rgba(0, 0, 0, var(--glass-photo-drop-shadow-alpha)),
     inset 0 1px 0 rgba(255, 255, 255, var(--glass-photo-rim-highlight-alpha)),
     inset 1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
     inset -1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
     inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
-  transform: none;
+  transform: none !important;
 }/* Custom-color panel variant of the :has() trap — calmer base because * the colored header carries the accent; body stays clean glass. */ .panel-layout > .db-panel.db-panel-custom-color:has(:is(.panel-tools, .panel-tool-drawer, button, input, select, textarea, [contenteditable="true"]):hover):not(.db-panel-dragging):not(.dashboard-active-resize),
 .panel-layout > .db-panel.db-panel-custom-color:has(:is(.panel-tools, .panel-tool-drawer, input, select, textarea, [contenteditable="true"]):focus-within):not(.db-panel-dragging):not(.dashboard-active-resize){
   background: rgba(255, 255, 255, 0.03) !important;
   border-color: rgba(255, 255, 255, var(--glass-photo-rim-alpha)) !important;
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, var(--glass-photo-drop-shadow-alpha)),
+  box-shadow: 0 18px 42px rgba(0, 0, 0, var(--glass-photo-drop-shadow-alpha)),
     inset 0 1px 0 rgba(255, 255, 255, var(--glass-photo-rim-highlight-alpha)),
     inset 1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
     inset -1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
     inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
-  transform: none;
+  transform: none !important;
 }/* Panel hover/focus on custom-color: paint same calm glass as rest. */ .db-panel.db-panel-custom-color:hover,
 .db-panel.db-panel-custom-color:focus-within,
 .db-panel.db-panel-custom-color.db-panel-collapsed:hover,
@@ -4699,8 +3222,9 @@ blocking shell rule at themes.css:5270. */ .db-panel > .db-panel-hd:hover,
 .db-panel.db-panel-collapsed:focus-within,
 .db-panel.db-panel-tools-open:hover,
 .db-panel.db-panel-tools-open:focus-within{
-  background:
-    linear-gradient(150deg,
+  box-shadow: var(--object-shell-hover-shadow) !important;
+  border-color: var(--object-shell-rim-hover) !important;
+  background: linear-gradient(150deg,
       rgba(255, 255, 255, 0.10) 0%,
       rgba(255, 255, 255, 0.03) 30%,
       rgba(255, 255, 255, 0) 58%,
@@ -4723,33 +3247,7 @@ and the box-shadow swaps to a heavier drop-shadow * with bright inset highlights
 border-color !important,
 box-shadow * • themes.css:1247 same for collapsed * • themes.css:5251 .db-panel:hover/.db-panel-collapsed:hover/etc * — border-color !important,
 box-shadow !important * • themes.css:5270 .db-panel > .db-panel-hd:hover etc * — border-color !important * * The diagnostic confirmed this: on header-hover,
-panel computed * transform = matrix(1,0,0,1,0,-1) (translateY(-1px)) * border = 1px solid oklab(...) (different from rest) * box-shadow = different heavy stack (drop+inset highlights) * * Pin all of them to the rest values under photo-bg so panels and * dividers visually do not respond to hover at all. Widgets keep * their existing hover behavior (you've accepted it). */ .db-panel:hover,
-.db-panel:focus-within,
-.db-panel:active,
-.db-panel.db-panel-collapsed:hover,
-.db-panel.db-panel-collapsed:focus-within,
-.db-panel.db-panel-tools-open:hover,
-.db-panel.db-panel-tools-open:focus-within,
-.db-panel.db-panel-custom-color:hover,
-.db-panel.db-panel-custom-color:focus-within,
-.db-panel.db-panel-custom-color.db-panel-collapsed:hover,
-.db-panel.db-panel-custom-color.db-panel-collapsed:focus-within,
-.db-panel.db-panel-custom-color.db-panel-tools-open:hover,
-.db-panel.db-panel-custom-color.db-panel-tools-open:focus-within,
-.workspace-divider.db-panel:hover,
-.workspace-divider.db-panel:focus-within{
-  /* Widget hover formula applied to panels/dividers/objects: subtle
-   * rim brighten + slightly stronger inset highlights, no transform,
-   * no opaque flash. Same response language as widget hover. */
-  transform: none;
-  border-color: rgba(255, 255, 255, calc(var(--glass-photo-rim-alpha) + 0.05)) !important;
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, var(--glass-photo-drop-shadow-alpha)),
-    inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-photo-rim-highlight-alpha) + 0.04)),
-    inset 1px 0 0 rgba(255, 255, 255, calc(var(--glass-photo-side-highlight-alpha) + 0.02)),
-    inset -1px 0 0 rgba(255, 255, 255, calc(var(--glass-photo-side-highlight-alpha) + 0.02)),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.12) !important;
-}/* ── Panel chevron — strip the button shell,
+panel computed * transform = matrix(1,0,0,1,0,-1) (translateY(-1px)) * border = 1px solid oklab(...) (different from rest) * box-shadow = different heavy stack (drop+inset highlights) * * Pin all of them to the rest values under photo-bg so panels and * dividers visually do not respond to hover at all. Widgets keep * their existing hover behavior (you've accepted it). */ /* ── Panel chevron — strip the button shell,
 keep only the icon ───────── * * .db-panel-hd::before is the 34×34 circular "button" wrapping the * arrow. The user wants the chevron rendered as just the arrow icon,
 * with no pill/circle background,
 no border,
@@ -4780,16 +3278,7 @@ and a soft drop-shadow on the mask gives the * white arrow enough contrast again
 .db-panel.db-panel-custom-color > .db-panel-hd:focus-visible::after{
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) !important;
 }/* ── Flat-glass shadows on panel/divider at rest AND hover ───── * * Earlier rounds painted a heavy `0 18px 42px rgba(0,0,0, 0.26)` outer * drop shadow on panels both at rest and on hover. That's the "legacy * big shadow" the user wants gone. Replace with INSET rim highlights * only,
-no outer drop. Result: flat glass that floats on the photo * without a halo. */ .panel-layout > .db-panel,
-.db-panel.db-panel-tools-open,
-.panel-layout > .db-panel.db-panel-custom-color,
-.workspace-divider.db-panel{
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-photo-rim-highlight-alpha)),
-    inset 1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
-    inset -1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
-}/* Same flat-shadow stack for ALL hover/focus states on those objects. * Slightly brighter inset top + side rim (matching widget hover * formula: subtle rim bump, no outer drop, no transform). */ .db-panel:hover,
+no outer drop. Result: flat glass that floats on the photo * without a halo. */ /* Same flat-shadow stack for ALL hover/focus states on those objects. * Slightly brighter inset top + side rim (matching widget hover * formula: subtle rim bump, no outer drop, no transform). */ .db-panel:hover,
 .db-panel:focus-within,
 .db-panel:active,
 .db-panel.db-panel-collapsed:hover,
@@ -4804,31 +3293,17 @@ no outer drop. Result: flat glass that floats on the photo * without a halo. */ 
 .db-panel.db-panel-custom-color.db-panel-tools-open:focus-within,
 .workspace-divider.db-panel:hover,
 .workspace-divider.db-panel:focus-within{
+  /* Widget hover formula applied to panels/dividers/objects: subtle
+   * rim brighten + slightly stronger inset highlights, no transform,
+   * no opaque flash. Same response language as widget hover. */
+  transform: none;
   transform: none;
   border-color: rgba(255, 255, 255, calc(var(--glass-photo-rim-alpha) + 0.10)) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-photo-rim-highlight-alpha) + 0.08)),
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-photo-rim-highlight-alpha) + 0.08)),
     inset 1px 0 0 rgba(255, 255, 255, calc(var(--glass-photo-side-highlight-alpha) + 0.06)),
     inset -1px 0 0 rgba(255, 255, 255, calc(var(--glass-photo-side-highlight-alpha) + 0.06)),
     inset 0 -1px 0 rgba(255, 255, 255, 0.14) !important;
-}/* Header hover/focus: also flat — no shadow under the header strip. */ .db-panel > .db-panel-hd:hover,
-.db-panel > .db-panel-hd:focus-visible,
-.db-panel > .db-panel-hd:active,
-.db-panel.db-panel-custom-color > .db-panel-hd:hover,
-.db-panel.db-panel-custom-color > .db-panel-hd:focus-visible,
-.db-panel.db-panel-custom-color > .db-panel-hd:active{
-  box-shadow: none !important;
-  transform: none;
-}/* Tool/control :has() trap rules from earlier this round still paint a `0 18px 42px` drop shadow in their box-shadow. Drop that outer shadow so the state stays flat too. Keeps the inset rim highlights from those rules. */ .panel-layout > .db-panel:has(:is(.panel-tools, .panel-tool-drawer, button, input, select, textarea, [contenteditable="true"]):hover):not(.db-panel-dragging):not(.dashboard-active-resize),
-.panel-layout > .db-panel:has(:is(.panel-tools, .panel-tool-drawer, input, select, textarea, [contenteditable="true"]):focus-within):not(.db-panel-dragging):not(.dashboard-active-resize),
-.panel-layout > .db-panel.db-panel-custom-color:has(:is(.panel-tools, .panel-tool-drawer, button, input, select, textarea, [contenteditable="true"]):hover):not(.db-panel-dragging):not(.dashboard-active-resize),
-.panel-layout > .db-panel.db-panel-custom-color:has(:is(.panel-tools, .panel-tool-drawer, input, select, textarea, [contenteditable="true"]):focus-within):not(.db-panel-dragging):not(.dashboard-active-resize){
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-photo-rim-highlight-alpha)),
-    inset 1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
-    inset -1px 0 0 rgba(255, 255, 255, var(--glass-photo-side-highlight-alpha)),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
-}/* Panel header hover/focus: rim and shadow stay at rest values too. * (Background was pinned above.) */ .db-panel > .db-panel-hd:hover,
+}/* Header hover/focus: also flat — no shadow under the header strip. */ /* Tool/control :has() trap rules from earlier this round still paint a `0 18px 42px` drop shadow in their box-shadow. Drop that outer shadow so the state stays flat too. Keeps the inset rim highlights from those rules. */ /* Panel header hover/focus: rim and shadow stay at rest values too. * (Background was pinned above.) */ .db-panel > .db-panel-hd:hover,
 .db-panel > .db-panel-hd:focus-visible,
 .db-panel > .db-panel-hd:active,
 .db-panel.db-panel-custom-color > .db-panel-hd:hover,
@@ -4871,6 +3346,7 @@ and objects with the shared edge stack * defined at the top of this section. Pan
   box-shadow: var(--glass-edge-stack) !important;
 }.widget-layout > .widget-card,
 .panel-internal-widget-grid > .widget-card{
+  background: rgba(255, 255, 255, 0.03) !important;
   border-color: transparent !important;
   outline: 0 !important;
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.14) !important;
@@ -4977,6 +3453,12 @@ because the * header sits flush with the panel. */ .db-panel > .db-panel-hd,
 }/* ── Empty-panel helper UI removal ──────────────────────────────────── * * Hide the "Empty panel / Drop widgets here / Add widgets" content * inside .panel-empty-state on open empty panels. The container * itself stays in the DOM so panel-containment.js can still toggle * its hidden attribute when widgets are added/removed (the drop * pipeline targets .db-panel-body, not the empty-state element). * No border,
 padding,
 or fill — the empty body reads as blank glass. */ .db-panel-body > .panel-empty-state{
+  keep dashed border + label so the
+   * affordance still reads. No backdrop-filter so no haze halo. */
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.36) !important;
+  text-shadow: var(--glass-photo-text-shadow);
   background: transparent !important;
   background-color: transparent !important;
   border: 0 !important;
@@ -5130,10 +3612,7 @@ no card. Active * filter is indicated by a subtle underline + slightly higher * 
   min-height: var(--navbar-control-height);
   font-size: 11px;
 }
-.app-nav.workspace-chrome:not(.settings-nav) .layout-slot-trigger{
-  min-width: 76px;
-  padding-inline: 10px 24px;
-}
+
 .app-nav.workspace-chrome:not(.settings-nav) .layout-slot-button,
 .app-nav.workspace-chrome:not(.settings-nav) .panel-undo-button,
 .app-nav.workspace-chrome:not(.settings-nav) .panel-reset-button{
@@ -6120,27 +4599,7 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
  * the well, so it stays acrylic whether or not the WebGL effect is toggled on.
  * Content stays readable: the well pins light ink vars (text, gridlines,
  * separators) regardless of the configured well tone. */
-.runtime-well-widget .widget-content-well.widget-library-surface{
-  --widget-content-fg: rgba(255, 255, 255, 0.96);
-  --widget-content-title: rgba(255, 255, 255, 0.96);
-  --widget-content-muted: rgba(255, 255, 255, 0.76);
-  --widget-content-meta: rgba(255, 255, 255, 0.66);
-  --widget-content-meta-strong: rgba(255, 255, 255, 0.92);
-  --widget-content-meta-quiet: rgba(255, 255, 255, 0.6);
-  --widget-content-line: rgba(255, 255, 255, 0.16);
-  --widget-library-fg: rgba(255, 255, 255, 0.96);
-  --widget-library-muted: rgba(255, 255, 255, 0.76);
-  --widget-library-grid: rgba(255, 255, 255, 0.2);
-  background: linear-gradient(180deg, rgba(18, 24, 36, 0.34), rgba(8, 12, 20, 0.28)) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
-  backdrop-filter: blur(18px) saturate(135%) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.26),
-    inset 0 -10px 22px rgba(0, 0, 0, 0.14),
-    0 10px 28px rgba(0, 0, 0, 0.22) !important;
-  color: rgba(255, 255, 255, 0.96) !important;
-}
+
 /* Stat + Timeframe widgets get the SAME acrylic MATERIAL as the echarts/table
  * wells directly above — the identical backdrop blur — but TINTED with each
  * widget's own colour so it still reads its status. Each card carries
@@ -6319,6 +4778,24 @@ body:not(.panel-interaction-active):not(.panel-resize-active) .stat-card:hover{
  * right edge — drop the gutter entirely (wheel/keyboard scrolling is
  * untouched). */
 .runtime-well-widget .widget-content-well.widget-library-surface{
+  --widget-content-fg: rgba(255, 255, 255, 0.96);
+  --widget-content-title: rgba(255, 255, 255, 0.96);
+  --widget-content-muted: rgba(255, 255, 255, 0.76);
+  --widget-content-meta: rgba(255, 255, 255, 0.66);
+  --widget-content-meta-strong: rgba(255, 255, 255, 0.92);
+  --widget-content-meta-quiet: rgba(255, 255, 255, 0.6);
+  --widget-content-line: rgba(255, 255, 255, 0.16);
+  --widget-library-fg: rgba(255, 255, 255, 0.96);
+  --widget-library-muted: rgba(255, 255, 255, 0.76);
+  --widget-library-grid: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(180deg, rgba(18, 24, 36, 0.34), rgba(8, 12, 20, 0.28)) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
+  backdrop-filter: blur(18px) saturate(135%) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    inset 0 -10px 22px rgba(0, 0, 0, 0.14),
+    0 10px 28px rgba(0, 0, 0, 0.22) !important;
+  color: rgba(255, 255, 255, 0.96) !important;
   scrollbar-width: none;
 }
 /* …except TABLES, which get the SAME sleek translucent overlay scrollbar as the

@@ -1,8 +1,6 @@
 export const initializeWorkspacePostInit = ({
   restoreLoadedExpansionBaseline,
   surfaceResponseSelector,
-  initWorkspaceMinimapLayer,
-  refreshWorkspaceMiniMaps,
   workspaceRegionSummaryForItem,
 }) => {
   [...new Set([
@@ -15,11 +13,7 @@ export const initializeWorkspacePostInit = ({
     target?.__openCustomization?.(event);
   }, true);
 
-  document.querySelectorAll(".workspace-minimap-layer").forEach(initWorkspaceMinimapLayer);
-  window.addEventListener("scroll", () => refreshWorkspaceMiniMaps(), { passive: true });
-  window.addEventListener("resize", () => refreshWorkspaceMiniMaps(), { passive: true });
   window.dashboardSpatialRuntime = {
-    refreshMiniMaps: refreshWorkspaceMiniMaps,
     regionSummaryForWidget: (widgetKey) => workspaceRegionSummaryForItem(widgetKey),
   };
 };

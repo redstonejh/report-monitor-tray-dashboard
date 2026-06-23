@@ -28,7 +28,6 @@
     // NOT refracted — they keep their static CSS glass only. The WebGL refraction
     // looked wrong on those small round controls.
     ".app-nav.workspace-chrome.floating-control-bar",
-    ".status-detail-popover",
   ].join(", ");
 
   const VERT_SRC = `

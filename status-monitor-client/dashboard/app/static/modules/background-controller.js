@@ -143,7 +143,6 @@ export function initializeBackgroundController({ portalFloatingMenu, restoreFloa
   // and --surface-glass-alpha are the single source of truth. This
   // function is kept as a no-op so existing call sites stay valid; no
   // adaptive vars are written.
-  const setBackgroundExposureCompensation = () => {};
   // ── Photo / image background system ───────────────────────────────
   const PHOTO_BACKGROUNDS = {
     "photo-bark":        { src: "app/static/backgrounds/nature/bark.webp",        luminance: 0.08 },
@@ -408,7 +407,6 @@ export function initializeBackgroundController({ portalFloatingMenu, restoreFloa
       themeRoot.style.setProperty("--bg", baseTone);
       themeRoot.style.setProperty("--bg-end", baseTone);
     });
-    setBackgroundExposureCompensation(stateKey(state), { bg: baseTone, bgEnd: baseTone }, themeRoots);
     syncSelectionUI(selectedState);
   };
   const previewBackgroundOption = (button) => {

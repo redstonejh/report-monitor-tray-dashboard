@@ -111,7 +111,6 @@ document.addEventListener("DOMContentLoaded", () => {
     restoreFloatingMenu,
   });
   initializeBackgroundController({ portalFloatingMenu, restoreFloatingMenu, originalMenuParent });
-  let refreshWorkspaceMiniMaps = () => {};
 
   initializeNavStatusMenus();
   void initializeFloatingControlBarRuntime();
@@ -412,7 +411,6 @@ document.addEventListener("DOMContentLoaded", () => {
       ...document.querySelectorAll(`.widget-layout[data-widget-layout-key="${CSS.escape(layoutKey)}"] > .widget-card`),
       ...document.querySelectorAll(`.panel-layout[data-layout-key="${CSS.escape(layoutKey)}"] .panel-internal-widget-grid > .widget-card`),
     ].forEach((item) => renderWidgetRuntimeContent(item));
-    refreshWorkspaceMiniMaps(layoutKey);
   };
   window.dashboardTimeframeRuntime = {
     activeRange: (layoutKey = "builder") => pageTimeRangeForLayout(layoutKey),
@@ -578,7 +576,6 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   };
 
-  const initWorkspaceMinimapLayer = () => {};
 
   const {
     gridItemLayoutKey,
@@ -2626,8 +2623,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeWorkspacePostInit({
     restoreLoadedExpansionBaseline,
     surfaceResponseSelector,
-    initWorkspaceMinimapLayer,
-    refreshWorkspaceMiniMaps,
     workspaceRegionSummaryForItem,
   });
   const {

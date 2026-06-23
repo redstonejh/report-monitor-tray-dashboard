@@ -8,24 +8,6 @@
 
 import { applyPanelColor } from "./modules/panel-appearance-runtime.js";
 
-// Canonical status palette — kept identical to the tray popover (src/App.css)
-// so green / amber / red read the same on both surfaces.
-const STATUS_COLORS = {
-  green: "#32d74b",
-  yellow: "#ffd60a",
-  red: "#ff453a",
-  grey: "#8e8e93",
-  black: "#3a3a3c",
-};
-
-const STATUS_LABELS = {
-  green: "All good",
-  yellow: "Needs attention",
-  red: "Source issue",
-  grey: "Connecting…",
-  black: "No updates",
-};
-
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")
@@ -33,102 +15,8 @@ const escapeHtml = (value) => String(value ?? "")
   .replaceAll('"', "&quot;")
   .replaceAll("'", "&#39;");
 
-const formatTimestamp = (iso) => {
-  if (!iso) return "";
-  const time = new Date(iso);
-  return Number.isFinite(time.getTime()) ? time.toLocaleString() : "";
-};
-
-// ─── Top-right status indicator + hover detail popover ─────────────────────────
-// Replaces the in-grid status widget: a colored glass icon pinned to the
-// top-right corner that expands on hover into a liquid-glass detail panel. The
-// panel (.status-detail-popover) is registered as a WebGL glass target in
-// liquid-glass-webgl.js so it shares the dashboard's real glass material.
-
-function statusVisual() {
-  const connection = state.connection || "grey";
-  const visual = connection === "live" ? (state.status?.status || "grey") : connection;
-  return {
-    connection,
-    visual,
-    color: STATUS_COLORS[visual] || STATUS_COLORS.grey,
-    label: STATUS_LABELS[visual] || "Unknown",
-  };
-}
-
-// CSS :hover reveals the popover, but a pseudo-state change does not trip the
-// WebGL mutation observer — poke it across a few frames so the glass refraction
-// paints (and clears) as the panel fades in and out.
-function pokeGlass() {
-  const glass = window.LiquidGlassWebGL;
-  if (!glass?.markDirty) return;
-  let n = 0;
-  const tick = () => { glass.markDirty(); if (++n < 8) requestAnimationFrame(tick); };
-  tick();
-}
-
-let indicatorEls = null;
-
-// The top-right status dot was retired — the stat cards, chart, and table
-// carry the condition now. The indicator is never created; the update path
-// below no-ops without elements.
-function ensureStatusIndicator() {
-  return null;
-}
-
-function updateStatusIndicator() {
-  const els = ensureStatusIndicator();
-  if (!els) return;
-  const { color, label, connection, visual } = statusVisual();
-  const current = state.status || {};
-  els.cluster.style.setProperty("--status-color", color);
-  els.cluster.classList.toggle("is-red", visual === "red");
-  els.cluster.classList.toggle("is-connecting", visual === "grey");
-  els.button.setAttribute("aria-label", `Monitor status: ${label}`);
-
-  const detail = current.detail || (connection === "grey"
-    ? "Waiting for the monitor connection…"
-    : "No status details available yet.");
-  const checkedAt = formatTimestamp(current.checkedAt);
-  const lastSuccess = formatTimestamp(current.lastSuccess);
-  const metaParts = [
-    checkedAt ? `Checked ${checkedAt}` : "",
-    lastSuccess ? `Last success ${lastSuccess}` : "",
-  ].filter(Boolean);
-  // Live MQTT but the REST history endpoint is unreachable — surface it.
-  if (state.historyError && connection === "live") metaParts.push("History unavailable");
-
-  // Recent-status timeline (one bar per check) + a one-line tally.
-  const recent = state.history.slice(-24);
-  const bars = recent.map((row) => {
-    const barColor = STATUS_COLORS[row.status] || STATUS_COLORS.grey;
-    return `<span class="status-detail-bar" style="--bar-color: ${barColor}"></span>`;
-  }).join("");
-  const counts = state.history.reduce((acc, row) => {
-    acc[row.status] = (acc[row.status] || 0) + 1;
-    return acc;
-  }, {});
-  const total = state.history.length;
-  const warnN = counts.yellow || 0;
-  const incN = counts.red || 0;
-  const summary = total
-    ? `${counts.green || 0} healthy · ${warnN} warning${warnN === 1 ? "" : "s"} · ${incN} incident${incN === 1 ? "" : "s"}`
-    : "";
-
-  els.popover.innerHTML = `
-    <span class="status-detail-title">
-      <span class="status-detail-dot" aria-hidden="true"></span>
-      ${escapeHtml(label)}
-    </span>
-    <span class="status-detail-body">${escapeHtml(detail)}</span>
-    ${bars ? `<div class="status-detail-timeline" aria-hidden="true">${bars}</div>` : ""}
-    ${summary ? `<span class="status-detail-meta">${escapeHtml(summary)}</span>` : ""}
-    ${metaParts.length ? `<span class="status-detail-meta">${escapeHtml(metaParts.join(" · "))}</span>` : ""}
-  `;
-}
-
 // Strip any in-grid status widget — from the default markup or a restored saved
-// layout — so only the top-right indicator presents status.
+// layout — so status surfaces only through the stat cards, chart, and table.
 function removeStatusWidgets() {
   document.querySelectorAll(
     '.widget-card[data-widget-key="widget-status"],' +
@@ -165,152 +53,6 @@ function seedChartDefaults() {
       aggregation: "avg",
     }),
   });
-}
-
-function injectStatusIndicatorStyles() {
-  if (document.getElementById("status-indicator-styles")) return;
-  const style = document.createElement("style");
-  style.id = "status-indicator-styles";
-  style.textContent = `
-    /* Top-right cluster, mirroring the top-left window-control-cluster. */
-    .status-indicator-cluster {
-      position: fixed;
-      inset: 12px 14px auto auto;
-      z-index: calc(var(--z-menu-overlay, 2600) + 20);
-      -webkit-app-region: no-drag;
-    }
-    /* Reuse the glass control shell; the ::before becomes a colored status dot
-     * instead of a masked icon. */
-    .status-indicator-control::before {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--status-color, #8e8e93);
-      box-shadow:
-        0 0 7px var(--status-color, transparent),
-        inset 0 1px 1px rgba(255, 255, 255, 0.45);
-      mask: none;
-      -webkit-mask: none;
-      transition: background 0.4s ease, box-shadow 0.4s ease;
-    }
-    .status-detail-popover {
-      position: absolute;
-      top: calc(100% + 8px);
-      right: 0;
-      width: 264px;
-      padding: 12px 13px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      border-radius: 14px;
-      color: #ffffff;
-      opacity: 0;
-      transform: translateY(-6px);
-      pointer-events: none;
-      transition: opacity 0.16s ease, transform 0.16s ease;
-      /* Fallback frosted glass when the WebGL material is unavailable. */
-      background: rgba(22, 24, 30, 0.86);
-      -webkit-backdrop-filter: blur(30px) saturate(140%);
-      backdrop-filter: blur(30px) saturate(140%);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-    }
-    .status-indicator-cluster:hover .status-detail-popover,
-    .status-indicator-cluster:focus-within .status-detail-popover {
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-    /* When the WebGL glass is active, drop the CSS fill so the shader-refracted
-     * backdrop is the surface — matching panels and the window controls. */
-    body.webgl-glass-on .status-detail-popover {
-      background: transparent !important;
-      -webkit-backdrop-filter: none !important;
-      backdrop-filter: none !important;
-      border-color: rgba(255, 255, 255, 0.5);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
-      text-shadow: var(--dashboard-custom-text-shadow);
-    }
-    .status-detail-title {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.45em;
-      font-size: var(--workspace-object-title-size, 22px);
-      font-weight: var(--ui-text-weight);
-      line-height: var(--workspace-object-title-line-height, 1);
-      color: #ffffff;
-      text-shadow: var(--dashboard-custom-text-shadow);
-    }
-    .status-detail-dot {
-      width: 0.5em;
-      height: 0.5em;
-      border-radius: 50%;
-      flex: none;
-      background: var(--status-color, #8e8e93);
-      box-shadow: 0 0 0.4em var(--status-color, transparent);
-      transition: background 0.4s ease, box-shadow 0.4s ease;
-    }
-    /* Red draws the eye with a slow, low-amplitude glow breathe. */
-    .status-indicator-cluster.is-red .status-indicator-control::before {
-      animation: statusDotPulse 2.6s ease-in-out infinite;
-    }
-    @keyframes statusDotPulse {
-      0%, 100% { box-shadow: 0 0 7px var(--status-color, transparent), inset 0 1px 1px rgba(255, 255, 255, 0.45); }
-      50%      { box-shadow: 0 0 13px 1px var(--status-color, transparent), inset 0 1px 1px rgba(255, 255, 255, 0.45); }
-    }
-    /* Connecting: the dot becomes a quiet rotating arc (parity with the tray). */
-    .status-indicator-cluster.is-connecting .status-indicator-control::before {
-      background: transparent;
-      border: 2px solid rgba(255, 255, 255, 0.25);
-      border-top-color: rgba(255, 255, 255, 0.85);
-      box-shadow: none;
-      animation: statusSpin 0.9s linear infinite;
-    }
-    @keyframes statusSpin { to { transform: rotate(360deg); } }
-    @media (prefers-reduced-motion: reduce) {
-      .status-indicator-control::before,
-      .status-detail-dot,
-      .status-detail-popover { transition: none; }
-      .status-indicator-cluster.is-red .status-indicator-control::before,
-      .status-indicator-cluster.is-connecting .status-indicator-control::before { animation: none; }
-    }
-    .status-detail-body {
-      font-size: 0.78rem;
-      line-height: 1.35;
-      color: #ffffff;
-      text-shadow: var(--dashboard-custom-text-shadow);
-    }
-    .status-detail-meta {
-      font-size: 0.68rem;
-      opacity: 0.85;
-      color: #ffffff;
-      text-shadow: var(--dashboard-custom-text-shadow);
-    }
-    /* Recent-status timeline inside the hover panel: one bar per check. */
-    .status-detail-timeline {
-      display: flex;
-      gap: 2px;
-      height: 16px;
-      margin-top: 2px;
-    }
-    .status-detail-bar {
-      flex: 1 1 0;
-      min-width: 2px;
-      border-radius: 2px;
-      background: var(--bar-color, #8e8e93);
-      opacity: 0.92;
-    }
-    /* All widget text is always pure white (numbers + labels), regardless of
-       status, theme ink, or per-tab accent. */
-    .widget-card .stat-val,
-    .widget-card .stat-lbl,
-    .stat-card .stat-val,
-    .stat-card .stat-lbl {
-      color: #ffffff !important;
-      -webkit-text-fill-color: #ffffff !important;
-    }
-  `;
-  document.head.appendChild(style);
 }
 
 // ─── Data feed ────────────────────────────────────────────────────────────────
@@ -501,13 +243,6 @@ function deriveConsensusRows(rows, targetLabel) {
 // Cards the user explicitly recolored (panelColorUser) are left alone.
 
 const ADAPTIVE_STATUS_COLORS = { green: "#16a34a", yellow: "#ca8a04", red: "#dc2626" };
-
-const median = (values) => {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-};
 
 const average = (values) => (values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null);
 
@@ -1204,8 +939,6 @@ async function startFeed() {
     if (snapshot?.status) state.status = snapshot.status;
     if (snapshot?.connectionState) state.connection = snapshot.connectionState;
   } catch {}
-  updateStatusIndicator();
-
   try {
     const list = await bridge.getCompanies?.();
     if (Array.isArray(list)) companyState.companies = list;
@@ -1258,8 +991,8 @@ async function startFeed() {
   // (the widget numbers re-render through the runtime; colors follow here).
   window.dashboardTimeframeRuntime?.subscribe?.(() => applyAdaptiveCardColors());
 
-  bridge.onConnection((cs) => { state.connection = cs; updateStatusIndicator(); });
-  bridge.onStatus((payload) => { state.status = payload; updateStatusIndicator(); });
+  bridge.onConnection((cs) => { state.connection = cs; });
+  bridge.onStatus((payload) => { state.status = payload; });
   bridge.onCheck?.(({ companyId, ping }) => {
     if (companyId !== companyState.active || !ping) return;
     let buf = companyState.pingsById.get(companyId);
@@ -1353,9 +1086,6 @@ function suppressNativeTooltips() {
 suppressNativeTooltips();
 
 seedChartDefaults();
-injectStatusIndicatorStyles();
-ensureStatusIndicator();
-updateStatusIndicator();
 watchForStatusWidgets();
 mirrorBackgroundPreference();
 function hideDashboardLoading() {
