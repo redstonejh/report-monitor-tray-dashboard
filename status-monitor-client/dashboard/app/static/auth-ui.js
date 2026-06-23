@@ -513,7 +513,9 @@
         -webkit-mask: url("${USER_ICON}") center / contain no-repeat;
         mask: url("${USER_ICON}") center / contain no-repeat;
       }
-      /* Account menu mirrors the "…" / search / background dropdowns EXACTLY:
+      /* ⭐ THE CANONICAL MENU (see DESIGN_SYSTEM.md §6). This + the search popover
+         (.dashboard-search-popover) are THE reference look the user means by "menu".
+         Account menu mirrors the "…" / search / background dropdowns EXACTLY:
          the same translucent popover shell + colour-only item hover (transparent
          background, text rgba .62 → white). Never a filled/blue hover. */
       .auth-profile-menu {

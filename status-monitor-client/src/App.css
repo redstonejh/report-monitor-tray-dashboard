@@ -65,6 +65,7 @@ body.webgl-glass-on #root { position: relative; z-index: 1; }
   /* Acrylic: a dark-grey TINT (the dashboard's #1f2937 tone) at moderate opacity so
      the window's OS acrylic (DWM frosts the desktop/apps behind the popover) shows
      through — a translucent frosted dark-grey glass, not a flat solid slab. */
+/* DESIGN SYSTEM §1: the tray popover = native OS ACRYLIC + this CSS tint. See DESIGN_SYSTEM.md (repo root). */
   background: linear-gradient(180deg, rgba(31, 41, 55, 0.55), rgba(24, 32, 44, 0.5));
   -webkit-backdrop-filter: blur(18px) saturate(135%);
   backdrop-filter: blur(18px) saturate(135%);

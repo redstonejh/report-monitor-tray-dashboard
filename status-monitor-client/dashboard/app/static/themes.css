@@ -3864,6 +3864,7 @@ body.workspace-page-swipe-dragging{
 .window-control-cluster.window-control-cluster-left{
   inset: 12px auto auto 67px;
 }
+/* ── DESIGN SYSTEM §5: the circular glass control button (top-bar icon buttons). See DESIGN_SYSTEM.md. ── */
 .window-glass-control{
   position: relative;
   display: inline-flex;
@@ -3920,6 +3921,9 @@ body.workspace-page-swipe-dragging{
  * filled / blue / accent hover-or-active highlight. That native/legacy state is
  * exactly what put a stray blue highlight on these search results. The fix is to
  * REUSE .company-overflow-item — do not invent a new option style. */
+/* ⭐ THE CANONICAL MENU (see DESIGN_SYSTEM.md §6). This + the account menu
+   (.auth-profile-menu) are THE reference look the user means by "menu" — every
+   future dropdown/flyout copies this frosted-glass recipe BYTE-FOR-BYTE. */
 .dashboard-search-popover{
   position: fixed;
   z-index: calc(var(--z-menu-overlay, 2600) + 30);
@@ -4022,6 +4026,7 @@ body.workspace-page-swipe-dragging{
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpath d='M21 15l-5-5L5 21'/%3E%3C/svg%3E") center / contain no-repeat;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpath d='M21 15l-5-5L5 21'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+/* ── DESIGN SYSTEM §6: canonical frosted dropdown menu (equal-gap + no-blue-selection rules). See DESIGN_SYSTEM.md. ── */
 .bg-picker-pop{
   position: absolute; top: calc(100% + 8px); left: 0;
   z-index: calc(var(--z-menu-overlay, 2600) + 30);

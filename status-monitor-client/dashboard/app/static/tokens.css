@@ -1,3 +1,4 @@
+/* ── DESIGN SYSTEM: canonical design tokens (colours, radii, shadows, glass vars). See DESIGN_SYSTEM.md (repo root) §2. ── */
 :root {
   --base-tone: #1f2937;
   --bg: var(--base-tone);
