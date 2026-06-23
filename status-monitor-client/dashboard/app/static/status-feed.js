@@ -130,7 +130,16 @@ function currentStatusRow() {
 const companyState = {
   companies: [],         // [{ id, label, status, checks }]
   active: null,          // active company id
-  pingsById: new Map(),  // id -> [ping]
+  pingsById: new Map(),  // id -> [ping]  (full-resolution, last 7 days)
+  rollupsById: new Map(), // id -> [{ h, g, y, d, latN, latSum, latMin, latMax, lossN, lossSum, lossMax }] hourly, > 7 days
+};
+
+// Hourly rollups for data older than the raw window, exposed for the chart so it
+// can draw the full history. Each hour carries consensus green/yellow/down MINUTE
+// counts (g/y/d) — the exact stacked-bar inputs — plus latency/loss stats.
+window.dashboardRollups = {
+  forActive: () => companyState.rollupsById.get(companyState.active) || [],
+  forCompany: (id) => companyState.rollupsById.get(id) || [],
 };
 
 // Specific display-name shortenings (matched case-insensitively after trimming).
@@ -507,8 +516,9 @@ function publishSoon() {
 
 async function loadCompanyHistory(id) {
   try {
-    const res = await window.dashboard.getCompanyHistory(id, 2000);
+    const res = await window.dashboard.getCompanyHistory(id, 20000);
     if (res?.ok && Array.isArray(res.results)) companyState.pingsById.set(id, res.results);
+    if (res?.ok && Array.isArray(res.rollups)) companyState.rollupsById.set(id, res.rollups);
   } catch {}
 }
 

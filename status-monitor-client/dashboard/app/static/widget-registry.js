@@ -1119,6 +1119,24 @@
         bk.total += 1;
         if (t < bk.order) bk.order = t;
       }
+      // Fold hourly ROLLUPS (data older than the raw 7-day window) into the same
+      // buckets. Each rollup hour carries consensus green/yellow/down MINUTE counts
+      // (g/y/d) — identical in meaning to the per-minute rows above — and is
+      // time-disjoint from the raw rows (raw = last 7 days, rollups = older), so
+      // there is no double-counting. Skipped at ping (minute) zoom, which only ever
+      // shows recent raw data. This is what reproduces the bars for old ranges.
+      if (level !== "ping") {
+        const rollups = (window.dashboardRollups && window.dashboardRollups.forActive && window.dashboardRollups.forActive()) || [];
+        for (const ru of rollups) {
+          if (!ru || !Number.isFinite(ru.h) || ru.h < cStartMs || ru.h > cEndMs) continue;
+          const info = bucketInfo(new Date(ru.h).toISOString());
+          let bk = buckets.get(info.key);
+          if (!bk) { bk = { key: info.key, label: info.label, start: info.start, end: info.end, success: 0, down: 0, degraded: 0, total: 0, order: ru.h, checkedAt: new Date(ru.h).toISOString(), detail: "" }; buckets.set(info.key, bk); }
+          bk.success += ru.g || 0; bk.degraded += ru.y || 0; bk.down += ru.d || 0;
+          bk.total += (ru.g || 0) + (ru.y || 0) + (ru.d || 0);
+          if (ru.h < bk.order) bk.order = ru.h;
+        }
+      }
       // Fill the container with one slot per period — every minute / hour /
       // day / week / month gets a bar, and slots without data render grey.
       {

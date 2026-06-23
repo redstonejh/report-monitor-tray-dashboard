@@ -84,6 +84,15 @@ let roster = new Map();
 // check/connection message, so a company is online whenever its monitoring
 // agent is alive — even if an individual circuit check publishes slowly.
 const systemActivity = new Map();
+// Retained-message presence = "tracked in the explorer". A check is tracked while
+// its retained topic exists on the broker; when that retained record is deleted
+// (a zero-length tombstone, or it's absent from the retained burst on reconnect)
+// the connection moves to the historical roster. No staleness timers — this is
+// symmetric with how a newly-published retained message adds a connection.
+const trackedCheckTopics = new Set();   // check/connection topics with a live retained record
+const companyCheckTopics = new Map();   // companyId -> Set(topic) of its check topics
+let trackingDiscoveryDeadline = 0;      // grace window so the retained burst can arrive before we judge
+const TRACKING_DISCOVERY_MS = 10_000;
 let isQuitting = false;
 let popoverMode = 'peek';        // 'peek' | 'expanded'
 let popoverPinned = false;
@@ -184,7 +193,7 @@ function checkToPing(p) {
   };
 }
 
-const MAX_PINGS_PER_COMPANY = 3000;
+const MAX_PINGS_PER_COMPANY = 50000; // safety cap; the real bound is RAW_RETENTION_MS (7 days) via rollUpAged
 
 function ingestCheck(payload, system) {
   if (!payload || payload.available === undefined) return null;
@@ -259,54 +268,121 @@ function rememberCompany(co) {
 // running, flushed synchronously on quit — and reload it on startup so history
 // survives a restart. Capped to the last PERSIST_WINDOW_MS (the window the UI
 // actually derives over) so the file stays small.
-const PERSIST_WINDOW_MS = 24 * 60 * 60 * 1000;
+const PERSIST_WINDOW_MS = 24 * 60 * 60 * 1000;     // the PIE / criticality derive over this — unchanged
+const RAW_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;  // keep full-minute pings this long; older data → hourly rollups
+const ROLLUP_HOUR_MS = 3600000;
 function pingsCacheFile() {
   return path.join(app.getPath('userData'), 'pings-cache.json');
 }
+function pingsCacheFileGz() {
+  return path.join(app.getPath('userData'), 'pings-cache.json.gz');
+}
+// Window the PIE / tray derivation sees (last 24h). Kept independent of the raw
+// retention window so extending full-resolution history does NOT change the pie.
 function recentPings(pings) {
   const cutoff = Date.now() - PERSIST_WINDOW_MS;
   const kept = (pings || []).filter((p) => {
     const t = Date.parse(p && p.checkedAt);
     return Number.isFinite(t) && t > cutoff;
   });
+  return kept.length > 3000 ? kept.slice(kept.length - 3000) : kept;
+}
+// Full-resolution pings retained in memory + on disk: the last RAW_RETENTION_MS.
+function rawPings(pings) {
+  const cutoff = Date.now() - RAW_RETENTION_MS;
+  const kept = (pings || []).filter((p) => {
+    const t = Date.parse(p && p.checkedAt);
+    return Number.isFinite(t) && t > cutoff;
+  });
   return kept.length > MAX_PINGS_PER_COMPANY ? kept.slice(kept.length - MAX_PINGS_PER_COMPANY) : kept;
 }
+// Roll up pings older than the raw-retention window into HOURLY buckets that
+// preserve the EXACT bar-chart inputs: per hour we store the consensus
+// green/yellow/down MINUTE counts (g/y/d) — so the stacked HP bar reproduces
+// byte-for-byte — plus latency/loss stats for the stat cards. Levels come from
+// derivedMinuteLevels over the full buffer (stable baseline), the same algorithm
+// the live chart uses. The rolled pings are then dropped, so memory + disk stay
+// bounded while the trend is kept forever.
+function rollUpAged(entry) {
+  const pings = entry.pings || [];
+  if (!pings.length) return;
+  const cutoffHour = Math.floor((Date.now() - RAW_RETENTION_MS) / ROLLUP_HOUR_MS) * ROLLUP_HOUR_MS;
+  if (!pings.some((p) => { const t = Date.parse(p.checkedAt); return Number.isFinite(t) && t < cutoffHour; })) return;
+  if (!entry.rollups) entry.rollups = new Map();
+  const bucketFor = (h) => {
+    let b = entry.rollups.get(h);
+    if (!b) { b = { h, g: 0, y: 0, d: 0, latN: 0, latSum: 0, latMin: 0, latMax: 0, lossN: 0, lossSum: 0, lossMax: 0 }; entry.rollups.set(h, b); }
+    return b;
+  };
+  // consensus minute levels (red = >=50% viewers down, yellow = any down/degraded, else green)
+  for (const { ms, level } of derivedMinuteLevels(pings)) {
+    if (ms >= cutoffHour) continue;
+    const b = bucketFor(Math.floor(ms / ROLLUP_HOUR_MS) * ROLLUP_HOUR_MS);
+    if (level === 'red') b.d += 1; else if (level === 'yellow') b.y += 1; else b.g += 1;
+  }
+  // latency/loss stats from the raw aged pings (drives stat cards over old ranges)
+  for (const p of pings) {
+    const t = Date.parse(p.checkedAt);
+    if (!Number.isFinite(t) || t >= cutoffHour) continue;
+    const b = bucketFor(Math.floor(t / ROLLUP_HOUR_MS) * ROLLUP_HOUR_MS);
+    if (p.latencyMs != null) { b.latMin = b.latN ? Math.min(b.latMin, p.latencyMs) : p.latencyMs; b.latMax = b.latN ? Math.max(b.latMax, p.latencyMs) : p.latencyMs; b.latN += 1; b.latSum += p.latencyMs; }
+    const loss = Number(p.packetLoss);
+    if (Number.isFinite(loss)) { b.lossN += 1; b.lossSum += loss; if (loss > b.lossMax) b.lossMax = loss; }
+  }
+  entry.pings = pings.filter((p) => { const t = Date.parse(p.checkedAt); return !Number.isFinite(t) || t >= cutoffHour; });
+  entry._derived = null; // invalidate the memoized 24h derivation
+}
+function rollUpAllAged() { for (const e of companies.values()) rollUpAged(e); }
+
 function snapshotPings() {
+  rollUpAllAged(); // fold anything older than the raw window into hourly rollups first
   const out = [];
   for (const e of companies.values()) {
-    const pings = recentPings(e.pings);
-    if (pings.length) out.push({ id: e.id, label: e.label, pings });
+    const pings = rawPings(e.pings);
+    const rollups = e.rollups && e.rollups.size ? [...e.rollups.values()] : [];
+    if (pings.length || rollups.length) out.push({ id: e.id, label: e.label, pings, rollups });
   }
   return { savedAt: Date.now(), companies: out };
 }
 function loadPingsCache() {
+  const zlib = require('zlib');
   let data;
-  try { data = JSON.parse(fs.readFileSync(pingsCacheFile(), 'utf8')); }
-  catch { return; }
+  try {
+    if (fs.existsSync(pingsCacheFileGz())) data = JSON.parse(zlib.gunzipSync(fs.readFileSync(pingsCacheFileGz())).toString('utf8'));
+    else data = JSON.parse(fs.readFileSync(pingsCacheFile(), 'utf8'));
+  } catch { return; }
   if (!data || !Array.isArray(data.companies)) return;
   for (const c of data.companies) {
-    if (!c || !c.id || !Array.isArray(c.pings)) continue;
-    const pings = recentPings(c.pings);
-    if (!pings.length) continue;
-    // Rebuild lastByCheck (newest ping per checkId) so ingestCheck's
-    // retained-re-delivery dedupe (it compares the last ping's checkedAt) works
-    // against the restored history and never double-counts a replay.
+    if (!c || !c.id) continue;
+    // Load raw pings as-is (the cache already holds ≤ raw window from the last save);
+    // rollUpAllAged() right after load folds anything that aged past the window while
+    // the app was closed. Only a hard safety cap is applied here.
+    const pings = Array.isArray(c.pings) ? c.pings.slice(-MAX_PINGS_PER_COMPANY) : [];
+    const rollups = new Map();
+    for (const r of (Array.isArray(c.rollups) ? c.rollups : [])) { if (r && Number.isFinite(r.h)) rollups.set(r.h, r); }
+    if (!pings.length && !rollups.size) continue;
+    // Rebuild lastByCheck (newest ping per checkId) so ingestCheck's retained-
+    // re-delivery dedupe works against the restored history and never double-counts.
     const lastByCheck = new Map();
     for (const p of pings) { if (p && p.checkId) lastByCheck.set(p.checkId, p); }
-    companies.set(c.id, { id: c.id, label: c.label || c.id, pings, lastByCheck, systems: new Set() });
+    companies.set(c.id, { id: c.id, label: c.label || c.id, pings, lastByCheck, systems: new Set(), rollups });
   }
 }
 let pingsSaveTimer = null;
+function writePingsCache(sync) {
+  const zlib = require('zlib');
+  let buf;
+  try { buf = zlib.gzipSync(Buffer.from(JSON.stringify(snapshotPings()))); } catch { return; }
+  if (sync) { try { fs.writeFileSync(pingsCacheFileGz(), buf); } catch {} }
+  else fs.promises.writeFile(pingsCacheFileGz(), buf).catch(() => {});
+}
 function savePingsSoon() {
   if (pingsSaveTimer) return;
-  pingsSaveTimer = setTimeout(() => {
-    pingsSaveTimer = null;
-    fs.promises.writeFile(pingsCacheFile(), JSON.stringify(snapshotPings())).catch(() => {});
-  }, 60000);
+  pingsSaveTimer = setTimeout(() => { pingsSaveTimer = null; writePingsCache(false); }, 60000);
 }
 function flushPingsCache() {
   if (pingsSaveTimer) { clearTimeout(pingsSaveTimer); pingsSaveTimer = null; }
-  try { fs.writeFileSync(pingsCacheFile(), JSON.stringify(snapshotPings())); } catch {}
+  writePingsCache(true);
 }
 
 // The vantage point a check pings FROM, parsed from its label "(from X)".
@@ -488,22 +564,36 @@ function allowedCompanyIds() {
   return ids ? new Set(ids) : null;
 }
 
+// A connection is "historical" when it is no longer tracked on the broker: its
+// retained check topic was deleted (tombstone) or was absent from the retained
+// burst after a (re)connect. Purely presence-based — no staleness timers — so it
+// is symmetric with how a newly-published retained message adds a connection. A
+// check whose retained record still exists but whose agent is down is NOT
+// historical; it stays "offline" (grey) and can come back.
+function companyHistorical(companyId) {
+  if (Date.now() < trackingDiscoveryDeadline) return false; // let the retained burst arrive first
+  const topics = companyCheckTopics.get(companyId);
+  if (!topics || topics.size === 0) return true;            // nothing tracked this connect
+  for (const t of topics) if (trackedCheckTopics.has(t)) return false;
+  return true;                                              // every check topic untracked
+}
+
 // The full roster (every company ever seen) merged with this session's live
 // data. Live companies report their real status; the rest read as offline.
 function companyList() {
   const out = new Map();
   for (const r of roster.values()) {
-    out.set(r.id, { id: r.id, label: r.label, status: 'offline', online: false, checks: 0, historical: false, lastSeen: r.lastSeen || 0 });
+    out.set(r.id, { id: r.id, label: r.label, status: 'offline', online: false, checks: 0, historical: companyHistorical(r.id), lastSeen: r.lastSeen || 0 });
   }
   for (const e of companies.values()) {
     const online = companyOnline(e);
     const lastPing = e.pings.length ? e.pings[e.pings.length - 1] : null;
     const lastSeen = lastPing && lastPing.checkedAt ? Date.parse(lastPing.checkedAt) : 0;
-    // HISTORICAL ("taken off the network"): the monitoring agent is still alive
-    // (online) but it has stopped publishing checks for THIS connection — i.e. the
-    // explorer removed it from monitoring. A whole-agent outage (online === false,
-    // e.g. Port 8000) is NOT historical — that's just offline, it may come back.
-    const historical = online && lastSeen > 0 && (Date.now() - lastSeen) >= ONLINE_MS;
+    // HISTORICAL = no longer tracked on the broker (its retained record was deleted).
+    // Presence-based, not time-based: a check whose retained message still exists but
+    // whose agent is down stays "offline" (grey); a deleted connection moves to the
+    // historical roster — symmetric with how a new retained message adds it.
+    const historical = companyHistorical(e.id);
     out.set(e.id, {
       id: e.id,
       label: e.label,
@@ -526,7 +616,11 @@ function companyList() {
 // Aggregate health across the whole fleet — drives the tray icon, tooltip,
 // right-click menu, and popover.
 function overallSnapshot() {
-  const list = companyList();
+  // Historical (taken-off-the-network) connections are excluded from the fleet
+  // status — a deliberately-removed circuit must not amber the tray as "offline"
+  // (the pie already filters them out). Genuinely-offline circuits (agent down,
+  // retained record still present) are NOT historical and still count.
+  const list = companyList().filter((c) => !c.historical);
   const down = list.filter((c) => c.online && c.status === 'red').map((c) => c.label);
   const degraded = list.filter((c) => c.online && c.status === 'yellow').map((c) => c.label);
   const offline = list.filter((c) => !c.online).map((c) => c.label);
@@ -647,6 +741,11 @@ function connectMqtt() {
     // (the connection tests) live under connections/<subject>/<proj>/<sys>/<id>;
     // each agent's liveness comes from <proj>/<sys>/heartbeat.
     mqttClient.subscribe(['+/+/checks/+', 'connections/#', '+/+/heartbeat'], { qos: 0 });
+    // Rebuild the tracked-connection set from this connect's retained burst: clear it
+    // and give the retained messages a short window to arrive before any connection is
+    // judged "untracked". This catches removals that happened while we were offline.
+    trackedCheckTopics.clear();
+    trackingDiscoveryDeadline = Date.now() + TRACKING_DISCOVERY_MS;
     // Shared ticket store for the companion ticketing app: keep a live cache of the
     // retained ticket docs so we can dedup creation and merge recovery without
     // clobbering human edits (claim/assign/resolve).
@@ -661,6 +760,19 @@ function connectMqtt() {
       const id = topic.slice('tickets/'.length);
       if (!message || message.length === 0) ticketCache.delete(id);
       else { try { ticketCache.set(id, JSON.parse(message.toString())); } catch { /* ignore */ } }
+      return;
+    }
+
+    // Empty retained payload on a check/connection topic = its retained record was
+    // deleted, i.e. the connection is no longer tracked in the explorer. Drop it from
+    // the tracked set (mirrors the tickets/ tombstone above) so companyList moves it to
+    // the historical roster, then refresh the tray/popover immediately. No time logic.
+    if (message.length === 0 && (topic.includes('/checks/') || topic.startsWith('connections/'))) {
+      if (trackedCheckTopics.delete(topic)) {
+        currentStatus = overallSnapshot();
+        updateTray(currentStatus.status);
+        broadcastToRenderer(currentStatus);
+      }
       return;
     }
 
@@ -690,6 +802,15 @@ function connectMqtt() {
 
     const tts = payload.checkedAt || payload.lastReceived;
     if (tts) systemActivity.set(system, Math.max(systemActivity.get(system) || 0, new Date(tts).getTime()));
+
+    // Mark this topic tracked BEFORE ingest: a retained re-delivery that duplicates
+    // persisted history makes ingestCheck return null, but the retained record still
+    // exists, so the connection is still tracked. Derive the company id the same way.
+    const trackedCo = companyForCheck(payload.label, payload.id);
+    trackedCheckTopics.add(topic);
+    let cset = companyCheckTopics.get(trackedCo.id);
+    if (!cset) { cset = new Set(); companyCheckTopics.set(trackedCo.id, cset); }
+    cset.add(topic);
 
     const res = ingestCheck(payload, system);
     if (!res) return;
@@ -1421,6 +1542,7 @@ app.whenReady().then(() => {
 
   roster = loadRoster();
   loadPingsCache(); // restore per-company ping history before live data resumes
+  rollUpAllAged();  // fold any pings that aged past the raw window while we were closed
   auth.init();
 
   tray = new Tray(icons.grey);
@@ -1518,9 +1640,11 @@ ipcMain.handle('viewers:ips', () => {
 
 ipcMain.handle('company:history', (_e, payload = {}) => {
   const entry = companies.get(payload.companyId);
-  if (!entry) return { ok: true, results: [] };
-  const n = Math.min(Math.max(Number(payload.limit) || 2000, 1), 5000);
-  return { ok: true, results: entry.pings.slice(-n) };
+  if (!entry) return { ok: true, results: [], rollups: [] };
+  const n = Math.min(Math.max(Number(payload.limit) || 20000, 1), MAX_PINGS_PER_COMPANY);
+  // Raw full-resolution pings (last 7 days) + hourly rollups (everything older) so
+  // the chart can draw the full history; rollups carry per-hour g/y/d minute counts.
+  return { ok: true, results: entry.pings.slice(-n), rollups: entry.rollups ? [...entry.rollups.values()].sort((a, b) => a.h - b.h) : [] };
 });
 
 ipcMain.handle('settings:get', () => settings);
