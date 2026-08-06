@@ -90,11 +90,21 @@ status-monitor-client/   Electron app: system-tray popover (React) + embedded da
 
 ## Setup
 
+### Web / Portainer deployment
+
+The Electron dashboard is also available as a containerized web app. It connects
+to MQTT from the server, serves the dashboard on port `8080`, relays live updates
+to the browser, and persists collected history in a Docker volume.
+
+See [`PORTAINER.md`](./PORTAINER.md) for the Portainer image-build and stack
+instructions, or use `docker-compose.yml` for a local Docker build.
+
 ### 1. MQTT broker
 
 Install an MQTT broker (e.g. Mosquitto) on the machine that runs the API, with a TCP
-listener on `1883` (and a websocket listener on `9001` if web clients are needed).
-`allow_anonymous true` is fine for a simple deployment.
+listener on `1883`. The containerized web gateway also uses this TCP listener, so
+it does not require an MQTT WebSocket listener. `allow_anonymous true` is fine for
+a simple trusted-network deployment.
 
 ### 2. API
 

@@ -1,0 +1,21 @@
+services:
+  report-monitor-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: report-monitor-web:latest
+    container_name: report-monitor-web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MQTT_URL: "mqtt://24.121.212.206:1883"
+      # MQTT_USERNAME: ""
+      # MQTT_PASSWORD: ""
+      # WEB_USERNAME: "admin"
+      # WEB_PASSWORD: "change-me"
+    volumes:
+      - report-monitor-data:/data
+
+volumes:
+  report-monitor-data:

@@ -27,6 +27,7 @@ status-monitor-api/installer/*.zip
 
 # Runtime databases, generated IDs, and logs
 status-monitor-api/data/
+status-monitor-web/data/
 status-monitor-api/config/topics.json
 *.db
 *.sqlite

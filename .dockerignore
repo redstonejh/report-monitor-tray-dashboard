@@ -1,0 +1,13 @@
+.git
+.gitignore
+**/node_modules
+**/.vite
+**/out
+**/dist
+status-monitor-api
+status-monitor-client/src
+status-monitor-client/electron
+status-monitor-client/*.js
+status-monitor-client/*.json
+!status-monitor-client/clients.json
+*.log
