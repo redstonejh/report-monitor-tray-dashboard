@@ -39,12 +39,16 @@ lines in `portainer-stack.yml` to those registry paths.
 
 `portainer-stack.yml` is a complete stack with these services:
 
-- `mqtt` — Eclipse Mosquitto on TCP port `1883`
+- `mqtt` — Eclipse Mosquitto on TCP `1883` and WebSocket `9001`
 - `report-monitor-api` — the status checker and REST API on port `3847`
 - `report-monitor-web` — the browser dashboard on port `8080`
 
 The Portainer Compose file has no `build:` directives. It expects the two local
 images from step 1 to exist on the target Docker node.
+
+The volume keys intentionally match the existing `report-monitor-server` stack:
+`mqtt-data`, `mqtt-log`, `monitor-history`, and `monitor-source`. Updating that
+stack in place therefore retains broker state, API history, and source data.
 
 ## Web environment variables
 

@@ -1,13 +1,16 @@
 services:
   mqtt:
     image: eclipse-mosquitto:2
-    container_name: mqtt
+    container_name: report-monitor-mqtt
     restart: unless-stopped
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         cat > /tmp/mosquitto.conf <<'EOF'
         listener 1883 0.0.0.0
+        protocol mqtt
+        listener 9001 0.0.0.0
+        protocol websockets
         allow_anonymous true
         persistence true
         persistence_location /mosquitto/data/
@@ -16,8 +19,10 @@ services:
         exec mosquitto -c /tmp/mosquitto.conf
     ports:
       - "1883:1883"
+      - "9001:9001"
     volumes:
       - mqtt-data:/mosquitto/data
+      - mqtt-log:/mosquitto/log
     healthcheck:
       test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -p 1883 -t '$$SYS/broker/version' -C 1 -W 3 >/dev/null 2>&1"]
       interval: 30s
@@ -62,8 +67,8 @@ services:
     ports:
       - "3847:3847"
     volumes:
-      - api-data:/data
-      - source-data:/source:ro
+      - monitor-history:/data
+      - monitor-source:/source:ro
     networks:
       - report-monitor
 
@@ -106,8 +111,10 @@ services:
 
 volumes:
   mqtt-data:
-  api-data:
-  source-data:
+  mqtt-log:
+  monitor-app:
+  monitor-history:
+  monitor-source:
   web-data:
 
 networks:
