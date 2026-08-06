@@ -4,7 +4,6 @@
 **/.vite
 **/out
 **/dist
-status-monitor-api
 status-monitor-client/src
 status-monitor-client/electron
 status-monitor-client/*.js

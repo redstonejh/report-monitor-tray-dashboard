@@ -14,7 +14,12 @@ const STATE_FILE = path.join(DATA_DIR, 'monitor-state.json');
 const DEFAULT_CLIENTS_FILE = path.join(ROOT, 'status-monitor-client', 'clients.json');
 const CLIENTS_FILE = process.env.CLIENTS_CONFIG || path.join(DATA_DIR, 'clients.json');
 const MQTT_URL = process.env.MQTT_URL || 'mqtt://24.121.212.206:1883';
+const STATUS_API_URL = String(process.env.STATUS_API_URL || '').replace(/\/+$/, '');
+const STATUS_API_SYSTEM = process.env.STATUS_API_SYSTEM || 'api/status-monitor-api';
+const STATUS_API_LABEL = process.env.STATUS_API_LABEL || STATUS_API_SYSTEM;
+const STATUS_API_POLL_MS = numberEnv('STATUS_API_POLL_MS', 60 * 1000);
 const ONLINE_MS = numberEnv('ONLINE_WINDOW_MS', 5 * 60 * 1000);
+const LEGACY_STATUS_ONLINE_MS = numberEnv('LEGACY_STATUS_ONLINE_MS', 24 * 60 * 60 * 1000);
 const RETENTION_MS = numberEnv('HISTORY_RETENTION_MS', 7 * 24 * 60 * 60 * 1000);
 const MAX_PINGS = numberEnv('MAX_PINGS_PER_COMPANY', 50000);
 const STATUS_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -55,6 +60,7 @@ const systemActivity = new Map();
 const connectionHostByToken = new Map();
 const viewerAgent = new Map();
 const agentViewerNames = new Map();
+const legacySystems = new Set();
 const eventClients = new Set();
 let mqttConnectionState = 'grey';
 let lastCheckedAt = null;
@@ -119,6 +125,35 @@ function ingestCheck(payload, system) {
   const entry = ensureCompany(company);
   if (system) entry.systems.add(system);
   const ping = checkToPing(payload);
+  const previous = entry.lastByCheck.get(ping.checkId);
+  if (previous?.checkedAt === ping.checkedAt) return null;
+  entry.lastByCheck.set(ping.checkId, ping);
+  entry.pings.push(ping);
+  prunePings(entry);
+  lastCheckedAt = ping.checkedAt || lastCheckedAt;
+  scheduleSave();
+  return { companyId: company.id, ping };
+}
+
+function ingestLegacyStatus(payload, system, label = system) {
+  if (!payload || !['green', 'yellow', 'red'].includes(payload.status)) return null;
+  const company = companyForCheck(label, system);
+  const entry = ensureCompany(company);
+  entry.systems.add(system);
+  legacySystems.add(system);
+  const ping = {
+    checkedAt: payload.checkedAt || new Date().toISOString(),
+    status: payload.status,
+    latencyMs: null,
+    packetLossPct: null,
+    up: payload.status === 'red' ? 0 : 1,
+    machine: label,
+    checkId: `${system}/status`,
+    host: '',
+    stage: payload.stage || '',
+    detail: payload.detail || '',
+    lastSuccess: payload.lastSuccess || '',
+  };
   const previous = entry.lastByCheck.get(ping.checkId);
   if (previous?.checkedAt === ping.checkedAt) return null;
   entry.lastByCheck.set(ping.checkId, ping);
@@ -196,6 +231,10 @@ function trailingDownStreak(levels) {
 }
 
 function companyStatus(entry) {
+  const latest = entry.pings.at(-1);
+  if (latest?.checkId?.endsWith('/status') && entry.lastByCheck.size === 1) {
+    return latest.status;
+  }
   const cutoff = Date.now() - STATUS_WINDOW_MS;
   const levels = derivedMinuteLevels(
     entry.pings.filter((ping) => Date.parse(ping.checkedAt) >= cutoff),
@@ -211,7 +250,10 @@ function companyStatus(entry) {
 
 function companyOnline(entry) {
   const now = Date.now();
-  return [...entry.systems].some((system) => now - (systemActivity.get(system) || 0) < ONLINE_MS);
+  return [...entry.systems].some((system) => {
+    const windowMs = legacySystems.has(system) ? LEGACY_STATUS_ONLINE_MS : ONLINE_MS;
+    return now - (systemActivity.get(system) || 0) < windowMs;
+  });
 }
 
 function companyList() {
@@ -377,6 +419,7 @@ function connectMqtt() {
       process.env.MQTT_CHECKS_TOPIC || '+/+/checks/+',
       process.env.MQTT_CONNECTIONS_TOPIC || 'connections/#',
       process.env.MQTT_HEARTBEATS_TOPIC || '+/+/heartbeat',
+      process.env.MQTT_STATUS_TOPIC || '+/+/status',
     ];
     client.subscribe(topics, { qos: 0 }, (error) => {
       if (error) console.error('[MQTT] Subscribe failed:', error.message);
@@ -392,6 +435,21 @@ function connectMqtt() {
       return;
     }
     const parts = topic.split('/');
+    if (topic.endsWith('/status') && parts.length >= 3) {
+      const system = `${parts[0]}/${parts[1]}`;
+      const observedAt = Date.parse(payload.checkedAt);
+      systemActivity.set(system, Number.isFinite(observedAt) ? observedAt : Date.now());
+      const label = system === STATUS_API_SYSTEM
+        ? STATUS_API_LABEL
+        : payload.label || payload.machine || system;
+      const result = ingestLegacyStatus(payload, system, label);
+      if (!result) return;
+      setConnectionState('live');
+      emitEvent('check', result);
+      emitEvent('status', overallSnapshot());
+      return;
+    }
+
     if (topic.endsWith('/heartbeat')) {
       const system = `${parts[0]}/${parts[1]}`;
       const publishedAt = Date.parse(payload.publishedAt);
@@ -425,6 +483,30 @@ function connectMqtt() {
     setConnectionState('black');
   });
   return client;
+}
+
+async function pollStatusApi() {
+  if (!STATUS_API_URL) return;
+  try {
+    const response = await fetch(`${STATUS_API_URL}/api/history?limit=500`, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const body = await response.json();
+    const results = Array.isArray(body.results) ? [...body.results] : [];
+    results.sort((a, b) => Date.parse(a.checkedAt) - Date.parse(b.checkedAt));
+    let changed = false;
+    for (const result of results) {
+      if (ingestLegacyStatus(result, STATUS_API_SYSTEM, STATUS_API_LABEL)) changed = true;
+    }
+    const latest = results.at(-1);
+    const observedAt = Date.parse(latest?.checkedAt);
+    if (Number.isFinite(observedAt)) systemActivity.set(STATUS_API_SYSTEM, observedAt);
+    if (changed) emitEvent('status', overallSnapshot());
+  } catch (error) {
+    console.warn(`[API] History sync failed: ${error.message}`);
+  }
 }
 
 function secureEqual(left, right) {
@@ -508,6 +590,10 @@ app.get('*path', (_req, res) => res.sendFile(path.join(DASHBOARD_DIR, 'index.htm
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`[WEB] Report Monitor available on http://0.0.0.0:${PORT}`);
 });
+if (STATUS_API_URL) {
+  pollStatusApi();
+  setInterval(pollStatusApi, STATUS_API_POLL_MS).unref();
+}
 
 function shutdown(signal) {
   console.log(`[WEB] ${signal} received, shutting down`);

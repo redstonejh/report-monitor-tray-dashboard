@@ -1,18 +1,115 @@
 services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: mqtt
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cat > /tmp/mosquitto.conf <<'EOF'
+        listener 1883 0.0.0.0
+        allow_anonymous true
+        persistence true
+        persistence_location /mosquitto/data/
+        log_dest stdout
+        EOF
+        exec mosquitto -c /tmp/mosquitto.conf
+    ports:
+      - "1883:1883"
+    volumes:
+      - mqtt-data:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -p 1883 -t '$$SYS/broker/version' -C 1 -W 3 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - report-monitor
+
+  report-monitor-api:
+    image: report-monitor-api:latest
+    container_name: report-monitor-api
+    restart: unless-stopped
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    environment:
+      PROJECT_ID: "${PROJECT_ID:-report-monitor}"
+      SYSTEM_ID: "${SYSTEM_ID:-server}"
+      MQTT_BROKER_HOST: "mqtt"
+      MQTT_BROKER_PORT: "1883"
+      MQTT_WS_PORT: "9001"
+      MQTT_USERNAME: "${MQTT_USERNAME:-}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-}"
+      API_PORT: "3847"
+      API_CORS_ORIGIN: "${API_CORS_ORIGIN:-http://192.168.203.118:8080}"
+      HISTORY_DB_PATH: "/data/history.db"
+      CHECK_CRON: "${CHECK_CRON:-*/10 * * * *}"
+      GREEN_THRESHOLD_HOURS: "${GREEN_THRESHOLD_HOURS:-26}"
+      DB_PATH: "${DB_PATH:-}"
+      DB_TABLE: "${DB_TABLE:-StatusRecords}"
+      DB_DATE_COLUMN: "${DB_DATE_COLUMN:-RecordDate}"
+      BASE_PATH: "${BASE_PATH:-/source}"
+      RAW_DATA_PATH: "${RAW_DATA_PATH:-raw}"
+      ARCHIVED_DATA_PATH: "${ARCHIVED_DATA_PATH:-archive}"
+      REPORT_WORK_PATH: "${REPORT_WORK_PATH:-reports/work}"
+      REPORT_SUMMARY_PATH: "${REPORT_SUMMARY_PATH:-reports/summary}"
+      REPORT_FINAL_PATH: "${REPORT_FINAL_PATH:-reports/final}"
+      SOURCE_LOG_PATH: "${SOURCE_LOG_PATH:-logs}"
+      RAW_DATA_EXTENSIONS: "${RAW_DATA_EXTENSIONS:-.csv,.log,.txt}"
+      REPORT_EXTENSIONS: "${REPORT_EXTENSIONS:-.xlsx,.xls,.txt,.pdf}"
+    ports:
+      - "3847:3847"
+    volumes:
+      - api-data:/data
+      - source-data:/source:ro
+    networks:
+      - report-monitor
+
   report-monitor-web:
     image: report-monitor-web:latest
     container_name: report-monitor-web
     restart: unless-stopped
+    depends_on:
+      mqtt:
+        condition: service_healthy
+      report-monitor-api:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      DATA_DIR: "/data"
+      MQTT_URL: "mqtt://mqtt:1883"
+      MQTT_USERNAME: "${MQTT_USERNAME:-}"
+      MQTT_PASSWORD: "${MQTT_PASSWORD:-}"
+      MQTT_CHECKS_TOPIC: "${MQTT_CHECKS_TOPIC:-+/+/checks/+}"
+      MQTT_CONNECTIONS_TOPIC: "${MQTT_CONNECTIONS_TOPIC:-connections/#}"
+      MQTT_HEARTBEATS_TOPIC: "${MQTT_HEARTBEATS_TOPIC:-+/+/heartbeat}"
+      MQTT_STATUS_TOPIC: "${MQTT_STATUS_TOPIC:-+/+/status}"
+      STATUS_API_URL: "http://report-monitor-api:3847"
+      STATUS_API_SYSTEM: "${PROJECT_ID:-report-monitor}/${SYSTEM_ID:-server}"
+      STATUS_API_LABEL: "${STATUS_API_LABEL:-Report Monitor API}"
+      WEB_USERNAME: "${WEB_USERNAME:-}"
+      WEB_PASSWORD: "${WEB_PASSWORD:-}"
+      ONLINE_WINDOW_MS: "${ONLINE_WINDOW_MS:-300000}"
+      LEGACY_STATUS_ONLINE_MS: "${LEGACY_STATUS_ONLINE_MS:-86400000}"
+      HISTORY_RETENTION_MS: "${HISTORY_RETENTION_MS:-604800000}"
+      MAX_PINGS_PER_COMPANY: "${MAX_PINGS_PER_COMPANY:-50000}"
+      MQTT_RECONNECT_MS: "${MQTT_RECONNECT_MS:-15000}"
+      STATUS_API_POLL_MS: "${STATUS_API_POLL_MS:-60000}"
     ports:
       - "8080:8080"
-    environment:
-      MQTT_URL: "mqtt://24.121.212.206:1883"
-      # MQTT_USERNAME: ""
-      # MQTT_PASSWORD: ""
-      # WEB_USERNAME: "admin"
-      # WEB_PASSWORD: "change-me"
     volumes:
-      - report-monitor-data:/data
+      - web-data:/data
+    networks:
+      - report-monitor
 
 volumes:
-  report-monitor-data:
+  mqtt-data:
+  api-data:
+  source-data:
+  web-data:
+
+networks:
+  report-monitor:
+    name: report-monitor
